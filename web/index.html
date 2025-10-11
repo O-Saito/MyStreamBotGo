@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Chat Live</title>
+    <style>
+        body {
+            font-family: sans-serif;
+        }
+
+        .dark {
+            color: white;
+            background-color: #18181b;
+        }
+
+        #chat {
+            border: 1px solid #ccc;
+            padding: 10px;
+            height: 400px;
+            overflow-y: scroll;
+        }
+
+        .message {
+            margin: 2px 0;
+        }
+
+        .meta {
+            font-size: 0.8em;
+            color: #666;
+        }
+
+        button {
+            margin-left: 5px;
+        }
+    </style>
+</head>
+
+<body class="dark">
+    <div id="logins">
+        <div id="login-twitch"></div>
+        <div id="login-kick"></div>
+    </div>
+    <h1>Chat Live</h1>
+    <div id="chat"></div>
+    <div><button type="button" id="btn-mandar-msg">Mandar Mensagem</button></div>
+    <div id="chat-connections">
+        <div id="chat-connection-twitch">
+            <div class="form">
+                <button type="button" class="btn-novo-chat">Conectar Chat Twitch</button>
+            </div>
+            <ul class="list"></ul>
+        </div>
+        <div id="chat-connection-kick">
+            <div class="form">
+                <button type="button" class="btn-novo-chat">Conectar Chat Kick</button>
+            </div>
+            <ul class="list"></ul>
+        </div>
+    </div>
+
+<div>
+    <h3>Stream Info</h3>
+    <label>Título: </label>
+    <input type="text" id="stream-title" />
+    <br/>
+    <br/>
+    <label>Jogo: </label>
+    <input type="text" id="stream-game" list="stream-games"/>
+    <datalist id="stream-games"></datalist>
+    <br/>
+    <br/>
+    <button type="button">Salvar</button>
+</div>
+
+    <script src="app.js"></script>
+</body>
+
+</html>

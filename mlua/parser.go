@@ -14,6 +14,85 @@ var (
 	commandTable *lua.LTable
 )
 
+func ToLValue(L *lua.LState, val any) lua.LValue {
+	switch v := val.(type) {
+	case nil:
+		return lua.LNil
+	case string:
+		return lua.LString(v)
+	case bool:
+		return lua.LBool(v)
+	case int:
+		return lua.LNumber(v)
+	case int64:
+		return lua.LNumber(v)
+	case float32:
+		return lua.LNumber(v)
+	case float64:
+		return lua.LNumber(v)
+	case map[string]any:
+		tbl := L.NewTable()
+		for k, vv := range v {
+			tbl.RawSetString(k, ToLValue(L, vv))
+		}
+		return tbl
+	case []any:
+		tbl := L.NewTable()
+		for i, vv := range v {
+			tbl.RawSetInt(i+1, ToLValue(L, vv)) // Lua é 1-index
+		}
+		return tbl
+	default:
+		return lua.LString(fmt.Sprintf("%v", v)) // fallback
+	}
+}
+
+func FromLValue(L *lua.LState, lv lua.LValue) any {
+	switch v := lv.(type) {
+	/*case lua.LNilType:
+	return nil*/
+	case lua.LBool:
+		return bool(v)
+	case lua.LNumber:
+		return float64(v) // ou int se você quiser forçar
+	case lua.LString:
+		return string(v)
+	case *lua.LTable:
+		// Decide se é map ou slice
+		// Checa se existem índices numéricos sequenciais
+		max := 0
+		isArray := true
+		v.ForEach(func(key, value lua.LValue) {
+			if k, ok := key.(lua.LNumber); ok {
+				if int(k) > max {
+					max = int(k)
+				}
+			} else {
+				isArray = false
+			}
+		})
+
+		if isArray && max > 0 {
+			arr := make([]any, max)
+			i := 0
+			v.ForEach(func(_, value lua.LValue) {
+				arr[i] = FromLValue(L, value)
+				i++
+			})
+			return arr
+		}
+
+		// Caso contrário, é um mapa
+		m := make(map[string]any)
+		v.ForEach(func(key, value lua.LValue) {
+			m[fmt.Sprint(key)] = FromLValue(L, value)
+		})
+		return m
+	default:
+		return fmt.Sprintf("%v", v) // fallback
+	}
+}
+
 func ToLTable(L *lua.LState, data globals.MessageFromStream) *lua.LTable {
 	if chatTable == nil {
 		chatTable = L.NewTable()

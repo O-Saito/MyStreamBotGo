@@ -87,5 +87,19 @@ func RegisterLuaFunctions(L *lua.LState) {
 			}
 			return 0
 		},
+		"get": func(L *lua.LState) int {
+			key := L.CheckString(1)
+			val := globals.GetState().GetData(key)
+			helpers.Logf(helpers.Lua, "[LUA GET] %s: %v", key, val)
+			L.Push(mlua.ToLValue(L, val))
+			return 1
+		},
+		"set": func(L *lua.LState) int {
+			key := L.CheckString(1)
+			val := mlua.FromLValue(L, L.Get(2))
+			helpers.Logf(helpers.Lua, "[LUA SET] %s: %v", key, val)
+			globals.GetState().SetData(key, val)
+			return 0
+		},
 	})
 }

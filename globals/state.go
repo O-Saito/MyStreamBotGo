@@ -53,3 +53,15 @@ func (s *State) GetViewerList() []string {
 	defer s.RUnlock()
 	return s.ViewersTwitch
 }
+
+func (s *State) GetData(key string) any {
+	s.RLock()
+	defer s.RUnlock()
+	return s.Data[key]
+}
+
+func (s *State) SetData(key string, value any) {
+	s.Lock()
+	defer s.Unlock()
+	s.Data[key] = value
+}

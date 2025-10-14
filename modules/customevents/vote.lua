@@ -84,13 +84,11 @@ function on_tick()
     end
 
     if tempo <= 0 then
-        print("[Lua] Votação encerrada!")
         ev.setPaused(true)
         g.socket_send("user_vote_update", {
             votos = ev.data.votos,
             ended = true
         })
-        -- g.print(string.format("[VOTAÇÃO] Resultados - Sim: %d, Não: %d", ev.data.votos.sim, ev.data.votos.nao))
         reset_data()
     end
 end

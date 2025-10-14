@@ -103,7 +103,7 @@ function on_message(msg)
     if ev.data.votos[cleanedStr] == nil then
         local asNumber = tonumber(cleanedStr)
         if asNumber == nil or ev.data.alias[asNumber] == nil then
-            g.print("[Lua] Voto inválido de" .. msg.User .. ":" .. msg.Message)
+            --g.print("[Lua] Voto inválido de" .. msg.User .. ":" .. msg.Message)
             return
         end
         cleanedStr = ev.data.alias[asNumber].mapValue
@@ -122,4 +122,8 @@ function on_event(msg)
         end
         print("[Lua] Voto recebido:", voto)
     end
+end
+
+function on_command(name, data)
+    g.print("[Lua] Comando recebido:" .. name)
 end

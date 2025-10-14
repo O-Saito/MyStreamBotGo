@@ -93,62 +93,84 @@ func FromLValue(L *lua.LState, lv lua.LValue) any {
 	}
 }
 
-func ToLTable(L *lua.LState, data globals.MessageFromStream) *lua.LTable {
-	if chatTable == nil {
+func ToLTable(L *lua.LState, data globals.MessageFromStream, tbl ...*lua.LTable) *lua.LTable {
+	var toUse *lua.LTable
+	if len(tbl) == 0 && chatTable == nil {
 		chatTable = L.NewTable()
+		toUse = chatTable
 	}
-	chatTable.RawSetString("Source", lua.LString(data.Source))
-	chatTable.RawSetString("Channel", lua.LString(data.Channel))
-	chatTable.RawSetString("User", lua.LString(data.User))
-	chatTable.RawSetString("UserId", lua.LString(data.UserId))
-	chatTable.RawSetString("MessageId", lua.LString(data.MessageId))
-	chatTable.RawSetString("Message", lua.LString(data.Message))
+
+	if len(tbl) > 0 && tbl[0] != nil {
+		toUse = tbl[0]
+	}
+
+	toUse.RawSetString("Source", lua.LString(data.Source))
+	toUse.RawSetString("Channel", lua.LString(data.Channel))
+	toUse.RawSetString("User", lua.LString(data.User))
+	toUse.RawSetString("UserId", lua.LString(data.UserId))
+	toUse.RawSetString("MessageId", lua.LString(data.MessageId))
+	toUse.RawSetString("Message", lua.LString(data.Message))
 	metadata := L.NewTable()
 	for k, v := range data.Metadata {
 		metadata.RawSetString(k, lua.LString(fmt.Sprintf("%v", v)))
 	}
-	chatTable.RawSetString("Metadata", metadata)
+	toUse.RawSetString("Metadata", metadata)
 
-	return chatTable
+	return toUse
 }
 
-func ToLTableEvent(L *lua.LState, data globals.LuaEvent) *lua.LTable {
-	if eventTable == nil {
+func ToLTableEvent(L *lua.LState, data globals.LuaEvent, tbl ...*lua.LTable) *lua.LTable {
+	var toUse *lua.LTable
+	if len(tbl) == 0 && eventTable == nil {
 		eventTable = L.NewTable()
+		toUse = eventTable
 	}
-	eventTable.RawSetString("Type", lua.LString(data.Type))
-	eventTable.RawSetString("User", lua.LString(data.User))
-	eventTable.RawSetString("Text", lua.LString(data.Text))
+
+	if len(tbl) > 0 && tbl[0] != nil {
+		toUse = tbl[0]
+	}
+	toUse.RawSetString("Type", lua.LString(data.Type))
+	toUse.RawSetString("User", lua.LString(data.User))
+	toUse.RawSetString("Text", lua.LString(data.Text))
 	dataTable := L.NewTable()
 	for k, v := range data.Data {
 		dataTable.RawSetString(k, lua.LString(fmt.Sprintf("%v", v)))
 	}
-	eventTable.RawSetString("Data", dataTable)
+	toUse.RawSetString("Data", dataTable)
 
 	return eventTable
 }
 
-func ToLTableCommand(L *lua.LState, data globals.LuaCommand) *lua.LTable {
-	if commandTable == nil {
+func ToLTableCommand(L *lua.LState, data globals.LuaCommand, tbl ...*lua.LTable) *lua.LTable {
+	var toUse *lua.LTable
+	if len(tbl) == 0 && commandTable == nil {
 		commandTable = L.NewTable()
+		toUse = commandTable
 	}
-	commandTable.RawSetString("Name", lua.LString(data.Name))
+	if len(tbl) > 0 && tbl[0] != nil {
+		toUse = tbl[0]
+	}
+
+	toUse.RawSetString("Name", lua.LString(data.Name))
 	argsTable := L.NewTable()
 	for _, arg := range data.Args {
 		argsTable.Append(lua.LString(arg))
 	}
-	commandTable.RawSetString("Args", argsTable)
-	commandTable.RawSetString("User", lua.LString(data.User))
-	commandTable.RawSetString("Text", lua.LString(data.Text))
+	toUse.RawSetString("Args", argsTable)
+	toUse.RawSetString("User", lua.LString(data.User))
+	toUse.RawSetString("Text", lua.LString(data.Text))
 	dataTable := L.NewTable()
 	for k, v := range data.Data {
 		dataTable.RawSetString(k, lua.LString(fmt.Sprintf("%v", v)))
 	}
-	commandTable.RawSetString("Data", dataTable)
-	commandTable.RawSetString("Source", lua.LString(data.Source))
-	commandTable.RawSetString("Channel", lua.LString(data.Channel))
-	commandTable.RawSetString("Message", ToLTable(L, data.Message))
-	return commandTable
+	toUse.RawSetString("Data", dataTable)
+	toUse.RawSetString("Source", lua.LString(data.Source))
+	toUse.RawSetString("Channel", lua.LString(data.Channel))
+	if _, ok := toUse.RawGetString("Message").(*lua.LTable); !ok {
+		toUse.RawSetString("Message", L.NewTable())
+	}
+	toUse.RawSetString("Message", ToLTable(L, data.Message, toUse.RawGetString("Message").(*lua.LTable)))
+	return toUse
 }
 
 func StructToLTable(L *lua.LState, s interface{}) *lua.LTable {

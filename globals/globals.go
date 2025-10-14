@@ -66,17 +66,6 @@ var sectionMap = map[string]any{
 }
 
 func LoadInitFile() {
-	// Abrir o arquivo init.txt e ler linha a linha
-	// Cada linha será um atributo de uma struct (no arquivo estára [StructName] em cada início de struct)
-	// Os valores estarão no formato chave=valor
-	// Exemplo:
-	// [Twitch]
-	// ClientID=abc123
-	// ClientSecret=def456
-	// Ignorar linhas que começam com # (comentários) ou estão vazias
-	// Se o arquivo não existir, criar um arquivo com valores padrão
-	// Se algum valor estiver faltando, usar o valor padrão
-
 	filePath := filepath.Join(".", "init.txt")
 	file, err := os.Open(filePath)
 	if err != nil {

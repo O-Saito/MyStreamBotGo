@@ -94,94 +94,72 @@ func FromLValue(L *lua.LState, lv lua.LValue) any {
 	}
 }
 
-func ToLTable(L *lua.LState, data globals.MessageFromStream, tbl ...*lua.LTable) *lua.LTable {
+func ToLTable(L *lua.LState, data globals.MessageFromStream, tbl *lua.LTable) *lua.LTable {
 	defer func() {
 		if r := recover(); r != nil {
-			helpers.Logf(helpers.Red, "Panic em ToLTable (%d): %v", len(tbl), r)
+			helpers.Logf(helpers.Red, "Panic em ToLTable: %v", r)
 		}
 	}()
-	var toUse *lua.LTable
-	if len(tbl) == 0 && chatTable == nil {
-		chatTable = L.NewTable()
-		toUse = chatTable
-	}
-
-	if len(tbl) > 0 && tbl[0] != nil {
-		toUse = tbl[0]
-	}
-
-	toUse.RawSetString("Source", lua.LString(data.Source))
-	toUse.RawSetString("Channel", lua.LString(data.Channel))
-	toUse.RawSetString("User", lua.LString(data.User))
-	toUse.RawSetString("UserId", lua.LString(data.UserId))
-	toUse.RawSetString("MessageId", lua.LString(data.MessageId))
-	toUse.RawSetString("Message", lua.LString(data.Message))
+	tbl.RawSetString("Source", lua.LString(data.Source))
+	tbl.RawSetString("Channel", lua.LString(data.Channel))
+	tbl.RawSetString("User", lua.LString(data.User))
+	tbl.RawSetString("UserId", lua.LString(data.UserId))
+	tbl.RawSetString("MessageId", lua.LString(data.MessageId))
+	tbl.RawSetString("Message", lua.LString(data.Message))
 	metadata := L.NewTable()
 	for k, v := range data.Metadata {
 		metadata.RawSetString(k, lua.LString(fmt.Sprintf("%v", v)))
 	}
-	toUse.RawSetString("Metadata", metadata)
+	tbl.RawSetString("Metadata", metadata)
 
-	return toUse
+	return tbl
 }
 
-func ToLTableEvent(L *lua.LState, data globals.LuaEvent, tbl ...*lua.LTable) *lua.LTable {
-	var toUse *lua.LTable
-	if len(tbl) == 0 && eventTable == nil {
-		eventTable = L.NewTable()
-		toUse = eventTable
-	}
-
-	if len(tbl) > 0 && tbl[0] != nil {
-		toUse = tbl[0]
-	}
-	toUse.RawSetString("Type", lua.LString(data.Type))
-	toUse.RawSetString("User", lua.LString(data.User))
-	toUse.RawSetString("Text", lua.LString(data.Text))
+func ToLTableEvent(L *lua.LState, data globals.LuaEvent, tbl *lua.LTable) *lua.LTable {
+	defer func() {
+		if r := recover(); r != nil {
+			helpers.Logf(helpers.Red, "Panic em ToLTableEvent: %v", r)
+		}
+	}()
+	tbl.RawSetString("Type", lua.LString(data.Type))
+	tbl.RawSetString("User", lua.LString(data.User))
+	tbl.RawSetString("Text", lua.LString(data.Text))
 	dataTable := L.NewTable()
 	for k, v := range data.Data {
 		dataTable.RawSetString(k, lua.LString(fmt.Sprintf("%v", v)))
 	}
-	toUse.RawSetString("Data", dataTable)
+	tbl.RawSetString("Data", dataTable)
 
 	return eventTable
 }
 
-func ToLTableCommand(L *lua.LState, data globals.LuaCommand, tbl ...*lua.LTable) *lua.LTable {
+func ToLTableCommand(L *lua.LState, data globals.LuaCommand, tbl *lua.LTable) *lua.LTable {
 	defer func() {
 		if r := recover(); r != nil {
-			helpers.Logf(helpers.Red, "Panic em ToLTableCommand (%d): %v", len(tbl), r)
+			helpers.Logf(helpers.Red, "Panic em ToLTableCommand: %v", r)
 		}
 	}()
-	var toUse *lua.LTable
-	if len(tbl) == 0 && commandTable == nil {
-		commandTable = L.NewTable()
-		toUse = commandTable
-	}
-	if len(tbl) > 0 && tbl[0] != nil {
-		toUse = tbl[0]
-	}
 
-	toUse.RawSetString("Name", lua.LString(data.Name))
+	tbl.RawSetString("Name", lua.LString(data.Name))
 	argsTable := L.NewTable()
 	for _, arg := range data.Args {
 		argsTable.Append(lua.LString(arg))
 	}
-	toUse.RawSetString("Args", argsTable)
-	toUse.RawSetString("User", lua.LString(data.User))
-	toUse.RawSetString("Text", lua.LString(data.Text))
+	tbl.RawSetString("Args", argsTable)
+	tbl.RawSetString("User", lua.LString(data.User))
+	tbl.RawSetString("Text", lua.LString(data.Text))
 	dataTable := L.NewTable()
 	for k, v := range data.Data {
 		dataTable.RawSetString(k, lua.LString(fmt.Sprintf("%v", v)))
 	}
-	toUse.RawSetString("Data", dataTable)
-	toUse.RawSetString("Source", lua.LString(data.Source))
-	toUse.RawSetString("Channel", lua.LString(data.Channel))
-	if _, ok := toUse.RawGetString("Message").(*lua.LTable); !ok {
-		toUse.RawSetString("Message", L.NewTable())
+	tbl.RawSetString("Data", dataTable)
+	tbl.RawSetString("Source", lua.LString(data.Source))
+	tbl.RawSetString("Channel", lua.LString(data.Channel))
+	if _, ok := tbl.RawGetString("Message").(*lua.LTable); !ok {
+		tbl.RawSetString("Message", L.NewTable())
 	}
-	toUse.RawSetString("Message", ToLTable(L, data.Message, toUse.RawGetString("Message").(*lua.LTable)))
-	return toUse
+	tbl.RawSetString("Message", ToLTable(L, data.Message, tbl.RawGetString("Message").(*lua.LTable)))
+	return tbl
 }
 
 func StructToLTable(L *lua.LState, s interface{}) *lua.LTable {

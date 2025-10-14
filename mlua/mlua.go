@@ -290,9 +290,10 @@ func HandleChat(ev globals.MessageFromStream) {
 }
 
 func HandleEvent(eventName string, ev globals.LuaEvent) {
+	tbl := LChat.NewTable()
 	for name, fn := range eventFunctions {
 		if len(name) > len(eventName) && name[:len(eventName)] == eventName {
-			tbl := ToLTableEvent(LEvents, ev)
+			tbl := ToLTableEvent(LEvents, ev, tbl)
 			if err := LEvents.CallByParam(lua.P{Fn: fn, NRet: 0, Protect: true}, tbl); err != nil {
 				helpers.Logf(helpers.Red, "[LUA EVENT ERROR] %s: %v", name, err)
 			}
@@ -305,7 +306,7 @@ func HandleEvent(eventName string, ev globals.LuaEvent) {
 		}
 
 		dev.mu.RLock()
-		tbl := ToLTableEvent(dev.LState, ev)
+		tbl := ToLTableEvent(dev.LState, ev, tbl)
 		if err := LEvents.CallByParam(lua.P{Fn: dev.OnEvent, NRet: 0, Protect: true}, tbl); err != nil {
 			helpers.Logf(helpers.Red, "[LUA EVENT ERROR] %s: %v", dev.Name, err)
 		}

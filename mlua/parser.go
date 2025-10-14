@@ -2,6 +2,7 @@ package mlua
 
 import (
 	"MyStreamBot/globals"
+	"MyStreamBot/helpers"
 	"fmt"
 	"reflect"
 
@@ -94,6 +95,11 @@ func FromLValue(L *lua.LState, lv lua.LValue) any {
 }
 
 func ToLTable(L *lua.LState, data globals.MessageFromStream, tbl ...*lua.LTable) *lua.LTable {
+	defer func() {
+		if r := recover(); r != nil {
+			helpers.Logf(helpers.Red, "Panic em ToLTable (%d): %v", len(tbl), r)
+		}
+	}()
 	var toUse *lua.LTable
 	if len(tbl) == 0 && chatTable == nil {
 		chatTable = L.NewTable()
@@ -142,6 +148,11 @@ func ToLTableEvent(L *lua.LState, data globals.LuaEvent, tbl ...*lua.LTable) *lu
 }
 
 func ToLTableCommand(L *lua.LState, data globals.LuaCommand, tbl ...*lua.LTable) *lua.LTable {
+	defer func() {
+		if r := recover(); r != nil {
+			helpers.Logf(helpers.Red, "Panic em ToLTableCommand (%d): %v", len(tbl), r)
+		}
+	}()
 	var toUse *lua.LTable
 	if len(tbl) == 0 && commandTable == nil {
 		commandTable = L.NewTable()

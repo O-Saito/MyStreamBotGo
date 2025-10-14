@@ -163,24 +163,11 @@ func globalEventLoop() {
 			dynamicEventsMutex.RLock()
 			for _, ev := range dynamicEvents {
 				ev.mu.RLock()
-				event := ev.LState.GetGlobal("ev")
-				shouldRun := false
-				intervalVal := ev.Interval
-				if tbl, ok := event.(*lua.LTable); ok {
-					interval := ev.LState.GetField(tbl, "interval")
-					paused := ev.LState.GetField(tbl, "paused")
-
-					if num, ok := interval.(lua.LNumber); ok {
-						intervalVal = time.Second * time.Duration(float64(num))
-					}
-
-					pausedVal := false
-					if b, ok := paused.(lua.LBool); ok {
-						pausedVal = bool(b)
-					}
-
-					shouldRun = !pausedVal && ev.OnTick != nil && now.After(ev.NextTick)
+				if ev.Paused || ev.OnTick == nil {
+					//helpers.Logf(helpers.Yellow, "[DYNAMIC] Evento %s está pausado ou sem on_tick", ev.Name)
+					continue
 				}
+				shouldRun := now.After(ev.NextTick)
 				ev.mu.RUnlock()
 
 				if !shouldRun {
@@ -199,7 +186,7 @@ func globalEventLoop() {
 					}
 				}
 				ev.LastTick = now
-				ev.NextTick = now.Add(intervalVal)
+				ev.NextTick = now.Add(ev.Interval)
 				ev.mu.Unlock()
 			}
 			dynamicEventsMutex.RUnlock()

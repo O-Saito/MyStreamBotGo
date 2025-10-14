@@ -19,6 +19,7 @@ type DynamicEvent struct {
 	OnTick     *lua.LFunction
 	OnEvent    *lua.LFunction
 	OnMessage  *lua.LFunction
+	OnCommand  *lua.LFunction
 	ModuleData map[string]any
 
 	LastTick time.Time
@@ -86,9 +87,11 @@ func LoadDyEvents(baseDir string) {
 			OnTick:     getGlobalFunction(L, "on_tick"),
 			OnEvent:    getGlobalFunction(L, "on_event"),
 			OnMessage:  getGlobalFunction(L, "on_message"),
+			OnCommand:  getGlobalFunction(L, "on_command"),
 			ModuleData: make(map[string]any),
-			Interval:   time.Second, // padrão
 			NextTick:   time.Now().Add(time.Second),
+			Interval:   time.Second, // padrão
+			Paused:     true,        // padrão
 		}
 
 		setFunctionOnTable(ev, eventTable)

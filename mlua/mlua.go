@@ -3,6 +3,7 @@ package mlua
 import (
 	"io/fs"
 	"log"
+	"os"
 	"path/filepath"
 	"time"
 
@@ -49,11 +50,14 @@ func Init(funcs ...func(*lua.LState)) {
 	RegisterGlobalState(LCommands)
 	RegisterGlobalState(LEvents)
 
+	dynamicEventsMutex.RLock()
 	for _, f := range funcs {
 		f(LChat)
 		f(LCommands)
 		f(LEvents)
+		globalRegister = append(globalRegister, f)
 	}
+	dynamicEventsMutex.RUnlock()
 }
 
 func ExposeServiceToLua(L *lua.LState, name string, funcs map[string]func(*lua.LState) int) {
@@ -66,11 +70,24 @@ func ExposeServiceToLua(L *lua.LState, name string, funcs map[string]func(*lua.L
 	L.SetGlobal(name, tbl)
 }
 
+func createIfNotExists(path string) {
+	if _, err := os.Stat(path); os.IsNotExist(err) {
+		os.MkdirAll(path, os.ModeAppend)
+	}
+}
+
 // Load/Reload all modules
 func LoadAllModules() {
+
+	createIfNotExists("./modules/commands")
+	createIfNotExists("./modules/chat")
+	createIfNotExists("./modules/events")
+	createIfNotExists("./modules/customevents")
+
 	loadDir(LCommands, "./modules/commands", "command")
 	loadDir(LChat, "./modules/chat", "chat")
 	loadEvents(LEvents, "./modules/events")
+	LoadDyEvents("./modules/customevents")
 }
 
 func loadDir(L *lua.LState, dir string, modType string) {
@@ -102,29 +119,6 @@ func loadModule(L *lua.LState, path string, modType string) {
 	}
 	reloadDeb[path] = time.Now()
 
-	/*// Limpar módulo antigo
-	var modGlobalName string
-	switch modType {
-	case "command":
-		modGlobalName = "cmd_" + filepath.Base(path[:len(path)-len(filepath.Ext(path))])
-	case "chat":
-		modGlobalName = "chat_" + filepath.Base(path[:len(path)-len(filepath.Ext(path))])
-	default:
-		if len(modType) > 6 && modType[:6] == "event:" {
-			eventName := modType[6:]
-			modGlobalName = "event_" + eventName + "_" + filepath.Base(path[:len(path)-len(filepath.Ext(path))])
-		}
-	}
-
-	if modGlobalName != "" {
-		L.SetGlobal(modGlobalName, lua.LNil) // remove tabela antiga
-	}*/
-
-	/*if err := L.DoFile(path); err != nil {
-		helpers.Logf(helpers.Red, "[LOAD ERROR] %s: %v", path, err)
-		return
-	}*/
-
 	fn, err := L.LoadFile(path)
 	if err != nil {
 		helpers.Logf(helpers.Red, "[LOAD ERROR] %s: %v", path, err)
@@ -145,29 +139,17 @@ func loadModule(L *lua.LState, path string, modType string) {
 			commands[mod.NameWithoutExt()] = mod
 			commandFunctions[mod.NameWithoutExt()] = fn
 		}
-		//commandFunctions[mod.NameWithoutExt()] = fn
 	case modType == "chat":
 		f := L.GetGlobal("on_message")
 		if fn, ok := f.(*lua.LFunction); ok {
 			chatModules[mod.NameWithoutExt()] = mod
 			chatFunctions[mod.NameWithoutExt()] = fn
 		}
-		//chatFunctions[mod.NameWithoutExt()] = fn
 	case len(modType) > 6 && modType[:6] == "event:":
 		eventName := modType[6:]
 		eventModules[eventName] = append(eventModules[eventName], mod)
 		eventFunctions[eventName+"_"+mod.NameWithoutExt()] = fn
 	}
-	/*switch {
-	case modType == "command":
-		commands[mod.NameWithoutExt()] = mod
-	case modType == "chat":
-		chatModules = append(chatModules, mod)
-	case len(modType) > 6 && modType[:6] == "event:":
-		eventName := modType[6:]
-		eventModules[eventName] = append(eventModules[eventName], mod)
-	}*/
-
 	helpers.Logf(helpers.Green, "[MODULE LOADED] %s (%s)", path, modType)
 }
 
@@ -271,16 +253,6 @@ func HandleCommand(name string, ev globals.LuaCommand) {
 	}
 
 	helpers.Logf(helpers.Yellow, "[LUA COMMAND WARNING] Comando sem handler: %s", name)
-	/*if mod, ok := commands[name]; ok {
-		f := LCommands.GetGlobal("on_command")
-
-		if f.Type() == lua.LTFunction {
-			tbl := ToLTableCommand(LCommands, ev)
-			if err := LCommands.CallByParam(lua.P{Fn: f, NRet: 0, Protect: true}, tbl); err != nil {
-				helpers.Logf(helpers.Red, "[LUA COMMAND HANDLER ERROR] %s: %v", mod.Path, err)
-			}
-		}
-	}*/
 }
 
 func HandleChat(ev globals.MessageFromStream) {
@@ -290,15 +262,6 @@ func HandleChat(ev globals.MessageFromStream) {
 			helpers.Logf(helpers.Red, "[LUA CHAT ERROR] %s: %v", name, err)
 		}
 	}
-	/*for _, mod := range chatModules {
-		f := LChat.GetGlobal("on_message")
-		if f.Type() == lua.LTFunction {
-			tbl := ToLTable(LChat, ev)
-			if err := LChat.CallByParam(lua.P{Fn: f, NRet: 0, Protect: true}, tbl); err != nil {
-				helpers.Logf(helpers.Red, "[LUA CHAT HANDLER ERROR] %s: %v", mod.Path, err)
-			}
-		}
-	}*/
 }
 
 func HandleEvent(eventName string, ev globals.LuaEvent) {
@@ -310,17 +273,20 @@ func HandleEvent(eventName string, ev globals.LuaEvent) {
 			}
 		}
 	}
-	/*if mods, ok := eventModules[eventName]; ok {
-		for _, mod := range mods {
-			f := LEvents.GetGlobal("on_event")
-			if f.Type() == lua.LTFunction {
-				tbl := ToLTableEvent(LEvents, ev)
-				if err := LEvents.CallByParam(lua.P{Fn: f, NRet: 0, Protect: true}, tbl); err != nil {
-					helpers.Logf(helpers.Red, "[LUA EVENT HANDLER ERROR] %s: %v", mod.Path, err)
-				}
-			}
+	dynamicEventsMutex.Lock()
+	for _, dev := range dynamicEvents {
+		if dev.OnMessage == nil || dev.Paused {
+			continue
 		}
-	}*/
+
+		dev.mu.RLock()
+		tbl := ToLTableEvent(dev.LState, ev)
+		if err := LEvents.CallByParam(lua.P{Fn: dev.OnMessage, NRet: 0, Protect: true}, tbl); err != nil {
+			helpers.Logf(helpers.Red, "[LUA EVENT ERROR] %s: %v", dev.Name, err)
+		}
+		dev.mu.RUnlock()
+	}
+	dynamicEventsMutex.Unlock()
 }
 
 // Hotreload

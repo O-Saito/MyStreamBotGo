@@ -244,20 +244,32 @@ func RegisterGlobalState(L *lua.LState) {
 
 // Dispatch events to modules
 func HandleCommand(name string, ev globals.LuaCommand) {
+	tbl := LCommands.NewTable()
+	tbl = ToLTableCommand(LCommands, ev, tbl)
 	if fn, ok := commandFunctions[name]; ok {
-		tbl := ToLTableCommand(LCommands, ev)
 		if err := LCommands.CallByParam(lua.P{Fn: fn, NRet: 0, Protect: true}, tbl); err != nil {
 			helpers.Logf(helpers.Red, "[LUA COMMAND ERROR] %s: %v", name, err)
 		}
-		return
 	}
-
-	helpers.Logf(helpers.Yellow, "[LUA COMMAND WARNING] Comando sem handler: %s", name)
+	dynamicEventsMutex.Lock()
+	for _, dev := range dynamicEvents {
+		if dev.OnCommand == nil || dev.Paused {
+			continue
+		}
+		dev.mu.RLock()
+		if err := LEvents.CallByParam(lua.P{Fn: dev.OnCommand, NRet: 0, Protect: true}, lua.LString(name), tbl); err != nil {
+			helpers.Logf(helpers.Red, "[LUA EVENT ERROR] %s: %v", dev.Name, err)
+		}
+		dev.mu.RUnlock()
+	}
+	dynamicEventsMutex.Unlock()
+	//helpers.Logf(helpers.Yellow, "[LUA COMMAND WARNING] Comando sem handler: %s", name)
 }
 
 func HandleChat(ev globals.MessageFromStream) {
+	tbl := LChat.NewTable()
+	tbl = ToLTable(LChat, ev, tbl)
 	for name, fn := range chatFunctions {
-		tbl := ToLTable(LChat, ev)
 		if err := LChat.CallByParam(lua.P{Fn: fn, NRet: 0, Protect: true}, tbl); err != nil {
 			helpers.Logf(helpers.Red, "[LUA CHAT ERROR] %s: %v", name, err)
 		}
@@ -269,7 +281,6 @@ func HandleChat(ev globals.MessageFromStream) {
 		}
 
 		dev.mu.RLock()
-		tbl := ToLTable(dev.LState, ev)
 		if err := LEvents.CallByParam(lua.P{Fn: dev.OnMessage, NRet: 0, Protect: true}, tbl); err != nil {
 			helpers.Logf(helpers.Red, "[LUA EVENT ERROR] %s: %v", dev.Name, err)
 		}

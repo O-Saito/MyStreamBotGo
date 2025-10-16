@@ -29,6 +29,13 @@ type DynamicEvent struct {
 	mu       sync.RWMutex
 }
 
+type DynamicEventInfo struct {
+	Name       string         `json:"name"`
+	Paused     bool           `json:"paused"`
+	Interval   time.Duration  `json:"interval"`
+	ModuleData map[string]any `json:"moduleData"`
+}
+
 var (
 	globalRegister     = make([]func(*lua.LState), 0)
 	dynamicEvents      = make(map[string]*DynamicEvent)
@@ -37,6 +44,36 @@ var (
 	globalLoopOnce sync.Once
 	stopGlobalLoop chan struct{}
 )
+
+func ListDynamicEvents() []DynamicEventInfo {
+	dynamicEventsMutex.RLock()
+	defer dynamicEventsMutex.RUnlock()
+	events := make([]DynamicEventInfo, 0, len(dynamicEvents))
+	for name, val := range dynamicEvents {
+		data := FromLValue(val.LState, val.LState.GetGlobal("ev")).(map[string]any)
+		events = append(events, DynamicEventInfo{
+			Name:       name,
+			Paused:     val.Paused,
+			Interval:   val.Interval,
+			ModuleData: data["data"].(map[string]any),
+		})
+	}
+
+	return events
+}
+
+func UpdateDynamicEvent(event DynamicEventInfo) error {
+	dynamicEventsMutex.Lock()
+	defer dynamicEventsMutex.Unlock()
+	if ev, exists := dynamicEvents[event.Name]; exists {
+		ev.mu.Lock()
+		ev.Paused = event.Paused
+		ev.Interval = time.Duration(float64(event.Interval) * float64(time.Second))
+		ev.mu.Unlock()
+		return nil
+	}
+	return os.ErrNotExist
+}
 
 // Chamado de loadAllModules
 func LoadDyEvents(baseDir string) {

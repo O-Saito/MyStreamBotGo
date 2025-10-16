@@ -1,6 +1,7 @@
 package globals
 
 import (
+	"MyStreamBot/helpers"
 	"sync"
 )
 
@@ -19,9 +20,10 @@ type Config struct {
 }
 
 var (
-	state  *State
-	config *Config
-	once   sync.Once
+	state     *State
+	config    *Config
+	once      sync.Once
+	onceState sync.Once
 )
 
 func GetConfig() *Config {
@@ -34,10 +36,11 @@ func GetConfig() *Config {
 }
 
 func GetState() *State {
-	once.Do(func() {
+	onceState.Do(func() {
 		state = &State{
 			Data: make(map[string]any),
 		}
+		helpers.Log(helpers.Blue, "State iniciado...")
 	})
 	return state
 }

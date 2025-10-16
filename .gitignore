@@ -1,2 +1,6 @@
 init.txt
 build/
+modules/chat/
+modules/commands/
+modules/customevents/
+modules/events/

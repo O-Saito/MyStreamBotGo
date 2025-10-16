@@ -51,9 +51,9 @@ var ircHandlers = map[string]func(parts []string, afterMetadataIndex int, metada
 		// fazer o reconnect
 		helpers.Logf(helpers.Twitch, "[TWITCH RECONNECT] Server requested reconnect")
 		Disconnect()
-		for _, channel := range Channels {
+		/*for _, channel := range Channels {
 			JoinChannel(channel)
-		}
+		}*/
 	},
 	"JOIN": func(parts []string, afterMetadataIndex int, metadata ...map[string]any) {
 		user := strings.Split(parts[0], "!")[0][1:]
@@ -101,6 +101,44 @@ var ircHandlers = map[string]func(parts []string, afterMetadataIndex int, metada
 			Metadata:  metadata[0],
 		}
 
+		state := globals.GetState()
+		info := state.GetData("twitch-badges-info")
+		//infoChannel := state.GetData(fmt.Sprintf("twitch-badges-info-%s", channel))
+		if info == nil {
+			info, _ = GetBadges()
+			globals.GetState().SetData("twitch-badges-info", info)
+		}
+
+		// 51564843 - 1340716804
+		if socketdata.Metadata["source-room-id"] != nil {
+			streamerInfo := state.GetData("twitch-streamer-info").(map[string]any)
+			if streamerInfo == nil {
+				streamerInfo = make(map[string]any)
+			}
+
+			if streamerInfo[socketdata.Metadata["source-room-id"].(string)] == nil {
+				//streamerInfo[socketdata.Metadata["source-room-id"].(string)] = Get
+			}
+
+			state.SetData("twitch-streamer-info", streamerInfo)
+		}
+
+		/*if infoChannel == nil {
+			infoChannel, _ = GetBadges(channel)
+			state.SetData(fmt.Sprintf("twitch-badges-info-%s", channel), infoChannel)
+		}*/
+
+		bi := make(map[string]any)
+		for _, v := range strings.Split(socketdata.Metadata["badges"].(string), ",") {
+			n := strings.Split(v, "/")[0]
+			bi[n] = info.(map[string]any)[n]
+			/*if bi[n] == nil && infoChannel != nil {
+				bi[n] = infoChannel.(map[string]any)[n]
+			}*/
+		}
+
+		socketdata.Metadata["badges-info"] = bi
+
 		dataJSON, _ := json.Marshal(socketdata)
 		globals.WsBroadcast <- globals.SocketMessage{Type: "user-message", Data: string(dataJSON)}
 		globals.ChatQueue <- socketdata
@@ -140,6 +178,17 @@ func Connect() error {
 
 	go reader()
 	go writer()
+
+	ircHandlers["RECONNECT"] = func(parts []string, afterMetadataIndex int, metadata ...map[string]any) {
+		// fazer o reconnect
+		helpers.Logf(helpers.Twitch, "[TWITCH RECONNECT] Server requested reconnect")
+		Disconnect()
+		Connect()
+	}
+
+	for _, channel := range Channels {
+		JoinChannel(channel)
+	}
 
 	return nil
 }
@@ -183,8 +232,10 @@ func reader() {
 
 	if err := scanner.Err(); err != nil {
 		helpers.Logf(helpers.Red, "[Twitch ERROR] Erro na leitura: %v", err)
+		ircHandlers["RECONNECT"](nil, 0, nil)
 	} else {
 		helpers.Logf(helpers.Red, "[Twitch ERROR] Scanner finalizado")
+		ircHandlers["RECONNECT"](nil, 0, nil)
 	}
 }
 

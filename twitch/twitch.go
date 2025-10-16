@@ -10,14 +10,6 @@ import (
 	"strings"
 )
 
-type ChatHandler struct {
-	Nick     string
-	OAuth    string
-	Channels []string
-	MsgQueue chan Message
-	Conn     net.Conn
-}
-
 type Message struct {
 	Channel        string
 	Text           string
@@ -25,9 +17,6 @@ type Message struct {
 }
 
 // variaveis globais do streamer logado
-var Token string
-var UserID string
-var UserLogin string
 var LoginDone = make(chan bool)
 
 var Conn net.Conn
@@ -106,35 +95,38 @@ var ircHandlers = map[string]func(parts []string, afterMetadataIndex int, metada
 		//infoChannel := state.GetData(fmt.Sprintf("twitch-badges-info-%s", channel))
 		if info == nil {
 			info, _ = GetBadges()
-			globals.GetState().SetData("twitch-badges-info", info)
+			state.SetData("twitch-badges-info", info)
 		}
 
-		// 51564843 - 1340716804
+		roomId := socketdata.Metadata["room-id"]
 		if socketdata.Metadata["source-room-id"] != nil {
-			streamerInfo := state.GetData("twitch-streamer-info").(map[string]any)
-			if streamerInfo == nil {
-				streamerInfo = make(map[string]any)
-			}
-
-			if streamerInfo[socketdata.Metadata["source-room-id"].(string)] == nil {
-				//streamerInfo[socketdata.Metadata["source-room-id"].(string)] = Get
-			}
-
-			state.SetData("twitch-streamer-info", streamerInfo)
+			roomId = socketdata.Metadata["source-room-id"]
 		}
 
-		/*if infoChannel == nil {
-			infoChannel, _ = GetBadges(channel)
-			state.SetData(fmt.Sprintf("twitch-badges-info-%s", channel), infoChannel)
-		}*/
+		if roomId != nil {
+			current := globals.GetState().GetTwitchUser()
+			socketdata.Metadata["room"] = current
+			if current.UserID != roomId {
+				streamerInfo := state.GetData("twitch-streamer-info")
+				if streamerInfo == nil {
+					streamerInfo = make(map[string]any)
+				}
+
+				id := roomId.(string)
+				if streamerInfo.(map[string]any)[id] == nil {
+					streamerInfo.(map[string]any)[id], _ = GetUserDataById(id)
+				}
+
+				state.SetData("twitch-streamer-info", streamerInfo)
+
+				socketdata.Metadata["room"] = streamerInfo.(map[string]any)[id]
+			}
+		}
 
 		bi := make(map[string]any)
 		for _, v := range strings.Split(socketdata.Metadata["badges"].(string), ",") {
 			n := strings.Split(v, "/")[0]
 			bi[n] = info.(map[string]any)[n]
-			/*if bi[n] == nil && infoChannel != nil {
-				bi[n] = infoChannel.(map[string]any)[n]
-			}*/
 		}
 
 		socketdata.Metadata["badges-info"] = bi
@@ -172,8 +164,10 @@ func Connect() error {
 		return err
 	}
 	Conn = conn
-	fmt.Fprintf(Conn, "PASS oauth:%s\r\n", Token)
-	fmt.Fprintf(Conn, "NICK %s\r\n", UserLogin)
+	user := globals.GetState().GetTwitchUser()
+	//fmt.Printf("{TWITCH USERDATA} %v \r\n", user)
+	fmt.Fprintf(Conn, "PASS oauth:%s\r\n", user.Token)
+	fmt.Fprintf(Conn, "NICK %s\r\n", user.UserLogin)
 	fmt.Fprintf(Conn, "CAP REQ :twitch.tv/membership\r\n")
 	fmt.Fprintf(Conn, "CAP REQ :twitch.tv/tags\r\n")
 	fmt.Fprintf(Conn, "CAP REQ :twitch.tv/commands\r\n")
@@ -199,7 +193,7 @@ func Disconnect() {
 	if Conn != nil {
 		Conn.Close()
 	}
-	close(MsgQueue)
+	//close(MsgQueue)
 }
 
 func JoinChannel(channel string) {

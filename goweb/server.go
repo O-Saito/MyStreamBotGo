@@ -1,9 +1,10 @@
-package web
+package goweb
 
 import (
 	"MyStreamBot/globals"
 	"MyStreamBot/helpers"
 	"MyStreamBot/kick"
+	"MyStreamBot/mlua"
 	"MyStreamBot/twitch"
 	"encoding/json"
 	"fmt"
@@ -67,6 +68,7 @@ func StartHTTPServer() {
 						},
 						"twitch_connected_chat": twitch.Channels,
 						"kick_connected_chat":   kick.Channels,
+						"custom_events_modules": mlua.ListDynamicEvents(),
 					},
 				}
 				helpers.Log(helpers.Cyan, "[Socket] Init message")

@@ -60,9 +60,7 @@ func StartHTTPServer() {
 				jsonData := map[string]any{
 					"type": "init",
 					"data": map[string]any{
-						"twitch": map[string]any{
-							"connected_as": twitch.UserLogin,
-						},
+						"twitch": globals.GetState().GetTwitchUser(),
 						"kick": map[string]any{
 							"connected_as": kick.UserLogin,
 						},

@@ -18,6 +18,62 @@
             padding: 10px;
             height: 400px;
             overflow-y: scroll;
+            resize: vertical;
+        }
+
+        #chat .message {
+            vertical-align: middle;
+            line-height: 27px;
+        }
+
+        #chat .message.message-deleted {
+            text-decoration: line-through;
+        }
+
+        #chat .message .chat-badges {
+            vertical-align: middle;
+            line-height: 27px;
+        }
+
+        #chat .message .chat-badges>img {
+            vertical-align: middle;
+        }
+
+        #chat .message .chat-source>img {
+            width: 20px;
+            vertical-align: middle;
+        }
+
+        #chat .message .chat-message>img {
+            vertical-align: middle;
+            max-width: 25px;
+        }
+
+        #chat .message .chat-channel>img {
+            vertical-align: middle;
+            max-width: 25px;
+            border: 1px solid black;
+            border-radius: 15px;
+        }
+
+        #chat .message .chat-source:not(:empty):not(:has(>img)):before {
+            content: "["
+        }
+
+        #chat .message .chat-source:not(:empty):not(:has(>img)):after {
+            content: "] "
+        }
+
+        #chat .message .chat-channel:not(:empty):not(:has(>img)):before {
+            content: "("
+        }
+
+        #chat .message .chat-channel:not(:empty):not(:has(>img)):after {
+            content: ") "
+        }
+
+        #chat .message .chat-message:not(:empty):before {
+            content: ': ';
         }
 
         .message {
@@ -33,6 +89,7 @@
             margin-left: 5px;
         }
     </style>
+    <link rel="stylesheet" href="/css/font-awesome.min.css">
 </head>
 
 <body class="dark">
@@ -58,19 +115,19 @@
         </div>
     </div>
 
-<div>
-    <h3>Stream Info</h3>
-    <label>Título: </label>
-    <input type="text" id="stream-title" />
-    <br/>
-    <br/>
-    <label>Jogo: </label>
-    <input type="text" id="stream-game" list="stream-games"/>
-    <datalist id="stream-games"></datalist>
-    <br/>
-    <br/>
-    <button type="button">Salvar</button>
-</div>
+    <div style="display: none;">
+        <h3>Stream Info</h3>
+        <label>Título: </label>
+        <input type="text" id="stream-title" />
+        <br />
+        <br />
+        <label>Jogo: </label>
+        <input type="text" id="stream-game" list="stream-games" />
+        <datalist id="stream-games"></datalist>
+        <br />
+        <br />
+        <button type="button">Salvar</button>
+    </div>
 
     <script src="app.js"></script>
 </body>

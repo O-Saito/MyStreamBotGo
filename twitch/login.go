@@ -58,7 +58,9 @@ func HandleLogin() {
 			AccessToken string `json:"access_token"`
 		}
 		json.Unmarshal(body, &tokenResp)
-		Token = tokenResp.AccessToken
+		Token := tokenResp.AccessToken
+
+		helpers.Logf("[Twitch TOKEN] %s : %s", Token, globals.GetConfig().TwitchClientID)
 
 		// Pegar info do usuário
 		req, _ := http.NewRequest("GET", "https://api.twitch.tv/helix/users", nil)
@@ -73,10 +75,7 @@ func HandleLogin() {
 		dataUser, _ := io.ReadAll(userResp.Body)
 
 		var u struct {
-			Data []struct {
-				ID    string `json:"id"`
-				Login string `json:"login"`
-			} `json:"data"`
+			Data []TwitchUserData `json:"data"`
 		}
 		json.Unmarshal(dataUser, &u)
 
@@ -84,20 +83,36 @@ func HandleLogin() {
 			helpers.Log(helpers.Red, "[TWITCH LOGIN] Erro: Nenhum usuário retornado. Verifique token e scopes.")
 			return
 		}
-		UserID = u.Data[0].ID
-		UserLogin = u.Data[0].Login
-		close(LoginDone)
-		helpers.Logf(helpers.Reset, "[TWITCH LOGIN] UserID: %s, UserLogin: %s", UserID, UserLogin)
+
+		d := u.Data[0]
+
+		user := globals.TwitchUser{
+			Token:                  Token,
+			UserID:                 d.ID,
+			UserLogin:              d.Login,
+			DisplayName:            d.DisplayName,
+			Type:                   d.Type,
+			BroadcasterType:        d.BroadcasterType,
+			Description:            d.Description,
+			ProfileImageURL:        d.ProfileImageURL,
+			ProfileOfflineImageURL: d.ProfileOfflineImageURL,
+			ViewCount:              d.ViewCount,
+			Email:                  d.Email,
+			Connected:              true,
+		}
+		globals.GetState().SetTwitchUser(user)
+		helpers.Logf(helpers.Reset, "[TWITCH LOGIN] UserID: %s, UserLogin: %s", user.UserID, user.UserLogin)
 
 		fmt.Fprintf(w, "Login concluído! Pode fechar esta página.")
 
 		if err := Connect(); err != nil {
 			log.Fatal(err)
 		}
+		jd, _ := json.Marshal(user)
 		globals.WsBroadcast <- globals.SocketMessage{
 			Type: "twitch-connection",
-			Data: fmt.Sprintf("\"%s\"", UserLogin),
+			Data: string(jd),
 		}
-		JoinChannel(UserLogin)
+		JoinChannel(user.UserLogin)
 	})
 }

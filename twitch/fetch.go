@@ -12,6 +12,7 @@ import (
 
 var urlAPIGames = "https://api.twitch.tv/helix/search/categories"
 var urlAPIChannel = "https://api.twitch.tv/helix/channels"
+var urlAPIBadges = "https://api.twitch.tv/helix/chat/badges"
 
 type UserResponse struct {
 	Data []TwitchUserData `json:"data"`
@@ -33,7 +34,6 @@ type GameData struct {
 	BoxArt string `json:"box_art_url"`
 }
 
-// getUserID retorna o ID numérico de qualquer usuário
 func GetUserData(login string) (TwitchUserData, error) {
 	urlAPI := fmt.Sprintf("https://api.twitch.tv/helix/users?login=%s", login)
 	req, _ := http.NewRequest("GET", urlAPI, nil)
@@ -112,4 +112,53 @@ func UpdateStreamData(sd StreamData) error {
 		return fmt.Errorf("erro ao excluir mensagem: %s", body)
 	}
 	return nil
+}
+
+func GetBadges(broadcasterId ...string) (map[string]any, error) {
+	urlAPI := urlAPIBadges
+	if len(broadcasterId) > 0 {
+		urlAPI = fmt.Sprintf(urlAPI+"?broadcaster_id=%s", broadcasterId[0])
+	} else {
+		urlAPI = urlAPI + "/global"
+	}
+
+	req, _ := http.NewRequest("GET", urlAPI, nil)
+	req.Header.Set("Authorization", "Bearer "+Token)
+	req.Header.Set("Client-ID", globals.GetConfig().TwitchClientID)
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		helpers.Logf(helpers.Red, "[TWITCH FETCH] Erro ao buscar lista de badges: %s", err.Error())
+		return nil, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != 200 {
+		body, _ := io.ReadAll(resp.Body)
+		helpers.Logf(helpers.Red, "[TWITCH FETCH] Erro ao buscar lista de badges: (%d) %s", resp.StatusCode, body)
+		return nil, fmt.Errorf("erro ao buscar lista de badges: %s", body)
+	}
+	body, _ := io.ReadAll(resp.Body)
+	//helpers.Logf(helpers.Twitch, "[TWITCH FETCH] GetBadges: %s", body)
+	var reqData struct {
+		Data []struct {
+			SetId    string `json:"set_id"`
+			Versions []struct {
+				Id          int    `json:"id"`
+				ImgUrl1x    string `json:"image_url_1x"`
+				ImgUrl2x    string `json:"image_url_2x"`
+				ImgUrl4x    string `json:"image_url_4x"`
+				Title       string `json:"title"`
+				Description string `json:"description"`
+				ClickAction string `json:"click_action"`
+				ClickUrl    string `json:"click_url"`
+			} `json:"versions"`
+		} `json:"data"`
+	}
+	_ = json.Unmarshal(body, &reqData)
+
+	d := make(map[string]any)
+	for _, v := range reqData.Data {
+		d[v.SetId] = v.Versions
+	}
+
+	return d, nil
 }

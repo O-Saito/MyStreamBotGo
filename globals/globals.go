@@ -66,10 +66,11 @@ var sectionMap = map[string]any{
 }
 
 func LoadInitFile() {
+	helpers.Logf(helpers.Cyan, "Carregando arquivo de inicialização init.txt")
 	filePath := filepath.Join(".", "init.txt")
 	file, err := os.Open(filePath)
 	if err != nil {
-		helpers.Logf(helpers.Red, "Erro ao abrir o arquivo: %v", err)
+		//helpers.Logf(helpers.Red, "Erro ao abrir o arquivo: %v", err)
 		os.WriteFile(filePath, []byte(""), 0644)
 		return
 	}
@@ -80,7 +81,7 @@ func LoadInitFile() {
 	for scanner.Scan() {
 		line := scanner.Text()
 		line = strings.TrimSpace(line)
-		helpers.Logf(helpers.Cyan, "Lendo linha: %s", line)
+		//helpers.Logf(helpers.Cyan, "Lendo linha: %s", line)
 
 		// Process the line (e.g., parse key-value pairs)
 		if line == "" || line[0] == '#' {
@@ -93,12 +94,12 @@ func LoadInitFile() {
 			continue
 		}
 		if current == "" {
-			helpers.Logf(helpers.Yellow, "Ignorando linha fora de seção: %s", line)
+			//helpers.Logf(helpers.Yellow, "Ignorando linha fora de seção: %s", line)
 			continue
 		}
 		parts := strings.SplitN(line, "=", 2)
 		if len(parts) != 2 {
-			helpers.Logf(helpers.Yellow, "Linha inválida: %s", line)
+			//helpers.Logf(helpers.Yellow, "Linha inválida: %s", line)
 			continue
 		}
 
@@ -107,7 +108,7 @@ func LoadInitFile() {
 
 		obj, ok := sectionMap[current]
 		if !ok {
-			helpers.Logf(helpers.Yellow, "Seção desconhecida: %s", current)
+			//helpers.Logf(helpers.Yellow, "Seção desconhecida: %s", current)
 			continue
 		}
 

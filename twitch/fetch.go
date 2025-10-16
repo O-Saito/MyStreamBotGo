@@ -19,8 +19,17 @@ type UserResponse struct {
 }
 
 type TwitchUserData struct {
-	ID    string `json:"id"`
-	Login string `json:"login"`
+	ID                     string `json:"id"`
+	Login                  string `json:"login"`
+	DisplayName            string `json:"display_name"`
+	Type                   string `json:"type"`
+	BroadcasterType        string `json:"broadcaster_type"`
+	Description            string `json:"description"`
+	ProfileImageURL        string `json:"profile_image_url"`
+	ProfileOfflineImageURL string `json:"offline_image_url"`
+	ViewCount              int    `json:"view_count"`
+	Email                  string `json:"email"`
+	CreatedAt              string `json:"created_at"`
 }
 
 type StreamData struct {
@@ -37,7 +46,27 @@ type GameData struct {
 func GetUserData(login string) (TwitchUserData, error) {
 	urlAPI := fmt.Sprintf("https://api.twitch.tv/helix/users?login=%s", login)
 	req, _ := http.NewRequest("GET", urlAPI, nil)
-	req.Header.Set("Authorization", "Bearer "+Token)
+	req.Header.Set("Authorization", "Bearer "+globals.GetState().GetTwitchUser().Token)
+	req.Header.Set("Client-ID", globals.GetConfig().TwitchClientID)
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return TwitchUserData{}, err
+	}
+	defer resp.Body.Close()
+
+	var u UserResponse
+	body, _ := io.ReadAll(resp.Body)
+	json.Unmarshal(body, &u)
+	if len(u.Data) == 0 {
+		return TwitchUserData{}, fmt.Errorf("usuário não encontrado")
+	}
+	return u.Data[0], nil
+}
+
+func GetUserDataById(id string) (TwitchUserData, error) {
+	urlAPI := fmt.Sprintf("https://api.twitch.tv/helix/users?id=%s", id)
+	req, _ := http.NewRequest("GET", urlAPI, nil)
+	req.Header.Set("Authorization", "Bearer "+globals.GetState().GetTwitchUser().Token)
 	req.Header.Set("Client-ID", globals.GetConfig().TwitchClientID)
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
@@ -55,9 +84,10 @@ func GetUserData(login string) (TwitchUserData, error) {
 }
 
 func DeleteMessage(msgID string) error {
-	urlAPI := fmt.Sprintf("https://api.twitch.tv/helix/moderation/chat?broadcaster_id=%s&moderator_id=%s&message_id=%s", UserID, UserID, msgID)
+	user := globals.GetState().TwitchUser
+	urlAPI := fmt.Sprintf("https://api.twitch.tv/helix/moderation/chat?broadcaster_id=%s&moderator_id=%s&message_id=%s", user.UserID, user.UserID, msgID)
 	req, _ := http.NewRequest("DELETE", urlAPI, nil)
-	req.Header.Set("Authorization", "Bearer "+Token)
+	req.Header.Set("Authorization", "Bearer "+user.Token)
 	req.Header.Set("Client-ID", globals.GetConfig().TwitchClientID)
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
@@ -74,7 +104,7 @@ func DeleteMessage(msgID string) error {
 func GetListOfGames(query string) ([]GameData, error) {
 	urlAPI := fmt.Sprintf("%s?query=%s", urlAPIGames, query)
 	req, _ := http.NewRequest("GET", urlAPI, nil)
-	req.Header.Set("Authorization", "Bearer "+Token)
+	req.Header.Set("Authorization", "Bearer "+globals.GetState().TwitchUser.Token)
 	req.Header.Set("Client-ID", globals.GetConfig().TwitchClientID)
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
@@ -97,10 +127,11 @@ func GetListOfGames(query string) ([]GameData, error) {
 }
 
 func UpdateStreamData(sd StreamData) error {
+	user := globals.GetState().GetTwitchUser()
 	jsonData, _ := json.Marshal(sd)
-	urlAPI := fmt.Sprintf("%s?broadcaster_id=%s", urlAPIChannel, UserID)
+	urlAPI := fmt.Sprintf("%s?broadcaster_id=%s", urlAPIChannel, user.UserID)
 	req, _ := http.NewRequest("PATCH", urlAPI, bytes.NewBuffer(jsonData))
-	req.Header.Set("Authorization", "Bearer "+Token)
+	req.Header.Set("Authorization", "Bearer "+user.Token)
 	req.Header.Set("Client-ID", globals.GetConfig().TwitchClientID)
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
@@ -123,7 +154,7 @@ func GetBadges(broadcasterId ...string) (map[string]any, error) {
 	}
 
 	req, _ := http.NewRequest("GET", urlAPI, nil)
-	req.Header.Set("Authorization", "Bearer "+Token)
+	req.Header.Set("Authorization", "Bearer "+globals.GetState().GetTwitchUser().Token)
 	req.Header.Set("Client-ID", globals.GetConfig().TwitchClientID)
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {

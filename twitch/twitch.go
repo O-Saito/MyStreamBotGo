@@ -143,7 +143,9 @@ var ircHandlers = map[string]func(parts []string, afterMetadataIndex int, metada
 		globals.WsBroadcast <- globals.SocketMessage{Type: "user-message", Data: string(dataJSON)}
 		globals.ChatQueue <- socketdata
 
-		if strings.HasPrefix(message, "!") {
+		config := globals.GetConfig()
+
+		if strings.HasPrefix(message, config.BotPrefix) {
 			parts := strings.SplitN(message[1:], " ", 2)
 			cmd := globals.LuaCommand{
 				Source:  "twitch",

@@ -7,10 +7,10 @@ import (
 	//"MyStreamBot/lua"
 
 	"MyStreamBot/globals"
+	"MyStreamBot/goweb"
 	"MyStreamBot/kick"
 	"MyStreamBot/mlua"
 	"MyStreamBot/twitch"
-	"MyStreamBot/web"
 )
 
 var (
@@ -39,7 +39,7 @@ func main() {
 	// Inicia goroutines de consumo das filas
 	mlua.StartEventQueues()
 	// iniciar servidor web
-	web.StartHTTPServer()
+	goweb.StartHTTPServer()
 
 	// iniciar login Twitch
 	twitch.HandleLogin()

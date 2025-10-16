@@ -2,15 +2,15 @@ package main
 
 import (
 	"MyStreamBot/globals"
+	"MyStreamBot/goweb"
 	"MyStreamBot/helpers"
 	"MyStreamBot/kick"
 	"MyStreamBot/twitch"
-	"MyStreamBot/web"
 	"encoding/json"
 )
 
 func RegisterSocketHandlers() {
-	web.SocketHandlers["connect-chat-kick"] = func(data map[string]any) {
+	goweb.SocketHandlers["connect-chat-kick"] = func(data map[string]any) {
 		helpers.Logf(helpers.Reset, "[Socket Handler] connect-chat-kick %s\r\n", data["roomId"].(string))
 		kick.Channels = append(kick.Channels, kick.IrcChannel{
 			ID:   data["roomId"].(string),
@@ -20,12 +20,12 @@ func RegisterSocketHandlers() {
 		kick.JoinChannel(data["roomId"].(string))
 	}
 
-	web.SocketHandlers["connect-chat-twitch"] = func(data map[string]any) {
+	goweb.SocketHandlers["connect-chat-twitch"] = func(data map[string]any) {
 		helpers.Logf(helpers.Reset, "[Socket Handler] connect-chat-twitch %s\r\n", data["channel"].(string))
 		twitch.JoinChannel(data["channel"].(string))
 	}
 
-	web.SocketHandlers["send-chat-message"] = func(data map[string]any) {
+	goweb.SocketHandlers["send-chat-message"] = func(data map[string]any) {
 		if len(twitch.Channels) > 0 {
 			for _, c := range twitch.Channels {
 				twitch.SendMessage(data["text"].(string), c)
@@ -38,7 +38,7 @@ func RegisterSocketHandlers() {
 		}
 	}
 
-	web.SocketHandlers["query-stream-game"] = func(m map[string]any) {
+	goweb.SocketHandlers["query-stream-game"] = func(m map[string]any) {
 		games, _ := twitch.GetListOfGames(m["q"].(string))
 		jsonData, _ := json.Marshal(games)
 		globals.WsBroadcast <- globals.SocketMessage{

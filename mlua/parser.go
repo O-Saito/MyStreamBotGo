@@ -10,9 +10,9 @@ import (
 )
 
 var (
-	chatTable    *lua.LTable
-	eventTable   *lua.LTable
-	commandTable *lua.LTable
+// chatTable    *lua.LTable
+// eventTable   *lua.LTable
+// commandTable *lua.LTable
 )
 
 func ToLValue(L *lua.LState, val any) lua.LValue {
@@ -130,7 +130,7 @@ func ToLTableEvent(L *lua.LState, data globals.LuaEvent, tbl *lua.LTable) *lua.L
 	}
 	tbl.RawSetString("Data", dataTable)
 
-	return eventTable
+	return tbl
 }
 
 func ToLTableCommand(L *lua.LState, data globals.LuaCommand, tbl *lua.LTable) *lua.LTable {

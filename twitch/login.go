@@ -9,23 +9,39 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"strings"
 )
 
 const (
 	//ClientID     = "jenisabhabc5zl01bhu86gcjeoe99z"
 	//ClientSecret = "ddipe06ckokzhhc7fk5stu8ft8ybb9"
 	RedirectURI = "http://localhost:1699/twitch/callback"
-	Scopes      = "chat:read chat:edit user:read:email moderator:manage:chat_messages channel:moderate"
+	Scopes      = "chat:read chat:edit user:read:email moderator:manage:chat_messages channel:moderate channel:read:subscriptions"
 )
 
 func HandleLogin() {
+
+	scopes := Scopes
+
+	for _, es := range subTypes {
+		if es != nil && es["requires"] != nil {
+			reqs := strings.SplitSeq(es["requires"].(string), " ")
+			for req := range reqs {
+				if strings.Contains(scopes, req) {
+					continue
+				}
+				scopes = fmt.Sprintf("%s %s", scopes, req)
+			}
+		}
+	}
+
 	// Endpoint que redireciona para Twitch
 	http.HandleFunc("/twitch/login", func(w http.ResponseWriter, r *http.Request) {
 		authURL := fmt.Sprintf(
 			"https://id.twitch.tv/oauth2/authorize?client_id=%s&redirect_uri=%s&response_type=code&scope=%s",
 			globals.GetConfig().TwitchClientID,
 			url.QueryEscape(RedirectURI),
-			url.QueryEscape(Scopes),
+			url.QueryEscape(scopes),
 		)
 		helpers.Logf(helpers.Reset, "[TWITCH LOGIN] Abrindo URL de login: %s", authURL)
 		http.Redirect(w, r, authURL, http.StatusFound)
@@ -114,5 +130,7 @@ func HandleLogin() {
 			Data: string(jd),
 		}
 		JoinChannel(user.UserLogin)
+
+		connectToEventSub()
 	})
 }

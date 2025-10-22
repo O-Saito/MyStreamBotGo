@@ -79,7 +79,6 @@ const handlers = {
         source.textContent = msg.source;
         channel.textContent = msg.channel;
         user.textContent = msg.user;
-        //badges.textContent = 'broadcaster/1,twitch-recap-2024/1';
         message.innerHTML = parseText(msg);
 
         if (msg.metadata) {
@@ -96,6 +95,8 @@ const handlers = {
                 channel.innerHTML = `<img src="${msg.metadata['source-room'].profile_image_url}" alt="${msg.metadata['source-room'].display_name}" />`;
             }
         
+            if (msg.metadata["source-room-id"])
+                div.dataset.sourceRoom = msg.metadata["source-room-id"];
         }
         if (msg.source == "twitch") {
             source.innerHTML = `<img src="https://assets.twitch.tv/assets/favicon-32-e29e246c157142c94346.png" />`

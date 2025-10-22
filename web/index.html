@@ -2,10 +2,12 @@
 <html>
 
 <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Chat Live</title>
     <style>
         body {
             font-family: sans-serif;
+            /*font-size: 50px;*/
         }
 
         .dark {
@@ -42,6 +44,10 @@
         #chat .message .chat-source>img {
             width: 20px;
             vertical-align: middle;
+        }
+
+        #chat .message:not([data-source-room]) .chat-channel {
+            display: none;
         }
 
         #chat .message .chat-message>img {
@@ -88,6 +94,8 @@
         button {
             margin-left: 5px;
         }
+
+        
     </style>
     <link rel="stylesheet" href="/css/font-awesome.min.css">
 </head>

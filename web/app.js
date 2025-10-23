@@ -1,14 +1,18 @@
 const logins = document.getElementById('logins');
-const chatConnections = document.getElementById('chat-connections');
-const kickConnections = chatConnections.querySelector('#chat-connection-kick');
-const twitchConnections = chatConnections.querySelector('#chat-connection-twitch');
+const kickConnections = document.querySelector('#chat-connection-kick');
+const twitchConnections = document.querySelector('#chat-connection-twitch');
+
+const twitchLastEventsub = document.getElementById('twitch-last-eventsub');
 
 const txtStreamGame = document.getElementById('stream-game')
 const streamGameList = document.getElementById('stream-games')
 
-const chatDiv = document.getElementById("chat");
+const chatDiv = document.querySelector("#chat .content");
+const eventDiv = document.getElementById('events');
+
 let ws = new WebSocket(`ws://${location.host}/ws`);
 
+let twitchData = null;
 let emoteMap = {};
 
 (async () => {
@@ -17,6 +21,15 @@ let emoteMap = {};
 })()
 
 console.log("Conectando ao WebSocket...");
+
+const twitchNotificationHandlers = {
+    "channel.follow": (data) => {
+        eventDiv.innerHTML += `<div class="event"><span><span class="user">${data.payload.event.user_name}</span> seguiu ${twitchData == null || twitchData.userId == data.payload.event.broadcaster_user_id ? data.payload.event.broadcaster_user_name : 'você'}!</span></div>`;
+    },
+    "channel.raid": (data) => {
+        eventDiv.innerHTML += `<div class="event"><span><span class="user">${data.payload.event.from_broadcaster_user_name}</span> está raidando ${twitchData == null || twitchData.userId == data.payload.event.to_broadcaster_user_id ? data.payload.event.to_broadcaster_user_name : 'você'} com ${data.payload.event.viewers} viewers!</span></div>`;
+    },
+};
 
 const handlers = {
     'init': function (data) {
@@ -36,6 +49,68 @@ const handlers = {
         updateTwitchConnectionDetails(data.twitch)
         updateKickConnectionDetails(data.kick.connected_as)
 
+        handlers['twitch-eventsub-notification']({
+            "metadata": {
+                "message_id": "7-wkIKCyRLzLzNP26zRwXOTmialeXOb4qKKGv_mHHCQ=",
+                "message_timestamp": "2025-10-23T12:53:02.300770957Z",
+                "message_type": "notification",
+                "subscription_type": "channel.raid",
+                "subscription_version": "2"
+            },
+            "payload":{
+    "subscription": {
+        "id": "f1c2a387-161a-49f9-a165-0f21d7a4e1c4",
+        "type": "channel.raid",
+        "version": "1",
+        "status": "enabled",
+        "cost": 0,
+        "condition": {
+            "to_broadcaster_user_id": "1337"
+        },
+         "transport": {
+            "method": "webhook",
+            "callback": "https://example.com/webhooks/callback"
+        },
+        "created_at": "2019-11-16T10:11:12.634234626Z"
+    },
+    "event": {
+        "from_broadcaster_user_id": "1234",
+        "from_broadcaster_user_login": "cool_user",
+        "from_broadcaster_user_name": "Cool_User",
+        "to_broadcaster_user_id": "1337",
+        "to_broadcaster_user_login": "cooler_user",
+        "to_broadcaster_user_name": "Cooler_User",
+        "viewers": 9001
+    }
+}
+           /* {
+                "event": {
+                    "broadcaster_user_id": "145590747",
+                    "broadcaster_user_login": "scavote",
+                    "broadcaster_user_name": "scavote",
+                    "followed_at": "2025-10-23T12:53:02.300761844Z",
+                    "user_id": "1317911354",
+                    "user_login": "scabotezinho",
+                    "user_name": "scabotezinho"
+                },
+                "subscription": {
+                    "condition": {
+                        "broadcaster_user_id": "145590747",
+                        "moderator_user_id": "145590747"
+                    },
+                    "cost": 0,
+                    "created_at": "2025-10-23T12:34:05.90458122Z",
+                    "id": "00c66745-5cf4-473c-a2f4-6a609ffadef0",
+                    "status": "enabled",
+                    "transport": {
+                        "method": "websocket",
+                        "session_id": "AgoQlDX6h7vKSX6X7ikCuBXoWxIGY2VsbC1h"
+                    },
+                    "type": "channel.follow",
+                    "version": "2"
+                }
+            }*/
+        });
     },
     'twitch-connection': updateTwitchConnectionDetails,
     'kick-connection': updateKickConnectionDetails,
@@ -87,14 +162,14 @@ const handlers = {
                 user.textContent = msg.metadata['display-name']
             if (msg.metadata['badges-info'])
                 badges.innerHTML = Object.getOwnPropertyNames(msg.metadata['badges-info']).map(x => msg.metadata['badges-info'][x] && msg.metadata['badges-info'][x][0] != null && msg.metadata['badges-info'][x][0] != '' ? `<img src="${msg.metadata['badges-info'][x][0].image_url_1x}" alt="${msg.metadata['badges-info'][x][0].title}" />` : '').join('');
-           
+
             if (msg.metadata['room']) {
                 channel.innerHTML = `<img src="${msg.metadata['room'].profile_image_url}" alt="${msg.metadata['room'].display_name}" />`;
             }
             if (msg.metadata['source-room']) {
                 channel.innerHTML = `<img src="${msg.metadata['source-room'].profile_image_url}" alt="${msg.metadata['source-room'].display_name}" />`;
             }
-        
+
             if (msg.metadata["source-room-id"])
                 div.dataset.sourceRoom = msg.metadata["source-room-id"];
         }
@@ -138,6 +213,19 @@ const handlers = {
     },
     'result-query-stream-games': function (data) {
         streamGameList.innerHTML = data.map(x => `<option data-id="${x.id}" data-name="${x.name}" >${x.name}</option>`).join('');
+    },
+    'twitch-eventsub-keepalive': function (data) {
+        console.log('twitch-eventsub-keepalive', data);
+        let date = new Date(data.metadata.message_timestamp);
+        console.log(date);
+        twitchLastEventsub.innerHTML = `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}:${date.getSeconds().toString().padStart(2, '0')}`;
+    },
+    'twitch-eventsub-notification': function (data) {
+        if (twitchNotificationHandlers[data.metadata.subscription_type]){
+            twitchNotificationHandlers[data.metadata.subscription_type](data);
+            return;
+        } 
+        console.log('twitch-eventsub-notification não tratado!', data);
     }
 }
 
@@ -241,7 +329,8 @@ function updateMessageDelete(messageId) {
 }
 
 function updateTwitchConnectionDetails(data) {
-    logins.querySelector('#login-twitch').innerHTML = data.userLogin == '' ? `<a href="/twitch/login" target="_blank">Logar Twitch</a>` : `Twitch: ${data.userLogin}`;
+    twitchData = data;
+    logins.querySelector('#login-twitch').innerHTML = data.userLogin == '' ? `<a href="/twitch/login" target="_blank">Logar Twitch</a>` : `Twitch: <img src="${data.profile_image_url}" /> ${data.userLogin}`;
     if (!data.userLogin || data.userLogin == '') {
         twitchConnections.style.display = 'none';
         return;
@@ -290,7 +379,7 @@ function parseText(data) {
 
     if (data.source == "twitch" && data.metadata) {
         let emotes = data.metadata.emotes.split('/')
-        if(emotes && emotes[0] != '') {   
+        if (emotes && emotes[0] != '') {
             emotes = emotes.map(x => {
                 let v = x.split(':');
                 let id = v[0];
@@ -325,7 +414,7 @@ async function loadBTTVEmotes(twitchId) {
     ]);
 
     const all = [
-        ...global, 
+        ...global,
         //...(channel.channelEmotes || []), 
         //...(channel.sharedEmotes || [])
     ];

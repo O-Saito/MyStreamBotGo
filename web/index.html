@@ -5,6 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Chat Live</title>
     <style>
+        * {
+            box-sizing: border-box;
+        }
+
         body {
             font-family: sans-serif;
             /*font-size: 50px;*/
@@ -15,12 +19,90 @@
             background-color: #18181b;
         }
 
-        #chat {
+        #logins .areas {
+            border: 1px solid white;
+            padding: 5px;
+            margin-bottom: 5px;
+            vertical-align: middle;
+        }
+
+        .areas>.header {
+            border-bottom: 1px solid white;
+            margin-bottom: 5px;
+        }
+
+        .areas .body .chat-list .list::before {
+            content: "Conectado aos Chats:";
+        } 
+
+        .areas .body .chat-list .list {
+            margin: 0px;
+            margin-top: 2px;
+            margin-bottom: 2px;
+            padding: 0px;
+        }
+
+        .areas .body .chat-list .list li {
+            margin-left: 25px;
+        }
+
+        #logins .areas label,
+        #logins .areas span {
+            vertical-align: middle;
+        }
+
+        #logins .areas img {
+            width: 25px;
+            border: 1px solid black;
+            border-radius: 15px;
+            vertical-align: middle;
+        }
+
+        #events {
             border: 1px solid #ccc;
             padding: 10px;
+            height: 100px;
+            overflow-y: scroll;
+            resize: vertical;
+        }
+
+        #events .event {
+            vertical-align: middle;
+            line-height: 27px;
+        }
+
+        #events .event .user {
+            text-decoration: underline;
+        }
+
+        #chat {
+            /*  border: 1px solid #ccc;
+            height: 400px;
+            overflow-y: scroll;
+            resize: vertical;*/
+            margin-bottom: 10px;
+        }
+
+        #chat .content {
+            padding: 10px;
+            border: 1px solid #ccc;
             height: 400px;
             overflow-y: scroll;
             resize: vertical;
+        }
+
+        #chat .sender {
+            border: 1px solid white;
+        }
+
+        #chat .sender input {
+            display: inline-block;
+            width: 90%;
+        }
+
+        #chat .sender button {
+            display: inline-block;
+            /*width: 8%;*/
         }
 
         #chat .message {
@@ -94,34 +176,49 @@
         button {
             margin-left: 5px;
         }
-
-        
     </style>
     <link rel="stylesheet" href="/css/font-awesome.min.css">
 </head>
 
 <body class="dark">
     <div id="logins">
-        <div id="login-twitch"></div>
-        <div id="login-kick"></div>
-    </div>
-    <h1>Chat Live</h1>
-    <div id="chat"></div>
-    <div><button type="button" id="btn-mandar-msg">Mandar Mensagem</button></div>
-    <div id="chat-connections">
-        <div id="chat-connection-twitch">
-            <div class="form">
-                <button type="button" class="btn-novo-chat">Conectar Chat Twitch</button>
+        <div id="twitch" class="areas">
+            <div class="header">
+                <label id="login-twitch"></label>
+                <span style="float: right;">Ultimo Keepalive: <label id="twitch-last-eventsub"></label></span>
             </div>
-            <ul class="list"></ul>
-        </div>
-        <div id="chat-connection-kick">
-            <div class="form">
-                <button type="button" class="btn-novo-chat">Conectar Chat Kick</button>
+            <div class="body">
+                <div id="chat-connection-twitch" class="chat-list">
+                    <div class="form">
+                        <button type="button" class="btn-novo-chat">Conectar a um chat Twitch</button>
+                    </div>
+                    <ul class="list"></ul>
+                </div>
             </div>
-            <ul class="list"></ul>
+        </div>
+        <div id="kick" class="areas"> 
+            <div class="header">
+                <label id="login-kick"></label>
+            </div>
+            <div class="body">
+                <div id="chat-connection-kick" class="chat-list">
+                    <div class="form">
+                        <button type="button" class="btn-novo-chat">Conectar a um chat Kick</button>
+                    </div>
+                    <ul class="list"></ul>
+                </div>
+            </div> 
         </div>
     </div>
+    <h1 style="margin-bottom: 0px;">Chat Live</h1>
+    <div id="chat">
+        <div class="content"></div>
+        <div class="sender">
+            <button type="button" id="btn-mandar-msg">Mandar Mensagem</button>
+        </div>
+    </div>
+    <h1 style="margin-bottom: 0px;">Eventos</h1>
+    <div id="events"></div>
 
     <div style="display: none;">
         <h3>Stream Info</h3>

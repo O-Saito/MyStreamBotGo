@@ -134,14 +134,38 @@ var messageHandlers = map[string]func(map[string]any, map[string]any){
 		globals.GetState().SetTwitchEventSubId(payload["session"].(map[string]any)["id"].(string))
 		subscribeToEvents()
 		//ts.execute("session_welcome", payload);
+		j, _ := json.Marshal(map[string]any{
+			"payload":  payload,
+			"metadata": metadata,
+		})
+		globals.WsBroadcast <- globals.SocketMessage{
+			Type: "twitch-eventsub-session-welcome",
+			Data: string(j),
+		}
 	},
 	"session_keepalive": func(payload, metadata map[string]any) {
-		helpers.Logf(helpers.Twitch, "[TWITCH EventSub] Session Keepalive %v", metadata)
+		//helpers.Logf(helpers.Twitch, "[TWITCH EventSub] Session Keepalive %v", metadata)
 		//ts.execute("session_keepalive", metadata);
+		j, _ := json.Marshal(map[string]any{
+			"payload":  payload,
+			"metadata": metadata,
+		})
+		globals.WsBroadcast <- globals.SocketMessage{
+			Type: "twitch-eventsub-keepalive",
+			Data: string(j),
+		}
 	},
 	"notification": func(payload, metadata map[string]any) {
 		helpers.Logf(helpers.Twitch, "[TWITCH EventSub] notification %v", payload)
 		//ts.execute(metadata.subscription_type, payload.event, payload.subscription);
+		j, _ := json.Marshal(map[string]any{
+			"payload":  payload,
+			"metadata": metadata,
+		})
+		globals.WsBroadcast <- globals.SocketMessage{
+			Type: "twitch-eventsub-notification",
+			Data: string(j),
+		}
 	},
 }
 
@@ -291,5 +315,6 @@ func subscribeToEvents() {
 
 			//return fmt.Errorf("erro ao excluir mensagem: %s", body)
 		}
+		globals.GetState().SetData("TwitchSubEventsConnectedEvents", events)
 	}
 }

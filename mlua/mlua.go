@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"MyStreamBot/globals"
@@ -147,8 +148,12 @@ func loadModule(L *lua.LState, path string, modType string) {
 		}
 	case len(modType) > 6 && modType[:6] == "event:":
 		eventName := modType[6:]
-		eventModules[eventName] = append(eventModules[eventName], mod)
-		eventFunctions[eventName+"_"+mod.NameWithoutExt()] = fn
+		helpers.Logf(helpers.Blue, eventName)
+		f := L.GetGlobal("on_event")
+		if fn, ok := f.(*lua.LFunction); ok {
+			eventModules[eventName] = append(eventModules[eventName], mod)
+			eventFunctions[eventName+"_"+mod.NameWithoutExt()] = fn
+		}
 	}
 	helpers.Logf(helpers.Green, "[MODULE LOADED] %s (%s)", path, modType)
 }
@@ -290,15 +295,15 @@ func HandleChat(ev globals.MessageFromStream) {
 }
 
 func HandleEvent(eventName string, ev globals.LuaEvent) {
-	tbl := LChat.NewTable()
+	tbl := ToLValue(LEvents, ev.Data)
 	for name, fn := range eventFunctions {
-		if len(name) > len(eventName) && name[:len(eventName)] == eventName {
-			tbl := ToLTableEvent(LEvents, ev, tbl)
+		if strings.Contains(name, eventName) {
 			if err := LEvents.CallByParam(lua.P{Fn: fn, NRet: 0, Protect: true}, tbl); err != nil {
 				helpers.Logf(helpers.Red, "[LUA EVENT ERROR] %s: %v", name, err)
 			}
 		}
 	}
+	tblEvents := LChat.NewTable()
 	dynamicEventsMutex.Lock()
 	for _, dev := range dynamicEvents {
 		if dev.OnEvent == nil || dev.Paused {
@@ -306,8 +311,8 @@ func HandleEvent(eventName string, ev globals.LuaEvent) {
 		}
 
 		dev.mu.RLock()
-		tbl := ToLTableEvent(dev.LState, ev, tbl)
-		if err := LEvents.CallByParam(lua.P{Fn: dev.OnEvent, NRet: 0, Protect: true}, tbl); err != nil {
+		ntbl := ToLTableEvent(dev.LState, ev, tblEvents)
+		if err := LEvents.CallByParam(lua.P{Fn: dev.OnEvent, NRet: 0, Protect: true}, ntbl); err != nil {
 			helpers.Logf(helpers.Red, "[LUA EVENT ERROR] %s: %v", dev.Name, err)
 		}
 		dev.mu.RUnlock()
@@ -368,7 +373,7 @@ func StartEventQueues() {
 
 	go func() {
 		for ev := range globals.EventQueue {
-			HandleEvent(ev.Data["event_name"].(string), ev)
+			HandleEvent(ev.Type, ev)
 		}
 	}()
 }

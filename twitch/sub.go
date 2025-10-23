@@ -166,6 +166,13 @@ var messageHandlers = map[string]func(map[string]any, map[string]any){
 			Type: "twitch-eventsub-notification",
 			Data: string(j),
 		}
+		globals.EventQueue <- globals.LuaEvent{
+			Type: payload["subscription"].(map[string]any)["type"].(string),
+			Data: map[string]any{
+				"payload":  payload,
+				"metadata": metadata,
+			},
+		}
 	},
 }
 

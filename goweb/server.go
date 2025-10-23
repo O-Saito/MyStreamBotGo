@@ -67,6 +67,7 @@ func StartHTTPServer() {
 						"twitch_connected_chat": twitch.Channels,
 						"kick_connected_chat":   kick.Channels,
 						"custom_events_modules": mlua.ListDynamicEvents(),
+						"twitch_eventsubs":      globals.GetState().GetData("TwitchSubEventsConnectedEvents"),
 					},
 				}
 				helpers.Log(helpers.Cyan, "[Socket] Init message")

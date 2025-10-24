@@ -11,8 +11,9 @@ import (
 )
 
 type SocketMessage struct {
-	Type string `json:"type"`
-	Data string `json:"data"`
+	Filter string
+	Type   string `json:"type"`
+	Data   any    `json:"data"`
 }
 
 type MessageFromStream struct {
@@ -27,8 +28,6 @@ type MessageFromStream struct {
 
 type LuaEvent struct {
 	Type string
-	User string
-	Text string
 	Data map[string]interface{}
 }
 

@@ -177,9 +177,9 @@ var messageHandlers = map[string]func(map[string]any, map[string]any){
 }
 
 var (
-	EventSubConn *websocket.Conn
-	quitChan     = make(chan struct{})
-	eventSubMu   sync.RWMutex
+	//EventSubConn *websocket.Conn
+	//quitChan   = make(chan struct{})
+	eventSubMu sync.RWMutex
 )
 
 func connectToEventSub() {
@@ -196,14 +196,15 @@ func connectToEventSub() {
 		return
 	}
 	eventSubMu.Lock()
-	EventSubConn = conn
+	//EventSubConn = conn
 
 	messageHandlers["session_reconnect"] = func(payload, metadata map[string]any) {
 		reconnectURL := payload["session"].(map[string]any)["reconnect_url"].(string)
 		helpers.Logf(helpers.Yellow, "[Twitch EventSub] Reconnect solicitado: %s", reconnectURL)
 		eventSubMu.Lock()
 		defer eventSubMu.Unlock()
-		EventSubConn.Close()
+		conn.Close()
+		//EventSubConn.Close()
 		conn, _, err := websocket.DefaultDialer.Dial(reconnectURL, nil)
 		if err != nil {
 			log.Printf("[Twitch EventSub] Falha ao reconectar: %v", err)
@@ -211,28 +212,59 @@ func connectToEventSub() {
 			connectToEventSub()
 			return
 		}
-		EventSubConn = conn
+
+		go listenToEventSub(conn)
+		//EventSubConn = conn
 	}
 	helpers.Logf(helpers.Twitch, "[Twitch EventSub] Conexão WebSocket aberta com sucesso!")
 	eventSubMu.Unlock()
 
-	go listenToEventSub()
+	go listenToEventSub(conn)
 }
 
-func listenToEventSub() {
+func listenToEventSub(conn *websocket.Conn) {
 	defer func() {
-		if EventSubConn != nil {
-			EventSubConn.Close()
+		if conn != nil {
+			conn.Close()
 		}
 		helpers.Logf(helpers.Twitch, "[Twitch EventSub] Leitura encerrada.")
+		connectToEventSub()
 	}()
 
 	for {
+		_, msg, err := conn.ReadMessage()
+		if err != nil {
+			helpers.Logf(helpers.Red, "[Twitch EventSub] erro de leitura: %v", err)
+			break // <- Sai naturalmente do loop
+		}
+
+		var base map[string]any
+		if err := json.Unmarshal(msg, &base); err != nil {
+			log.Println("[Twitch EventSub] Erro ao decodificar JSON:", err)
+			continue
+		}
+
+		meta, ok := base["metadata"].(map[string]any)
+		if !ok {
+			continue
+		}
+
+		handler := messageHandlers[meta["message_type"].(string)]
+
+		if handler == nil {
+			helpers.Logf(helpers.Red, "[TWITCH EventSub] Handler not found %s", meta["message_type"])
+			continue
+		}
+
+		handler(base["payload"].(map[string]any), base["metadata"].(map[string]any))
+	}
+
+	/*for {
 		select {
 		case <-quitChan:
 			return
 		default:
-			_, msg, err := EventSubConn.ReadMessage()
+			_, msg, err := conn.ReadMessage()
 			if err != nil {
 				helpers.Logf(helpers.Twitch, "[Twitch EventSub] Erro ao ler: %v", err)
 				return
@@ -258,7 +290,7 @@ func listenToEventSub() {
 
 			handler(base["payload"].(map[string]any), base["metadata"].(map[string]any))
 		}
-	}
+	}*/
 }
 
 func subscribeToEvents() {

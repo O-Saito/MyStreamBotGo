@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	"MyStreamBot/globals"
 	"MyStreamBot/helpers"
 
 	lua "github.com/yuin/gopher-lua"
@@ -162,6 +163,23 @@ func setFunctionOnTable(ev *DynamicEvent, tbl *lua.LTable) {
 	if ev.LState == nil {
 		return
 	}
+
+	ev.LState.SetField(tbl, "socket_send", ev.LState.NewFunction(func(L *lua.LState) int {
+		if L.Get(1) == lua.LNil || L.Get(2) == lua.LNil {
+			return -1
+		}
+
+		t := L.CheckString(1)
+		d := L.CheckTable(2)
+
+		globals.WsBroadcast <- globals.SocketMessage{
+			Filter: ev.Name,
+			Type:   t,
+			Data:   TableToMap(d),
+		}
+
+		return 0
+	}))
 
 	ev.LState.SetField(tbl, "setInterval", ev.LState.NewFunction(func(L *lua.LState) int {
 		val := L.CheckNumber(1)

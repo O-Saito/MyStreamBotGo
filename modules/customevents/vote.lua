@@ -40,7 +40,7 @@ function reset_data()
         users_voted = {},
         votos = {},
         alias = {},
-        tempo = 20 -- segundos para final da votação
+        tempo = 30 -- segundos para final da votação
     }
 
     for k, v in pairs(options) do
@@ -69,7 +69,8 @@ function on_start()
     })
 end
 
-function on_tick()
+function on_tick(data)
+    g.log('[LUA TESTE]', data)
     local tempo = ev.data.tempo
     tempo = tempo - 1
     print("[Lua] Tempo restante:", tempo)
@@ -114,16 +115,10 @@ function on_message(msg)
     ev.data.users_voted[msg.UserId] = true
 end
 
-function on_event(msg)
-    if msg.payload and msg.payload.type == "vote" then
-        local voto = msg.payload.value
-        if ev.data.votos[voto] then
-            ev.data.votos[voto] = ev.data.votos[voto] + 1
-        end
-        print("[Lua] Voto recebido:", voto)
-    end
+function on_event(name, data)
+   g.print("[VOTE] Evento recebido " .. name, data) 
 end
 
 function on_command(name, data)
-    g.print("[Lua] Comando recebido:" .. name)
+    g.print("[Lua] Comando recebido:" .. name, data)
 end

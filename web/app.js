@@ -173,7 +173,8 @@ ws.onmessage = function (e) {
         console.log("Handler não encontrado para o tipo:", data.type);
         return;
     }
-    handlers[data.type](data.data);
+    
+    handlers[data.type](e.data);
 };
 
 ws.onopen = function () {

@@ -15,6 +15,25 @@ var (
 // commandTable *lua.LTable
 )
 
+func TableToMap(tbl *lua.LTable) map[string]interface{} {
+	result := make(map[string]interface{})
+	tbl.ForEach(func(key lua.LValue, value lua.LValue) {
+		switch v := value.(type) {
+		case lua.LString:
+			result[key.String()] = string(v)
+		case lua.LNumber:
+			result[key.String()] = float64(v)
+		case lua.LBool:
+			result[key.String()] = bool(v)
+		case *lua.LTable:
+			result[key.String()] = TableToMap(v) // recursivo
+		default:
+			result[key.String()] = v.String()
+		}
+	})
+	return result
+}
+
 func ToLValue(L *lua.LState, val any) lua.LValue {
 	switch v := val.(type) {
 	case nil:

@@ -12,25 +12,6 @@ import (
 	lua "github.com/yuin/gopher-lua"
 )
 
-func tableToMap(tbl *lua.LTable) map[string]interface{} {
-	result := make(map[string]interface{})
-	tbl.ForEach(func(key lua.LValue, value lua.LValue) {
-		switch v := value.(type) {
-		case lua.LString:
-			result[key.String()] = string(v)
-		case lua.LNumber:
-			result[key.String()] = float64(v)
-		case lua.LBool:
-			result[key.String()] = bool(v)
-		case *lua.LTable:
-			result[key.String()] = tableToMap(v) // recursivo
-		default:
-			result[key.String()] = v.String()
-		}
-	})
-	return result
-}
-
 func RegisterLuaFunctions(L *lua.LState) {
 	mlua.ExposeServiceToLua(L, "g", map[string]func(*lua.LState) int{
 		"log": func(L *lua.LState) int {
@@ -40,7 +21,7 @@ func RegisterLuaFunctions(L *lua.LState) {
 			}
 
 			table := L.CheckTable(2)
-			jsonData, _ := json.Marshal(tableToMap(table))
+			jsonData, _ := json.Marshal(mlua.TableToMap(table))
 			helpers.Logf(helpers.Lua, "[LUA LOG] %s: %s", L.CheckString(1), jsonData)
 			return 0
 		},
@@ -50,7 +31,7 @@ func RegisterLuaFunctions(L *lua.LState) {
 				return 0
 			}
 			table := L.CheckTable(2)
-			jsonData, _ := json.Marshal(tableToMap(table))
+			jsonData, _ := json.Marshal(mlua.TableToMap(table))
 			helpers.Logf(helpers.Lua, "[LUA PRINT] %s: %s", L.CheckString(1), jsonData)
 			return 0
 		},
@@ -62,11 +43,11 @@ func RegisterLuaFunctions(L *lua.LState) {
 				}
 			}()
 			t := L.CheckString(1)
-			jsonData, _ := json.Marshal(tableToMap(L.CheckTable(2)))
-			helpers.Logf(helpers.Lua, "[LUA SOCKET_SEND] %s; %s", t, jsonData)
+			t2 := L.CheckTable(2)
+			helpers.Logf(helpers.Lua, "[LUA SOCKET_SEND] %s; %v", t, t2)
 			globals.WsBroadcast <- globals.SocketMessage{
 				Type: t,
-				Data: string(jsonData),
+				Data: mlua.TableToMap(t2),
 			}
 			return 0
 		},

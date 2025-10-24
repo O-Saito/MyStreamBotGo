@@ -124,10 +124,9 @@ func HandleLogin() {
 		if err := Connect(); err != nil {
 			log.Fatal(err)
 		}
-		jd, _ := json.Marshal(user)
 		globals.WsBroadcast <- globals.SocketMessage{
 			Type: "twitch-connection",
-			Data: string(jd),
+			Data: user,
 		}
 		JoinChannel(user.UserLogin)
 

@@ -7,7 +7,6 @@ import (
 	"MyStreamBot/mlua"
 	"MyStreamBot/twitch"
 	"encoding/json"
-	"fmt"
 	"log"
 	"net"
 	"net/http"
@@ -30,8 +29,56 @@ var upgrader = websocket.Upgrader{
 }
 
 var wsClients = make(map[*websocket.Conn]bool)
+var wsClientsUpgraded = make(map[string][]*websocket.Conn)
 
-var SocketHandlers = map[string]func(map[string]any){}
+var SocketHandlers = map[string]func(*websocket.Conn, map[string]any){
+	"init": func(c *websocket.Conn, m map[string]any) {
+		jsonData := SocketMessage{
+			Type: "init",
+			Data: map[string]any{
+				"twitch": globals.GetState().GetTwitchUser(),
+				"kick": map[string]any{
+					"connected_as": kick.UserLogin,
+				},
+				"twitch_connected_chat": twitch.Channels,
+				"kick_connected_chat":   kick.Channels,
+				"custom_events_modules": mlua.ListDynamicEvents(),
+				"twitch_eventsubs":      globals.GetState().GetData("TwitchSubEventsConnectedEvents"),
+			},
+		}
+		helpers.Log(helpers.Cyan, "[Socket] Init message")
+		d, err := json.Marshal(jsonData)
+		if err != nil {
+			helpers.Logf(helpers.Red, "[Socket] Init error: %s", err.Error())
+			return
+		}
+		helpers.Logf(helpers.Cyan, "[Socket] Init message: %s", d)
+		c.WriteMessage(websocket.TextMessage, []byte(d))
+	},
+	"upgrade-conn": func(c *websocket.Conn, m map[string]any) {
+		data := map[string]any{
+			"type": "response-upgrade",
+			"data": "",
+		}
+		if m["conn"] != nil {
+			if wsClientsUpgraded[m["conn"].(string)] == nil {
+				wsClientsUpgraded[m["conn"].(string)] = make([]*websocket.Conn, 0)
+			}
+
+			wsClientsUpgraded[m["conn"].(string)] = append(wsClientsUpgraded[m["conn"].(string)], c)
+			data["data"] = "conexão atualizada!"
+		} else {
+			data["data"] = "conexão não especificada!"
+		}
+
+		d, err := json.Marshal(data)
+		if err != nil {
+			helpers.Logf(helpers.Red, "[Socket] Upgrade-conn parse error: %s", err.Error())
+			return
+		}
+		c.WriteMessage(websocket.TextMessage, []byte(d))
+	},
+}
 
 func StartHTTPServer() {
 	// Servir frontend
@@ -57,33 +104,13 @@ func StartHTTPServer() {
 			helpers.Logf(helpers.Cyan, "[Socket] Message: %s", string(msg))
 			m := string(msg)
 			if m == "init" {
-				jsonData := map[string]any{
-					"type": "init",
-					"data": map[string]any{
-						"twitch": globals.GetState().GetTwitchUser(),
-						"kick": map[string]any{
-							"connected_as": kick.UserLogin,
-						},
-						"twitch_connected_chat": twitch.Channels,
-						"kick_connected_chat":   kick.Channels,
-						"custom_events_modules": mlua.ListDynamicEvents(),
-						"twitch_eventsubs":      globals.GetState().GetData("TwitchSubEventsConnectedEvents"),
-					},
-				}
-				helpers.Log(helpers.Cyan, "[Socket] Init message")
-				d, err := json.Marshal(jsonData)
-				if err != nil {
-					helpers.Logf(helpers.Red, "[Socket] Init error: %s", err.Error())
-					continue
-				}
-				helpers.Logf(helpers.Cyan, "[Socket] Init message: %s", d)
-				conn.WriteMessage(websocket.TextMessage, []byte(d))
+				SocketHandlers["init"](conn, nil)
 				continue
 			}
 			var data SocketMessage
 			json.Unmarshal([]byte(m), &data)
 			if handler, exists := SocketHandlers[string(data.Type)]; exists {
-				handler(data.Data)
+				handler(conn, data.Data)
 				continue
 			}
 		}
@@ -124,10 +151,24 @@ func StartHTTPServer() {
 	// Goroutine para enviar mensagens do backend para todos os clients
 	go func() {
 		for msg := range globals.WsBroadcast {
+
+			if msg.Filter != "" {
+				helpers.Logf(helpers.Cyan, "[WebSocket] Message filter %s: %s - %s", msg.Filter, msg.Type, msg.Data)
+				wsList := wsClientsUpgraded[msg.Filter]
+				if len(wsList) == 0 {
+					continue
+				}
+				jsonData, _ := json.Marshal(msg)
+				for _, client := range wsList {
+					client.WriteMessage(websocket.TextMessage, []byte(jsonData))
+				}
+				continue
+			}
+
 			helpers.Logf(helpers.Cyan, "[WebSocket] Broadcast: %s - %s", msg.Type, msg.Data)
+			jsonData, _ := json.Marshal(msg)
 			for client := range wsClients {
-				message := fmt.Sprintf(`{"type":"%s","data":%s}`, msg.Type, msg.Data)
-				client.WriteMessage(websocket.TextMessage, []byte(message))
+				client.WriteMessage(websocket.TextMessage, []byte(jsonData))
 			}
 		}
 	}()
@@ -137,12 +178,11 @@ func StartHTTPServer() {
 		panic(err)
 	}
 
+	log.Printf("[MyStreamBot] Possíveis IP's (para os logins TEM que ser pelo localhost):")
 	for _, addr := range addrs {
-		// Verifica se é IP do tipo IPNet e não loopback
 		if ipnet, ok := addr.(*net.IPNet); ok && !ipnet.IP.IsLoopback() {
-			// Só IPv4
 			if ipnet.IP.To4() != nil {
-				helpers.Logf(helpers.Reset, "IP local da máquina: %s", ipnet.IP.String())
+				helpers.Logf(helpers.Reset, "http://%s:1699", ipnet.IP.String())
 			}
 		}
 	}

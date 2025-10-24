@@ -55,7 +55,7 @@ var ircHandlers = map[string]func(km KickMessage, data map[string]any){
 	"pusher:connection_established": func(km KickMessage, data map[string]any) {
 		globals.WsBroadcast <- globals.SocketMessage{
 			Type: "kick-connection",
-			Data: fmt.Sprintf("\"%s\"", UserLogin),
+			Data: UserLogin,
 		}
 	},
 	"pusher_internal:subscription_succeeded": func(km KickMessage, data map[string]any) {
@@ -66,7 +66,7 @@ var ircHandlers = map[string]func(km KickMessage, data map[string]any){
 				value.Connected = true
 				globals.WsBroadcast <- globals.SocketMessage{
 					Type: "kick-chat-connection",
-					Data: fmt.Sprintf("{\"name\":\"%s\",\"id\":\"%s\"}", value.Slug, value.ID),
+					Data: map[string]any{"name": value.Slug, "id": value.ID}, //fmt.Sprintf("{\"name\":\"%s\",\"id\":\"%s\"}", value.Slug, value.ID),
 				}
 				break
 			}
@@ -83,11 +83,10 @@ var ircHandlers = map[string]func(km KickMessage, data map[string]any){
 			Message:   data["content"].(string),
 			Metadata:  sender["identity"].(map[string]any),
 		}
-		dataJSON, _ := json.Marshal(socketdata)
-		globals.WsBroadcast <- globals.SocketMessage{Type: "user-message", Data: string(dataJSON)}
+		globals.WsBroadcast <- globals.SocketMessage{Type: "user-message", Data: socketdata}
 	},
 	"App\\Events\\MessageDeletedEvent": func(km KickMessage, data map[string]any) {
-		globals.WsBroadcast <- globals.SocketMessage{Type: "user-message-delete", Data: fmt.Sprintf("\"%s\"", data["message"].(map[string]any)["id"])}
+		globals.WsBroadcast <- globals.SocketMessage{Type: "user-message-delete", Data: data["message"].(map[string]any)["id"]}
 	},
 }
 
@@ -170,24 +169,12 @@ func reader() {
 			handler(km, data)
 			continue
 		}
-
-		// Apenas mensagens de chat
-		if km.Event == "chat_message" {
-			//content := km.Data["message"].(string)
-			//user := km.Data["username"].(string)
-			//log.Printf("[Kick] %s: %s", user, content)
-			globals.WsBroadcast <- globals.SocketMessage{Type: "", Data: ""}
-		}
 	}
 }
 
 func writer() {
 	for msg := range MsgQueue {
 		PostMessage(msg)
-		/*if err := Conn.WriteJSON(msg.Text); err != nil {
-			log.Println("[Kick IRC] Erro ao enviar mensagem:", err)
-			return
-		}*/
 	}
 }
 

@@ -46,71 +46,8 @@ const handlers = {
                 handlers['kick-chat-connection']({ id: c.ID, name: c.Slug });
             }
         }
-        updateTwitchConnectionDetails(data.twitch)
-        updateKickConnectionDetails(data.kick.connected_as)
-
-        handlers['twitch-eventsub-notification']({
-            "metadata": {
-                "message_id": "7-wkIKCyRLzLzNP26zRwXOTmialeXOb4qKKGv_mHHCQ=",
-                "message_timestamp": "2025-10-23T12:53:02.300770957Z",
-                "message_type": "notification",
-                "subscription_type": "channel.raid",
-                "subscription_version": "2"
-            },
-            "payload":{
-    "subscription": {
-        "id": "f1c2a387-161a-49f9-a165-0f21d7a4e1c4",
-        "type": "channel.raid",
-        "version": "1",
-        "status": "enabled",
-        "cost": 0,
-        "condition": {
-            "to_broadcaster_user_id": "1337"
-        },
-         "transport": {
-            "method": "webhook",
-            "callback": "https://example.com/webhooks/callback"
-        },
-        "created_at": "2019-11-16T10:11:12.634234626Z"
-    },
-    "event": {
-        "from_broadcaster_user_id": "1234",
-        "from_broadcaster_user_login": "cool_user",
-        "from_broadcaster_user_name": "Cool_User",
-        "to_broadcaster_user_id": "1337",
-        "to_broadcaster_user_login": "cooler_user",
-        "to_broadcaster_user_name": "Cooler_User",
-        "viewers": 9001
-    }
-}
-           /* {
-                "event": {
-                    "broadcaster_user_id": "145590747",
-                    "broadcaster_user_login": "scavote",
-                    "broadcaster_user_name": "scavote",
-                    "followed_at": "2025-10-23T12:53:02.300761844Z",
-                    "user_id": "1317911354",
-                    "user_login": "scabotezinho",
-                    "user_name": "scabotezinho"
-                },
-                "subscription": {
-                    "condition": {
-                        "broadcaster_user_id": "145590747",
-                        "moderator_user_id": "145590747"
-                    },
-                    "cost": 0,
-                    "created_at": "2025-10-23T12:34:05.90458122Z",
-                    "id": "00c66745-5cf4-473c-a2f4-6a609ffadef0",
-                    "status": "enabled",
-                    "transport": {
-                        "method": "websocket",
-                        "session_id": "AgoQlDX6h7vKSX6X7ikCuBXoWxIGY2VsbC1h"
-                    },
-                    "type": "channel.follow",
-                    "version": "2"
-                }
-            }*/
-        });
+        updateTwitchConnectionDetails(data.twitch);
+        updateKickConnectionDetails(data.kick.connected_as);
     },
     'twitch-connection': updateTwitchConnectionDetails,
     'kick-connection': updateKickConnectionDetails,

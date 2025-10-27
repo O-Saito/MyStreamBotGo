@@ -58,6 +58,7 @@ var (
 	ChatQueue    = make(chan MessageFromStream, 200)
 	CommandQueue = make(chan LuaCommand, 50)
 	EventQueue   = make(chan LuaEvent, 100)
+	LuaRequest   = make(chan SocketMessage, 100)
 )
 var sectionMap = map[string]any{
 	"Config": GetConfig(),

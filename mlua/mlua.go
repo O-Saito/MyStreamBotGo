@@ -303,7 +303,6 @@ func HandleEvent(eventName string, ev globals.LuaEvent) {
 			}
 		}
 	}
-	//tblEvents := LChat.NewTable()
 	dynamicEventsMutex.Lock()
 	for _, dev := range dynamicEvents {
 		if dev.OnEvent == nil || dev.Paused {
@@ -311,8 +310,9 @@ func HandleEvent(eventName string, ev globals.LuaEvent) {
 		}
 
 		dev.mu.RLock()
-		//ntbl := ToLTableEvent(dev.LState, ev, tblEvents)
-		if err := LEvents.CallByParam(lua.P{Fn: dev.OnEvent, NRet: 0, Protect: true}, lua.LString(eventName), tbl); err != nil {
+
+		ntbl := ToLValue(dev.LState, ev)
+		if err := LEvents.CallByParam(lua.P{Fn: dev.OnEvent, NRet: 0, Protect: true}, ntbl); err != nil {
 			helpers.Logf(helpers.Red, "[LUA EVENT ERROR] %s: %v", dev.Name, err)
 		}
 		dev.mu.RUnlock()

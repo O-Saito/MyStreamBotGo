@@ -21,12 +21,12 @@ type DynamicEvent struct {
 	OnEvent   *lua.LFunction
 	OnMessage *lua.LFunction
 	OnCommand *lua.LFunction
-
-	LastTick time.Time
-	NextTick time.Time
-	Interval time.Duration
-	Paused   bool
-	mu       sync.RWMutex
+	OnRequest *lua.LFunction
+	LastTick  time.Time
+	NextTick  time.Time
+	Interval  time.Duration
+	Paused    bool
+	mu        sync.RWMutex
 }
 
 type DynamicEventInfo struct {
@@ -51,11 +51,15 @@ func ListDynamicEvents() []DynamicEventInfo {
 	events := make([]DynamicEventInfo, 0, len(dynamicEvents))
 	for name, val := range dynamicEvents {
 		data := FromLValue(val.LState, val.LState.GetGlobal("ev")).(map[string]any)
+		d := map[string]any{}
+		if data["data"] != nil {
+			d = data["data"].(map[string]any)
+		}
 		events = append(events, DynamicEventInfo{
 			Name:       name,
 			Paused:     val.Paused,
 			Interval:   val.Interval,
-			ModuleData: data["data"].(map[string]any),
+			ModuleData: d,
 		})
 	}
 
@@ -125,6 +129,7 @@ func LoadDyEvents(baseDir string) {
 			OnEvent:   getGlobalFunction(L, "on_event"),
 			OnMessage: getGlobalFunction(L, "on_message"),
 			OnCommand: getGlobalFunction(L, "on_command"),
+			OnRequest: getGlobalFunction(L, "on_request"),
 			NextTick:  time.Now().Add(time.Second),
 			Interval:  time.Second, // padrão
 			Paused:    true,        // padrão

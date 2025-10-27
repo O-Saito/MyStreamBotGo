@@ -311,8 +311,8 @@ func HandleEvent(eventName string, ev globals.LuaEvent) {
 
 		dev.mu.RLock()
 
-		ntbl := ToLValue(dev.LState, ev)
-		if err := LEvents.CallByParam(lua.P{Fn: dev.OnEvent, NRet: 0, Protect: true}, ntbl); err != nil {
+		ntbl := ToLValue(dev.LState, ev.Data)
+		if err := LEvents.CallByParam(lua.P{Fn: dev.OnEvent, NRet: 0, Protect: true}, lua.LString(eventName), ntbl); err != nil {
 			helpers.Logf(helpers.Red, "[LUA EVENT ERROR] %s: %v", dev.Name, err)
 		}
 		dev.mu.RUnlock()
@@ -374,6 +374,24 @@ func StartEventQueues() {
 	go func() {
 		for ev := range globals.EventQueue {
 			HandleEvent(ev.Type, ev)
+		}
+	}()
+
+	go func() {
+		for ev := range globals.LuaRequest {
+			dynamicEventsMutex.Lock()
+			for _, dev := range dynamicEvents {
+				if dev.Name != ev.Filter || dev.OnRequest == nil || dev.Paused {
+					continue
+				}
+				tbl := ToLValue(LEvents, ev.Data)
+				dev.mu.RLock()
+				if err := LEvents.CallByParam(lua.P{Fn: dev.OnRequest, NRet: 0, Protect: true}, lua.LString(ev.Type), tbl); err != nil {
+					helpers.Logf(helpers.Red, "[LUA EVENT ERROR] %s: %v", dev.Name, err)
+				}
+				dev.mu.RUnlock()
+			}
+			dynamicEventsMutex.Unlock()
 		}
 	}()
 }

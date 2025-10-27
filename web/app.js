@@ -174,7 +174,7 @@ ws.onmessage = function (e) {
         return;
     }
     
-    handlers[data.type](e.data);
+    handlers[data.type](data.data);
 };
 
 ws.onopen = function () {
@@ -268,8 +268,8 @@ function updateMessageDelete(messageId) {
 
 function updateTwitchConnectionDetails(data) {
     twitchData = data;
-    logins.querySelector('#login-twitch').innerHTML = data.userLogin == '' ? `<a href="/twitch/login" target="_blank">Logar Twitch</a>` : `Twitch: <img src="${data.profile_image_url}" /> ${data.userLogin}`;
-    if (!data.userLogin || data.userLogin == '') {
+    logins.querySelector('#login-twitch').innerHTML = !data || data.userLogin == '' ? `<a href="/twitch/login" target="_blank">Logar Twitch</a>` : `Twitch: <img src="${data.profile_image_url}" /> ${data.userLogin}`;
+    if (!data || !data.userLogin || data.userLogin == '') {
         twitchConnections.style.display = 'none';
         return;
     }

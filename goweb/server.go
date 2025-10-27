@@ -102,6 +102,12 @@ func StartHTTPServer() {
 			}
 			var data globals.SocketMessage
 			json.Unmarshal([]byte(m), &data)
+
+			if data.Filter != "" {
+				globals.LuaRequest <- data
+				continue
+			}
+
 			if handler, exists := SocketHandlers[string(data.Type)]; exists {
 				handler(conn, data.Data.(map[string]any))
 				continue

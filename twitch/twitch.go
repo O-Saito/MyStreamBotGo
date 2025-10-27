@@ -65,6 +65,19 @@ var ircHandlers = map[string]func(parts []string, afterMetadataIndex int, metada
 			},
 		}
 	},
+	"PART": func(parts []string, afterMetadataIndex int, metadata ...map[string]any) {
+		user := strings.Split(parts[0], "!")[0][1:]
+		channel := strings.TrimPrefix(parts[2], "#")
+		helpers.Logf(helpers.Twitch, "[TWITCH PART] User %s joined channel %s", user, channel)
+		globals.EventQueue <- globals.LuaEvent{
+			Type: "twitch-user-part",
+			Data: map[string]any{
+				"user":     user,
+				"channel":  channel,
+				"metadata": metadata,
+			},
+		}
+	},
 	"CLEARMSG": func(parts []string, afterMetadataIndex int, metadata ...map[string]any) {
 		channel := strings.TrimPrefix(parts[afterMetadataIndex+2], "#")
 		reason := ""

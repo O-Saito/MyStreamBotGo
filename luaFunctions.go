@@ -44,10 +44,11 @@ func RegisterLuaFunctions(L *lua.LState) {
 			}()
 			t := L.CheckString(1)
 			t2 := L.CheckTable(2)
-			helpers.Logf(helpers.Lua, "[LUA SOCKET_SEND] %s; %v", t, t2)
+			data := mlua.TableToMap(t2)
+			helpers.Logf(helpers.Lua, "[LUA SOCKET_SEND] %s; %v", t, data)
 			globals.WsBroadcast <- globals.SocketMessage{
 				Type: t,
-				Data: mlua.TableToMap(t2),
+				Data: data,
 			}
 			return 0
 		},

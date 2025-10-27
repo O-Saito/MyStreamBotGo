@@ -56,6 +56,14 @@ var ircHandlers = map[string]func(parts []string, afterMetadataIndex int, metada
 				},
 			}
 		}
+		globals.EventQueue <- globals.LuaEvent{
+			Type: "twitch-user-join",
+			Data: map[string]any{
+				"user":     user,
+				"channel":  channel,
+				"metadata": metadata,
+			},
+		}
 	},
 	"CLEARMSG": func(parts []string, afterMetadataIndex int, metadata ...map[string]any) {
 		channel := strings.TrimPrefix(parts[afterMetadataIndex+2], "#")
@@ -78,6 +86,17 @@ var ircHandlers = map[string]func(parts []string, afterMetadataIndex int, metada
 		channel := strings.TrimPrefix(parts[afterMetadataIndex+2], "#")
 		reason := strings.Join(parts[(afterMetadataIndex+3):], " ")[1:]
 		helpers.Logf(helpers.Twitch, "[TWITCH NOTICE] Notice in %s: %s", channel, reason)
+
+		/*globals.CommandQueue <- globals.LuaCommand{
+			Source:  "twitch",
+			Name:    strings.TrimPrefix(parts[0], "#"),
+			Channel: channel,
+			Args:    parts[1:],
+			User:    user,
+			Text:    message,
+			Message: socketdata,
+			Data:    map[string]any{},
+		}*/
 	},
 	"PRIVMSG": func(parts []string, afterMetadataIndex int, metadata ...map[string]any) {
 		user := strings.Split(parts[afterMetadataIndex], "!")[0][1:]

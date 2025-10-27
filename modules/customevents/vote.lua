@@ -60,9 +60,9 @@ end
 function on_start()
     print("[Lua] Evento de teste iniciado!")
     ev.setInterval(1)
-    ev.setPaused(false)
+    --ev.setPaused(false)
     reset_data()
-    g.socket_send("user_vote_update", {
+    ev.socket_send("user_vote_update", {
         votos = ev.data.votos,
         tempo = tempo,
         ended = false
@@ -77,7 +77,7 @@ function on_tick(data)
     ev.data.tempo = tempo
 
     if tempo > 0 and tempo % 10 == 0 then
-        g.socket_send("user_vote_update", {
+        ev.socket_send("user_vote_update", {
             votos = ev.data.votos,
             tempo = tempo,
             ended = false
@@ -86,7 +86,7 @@ function on_tick(data)
 
     if tempo <= 0 then
         ev.setPaused(true)
-        g.socket_send("user_vote_update", {
+        ev.socket_send("user_vote_update", {
             votos = ev.data.votos,
             ended = true
         })

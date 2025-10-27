@@ -13,15 +13,14 @@ import (
 )
 
 type DynamicEvent struct {
-	Name       string
-	Path       string
-	LState     *lua.LState
-	OnStart    *lua.LFunction
-	OnTick     *lua.LFunction
-	OnEvent    *lua.LFunction
-	OnMessage  *lua.LFunction
-	OnCommand  *lua.LFunction
-	ModuleData map[string]any
+	Name      string
+	Path      string
+	LState    *lua.LState
+	OnStart   *lua.LFunction
+	OnTick    *lua.LFunction
+	OnEvent   *lua.LFunction
+	OnMessage *lua.LFunction
+	OnCommand *lua.LFunction
 
 	LastTick time.Time
 	NextTick time.Time
@@ -118,27 +117,22 @@ func LoadDyEvents(baseDir string) {
 		}
 
 		ev := &DynamicEvent{
-			Name:       name,
-			Path:       fullPath,
-			LState:     L,
-			OnStart:    getGlobalFunction(L, "on_start"),
-			OnTick:     getGlobalFunction(L, "on_tick"),
-			OnEvent:    getGlobalFunction(L, "on_event"),
-			OnMessage:  getGlobalFunction(L, "on_message"),
-			OnCommand:  getGlobalFunction(L, "on_command"),
-			ModuleData: make(map[string]any),
-			NextTick:   time.Now().Add(time.Second),
-			Interval:   time.Second, // padrão
-			Paused:     true,        // padrão
+			Name:      name,
+			Path:      fullPath,
+			LState:    L,
+			OnStart:   getGlobalFunction(L, "on_start"),
+			OnTick:    getGlobalFunction(L, "on_tick"),
+			OnEvent:   getGlobalFunction(L, "on_event"),
+			OnMessage: getGlobalFunction(L, "on_message"),
+			OnCommand: getGlobalFunction(L, "on_command"),
+			NextTick:  time.Now().Add(time.Second),
+			Interval:  time.Second, // padrão
+			Paused:    true,        // padrão
 		}
 
 		setFunctionOnTable(ev, eventTable)
 
-		// Preserva estado se já existia
 		dynamicEventsMutex.Lock()
-		if old, exists := dynamicEvents[name]; exists {
-			ev.ModuleData = old.ModuleData
-		}
 		dynamicEvents[name] = ev
 		dynamicEventsMutex.Unlock()
 

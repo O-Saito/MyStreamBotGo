@@ -11,7 +11,7 @@ import (
 )
 
 type SocketMessage struct {
-	Filter string
+	Filter string `json:"filter"`
 	Type   string `json:"type"`
 	Data   any    `json:"data"`
 }

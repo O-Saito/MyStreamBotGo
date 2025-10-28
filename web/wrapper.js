@@ -159,27 +159,10 @@ async function loadAllEmotes(twitchId, login) {
     return { ...bttv, ...ffz, ...stv };
 }
 
-/**
- * 
- * @param {string} message 
- * @param {Object.<string, string>} emoteMap 
- * @returns {string}
- */
-function parseMessageWithEmotes(message, emoteMap) {
-    return message
-        .split(/\s+/)
-        .map(word => {
-            const url = emoteMap[word];
-            if (url)
-                return `<img src="${url}" alt="${word}" title="${word}" class="emote">`;
-            return word;
-        })
-        .join(" ");
-}
-
 export default {
     connect: () => {
-        if(connectCalled) {
+        if (connectCalled) {
+            console.error("Connected was called before!");
             return;
         }
         connectCalled = true;
@@ -189,7 +172,7 @@ export default {
         }
     },
     ignoreBroadcast: () => {
-         ws.send(JSON.stringify({ type: "upgrade-conn", data: { "conn": 'ignore-broadcast' } }));
+        ws.send(JSON.stringify({ type: "upgrade-conn", data: { "conn": 'ignore-broadcast' } }));
     },
     /**
      * @param {string} event 
@@ -201,7 +184,7 @@ export default {
             return null;
         }
 
-       
+        ws.send(JSON.stringify({ type: "upgrade-conn", data: { "conn": event } }));
 
         if (!eventsHandlers[event]) eventsHandlers[event] = {};
 
@@ -266,5 +249,17 @@ export default {
             f(data);
         });
     },
-    getEmotes: () => emoteMap
+    /**
+     * @returns {Object.<string, string>}
+     */
+    getEmotes: () => emoteMap,
+    /**
+     * @param {string} twitchId 
+     * @param {string} login 
+     */
+    loadEmote: async (twitchId, login) => {
+        const emotes = await loadAllEmotes(twitchId, login);
+        emoteMap = {...emoteMap, ...emotes};
+        return emotes;
+    },
 }

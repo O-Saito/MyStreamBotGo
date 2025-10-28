@@ -13,13 +13,12 @@ import (
 )
 
 const (
-	//ClientID     = "jenisabhabc5zl01bhu86gcjeoe99z"
-	//ClientSecret = "ddipe06ckokzhhc7fk5stu8ft8ybb9"
-	RedirectURI = "http://localhost:1699/twitch/callback"
-	Scopes      = "chat:read chat:edit user:read:email moderator:manage:chat_messages channel:moderate channel:read:subscriptions"
+	Scopes = "chat:read chat:edit user:read:email moderator:manage:chat_messages channel:moderate channel:read:subscriptions"
 )
 
 func HandleLogin() {
+
+	redirectURI := fmt.Sprintf("http://localhost:%s/twitch/callback", globals.GetConfig().HTTPPort)
 
 	scopes := Scopes
 
@@ -44,7 +43,7 @@ func HandleLogin() {
 		authURL := fmt.Sprintf(
 			"https://id.twitch.tv/oauth2/authorize?client_id=%s&redirect_uri=%s&response_type=code&scope=%s",
 			globals.GetConfig().TwitchClientID,
-			url.QueryEscape(RedirectURI),
+			url.QueryEscape(redirectURI),
 			url.QueryEscape(scopes),
 		)
 		helpers.Logf(helpers.Reset, "[TWITCH LOGIN] Abrindo URL de login: %s", authURL)
@@ -64,7 +63,7 @@ func HandleLogin() {
 		data.Set("client_secret", globals.GetConfig().TwitchClientSecret)
 		data.Set("code", code)
 		data.Set("grant_type", "authorization_code")
-		data.Set("redirect_uri", RedirectURI)
+		data.Set("redirect_uri", redirectURI)
 
 		resp, err := http.PostForm("https://id.twitch.tv/oauth2/token", data)
 		if err != nil {

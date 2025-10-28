@@ -7,7 +7,7 @@ import (
 	"MyStreamBot/mlua"
 	"MyStreamBot/twitch"
 	"encoding/json"
-	"log"
+	"fmt"
 	"net"
 	"net/http"
 
@@ -177,14 +177,15 @@ func StartHTTPServer() {
 		panic(err)
 	}
 
-	log.Printf("[MyStreamBot] Possíveis IP's (para os logins TEM que ser pelo localhost):")
+	port := globals.GetConfig().HTTPPort
+	helpers.Log(helpers.Reset, "[MyStreamBot] Possíveis IP's (para os logins TEM que ser pelo localhost):")
 	for _, addr := range addrs {
 		if ipnet, ok := addr.(*net.IPNet); ok && !ipnet.IP.IsLoopback() {
 			if ipnet.IP.To4() != nil {
-				helpers.Logf(helpers.Reset, "http://%s:1699", ipnet.IP.String())
+				helpers.Logf(helpers.Reset, "http://%s:%s", ipnet.IP.String(), port)
 			}
 		}
 	}
-	log.Println("[MyStreamBot] Servidor HTTP iniciado em http://localhost:1699")
-	go http.ListenAndServe("0.0.0.0:1699", nil)
+	helpers.Logf(helpers.Reset, "[MyStreamBot] Servidor HTTP iniciado em http://localhost:%s", port)
+	go http.ListenAndServe(fmt.Sprintf("0.0.0.0:%s", port), nil)
 }

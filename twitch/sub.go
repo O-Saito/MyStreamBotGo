@@ -6,7 +6,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"io"
-	"log"
 	"net/http"
 	"net/url"
 	"sync"
@@ -185,9 +184,9 @@ func connectToEventSub() {
 	if err != nil {
 		if resp != nil {
 			body, _ := io.ReadAll(resp.Body)
-			log.Printf("[Twitch] Falha no handshake (%d): %s", resp.StatusCode, string(body))
+			helpers.Logf(helpers.Red, "[Twitch] Falha no handshake (%d): %s", resp.StatusCode, string(body))
 		}
-		log.Printf("[Twitch] Erro ao conectar: %v", err)
+		helpers.Logf(helpers.Red, "[Twitch] Erro ao conectar: %v", err)
 		time.Sleep(10 * time.Second)
 		//StartEventSub(clientID, token, broadcasterID)
 		return
@@ -204,7 +203,7 @@ func connectToEventSub() {
 		//EventSubConn.Close()
 		conn, _, err := websocket.DefaultDialer.Dial(reconnectURL, nil)
 		if err != nil {
-			log.Printf("[Twitch EventSub] Falha ao reconectar: %v", err)
+			helpers.Logf(helpers.Red, "[Twitch EventSub] Falha ao reconectar: %v", err)
 			time.Sleep(5 * time.Second)
 			connectToEventSub()
 			return
@@ -237,7 +236,7 @@ func listenToEventSub(conn *websocket.Conn) {
 
 		var base map[string]any
 		if err := json.Unmarshal(msg, &base); err != nil {
-			log.Println("[Twitch EventSub] Erro ao decodificar JSON:", err)
+			helpers.Logf(helpers.Red, "[Twitch EventSub] Erro ao decodificar JSON: %v", err)
 			continue
 		}
 
@@ -256,38 +255,6 @@ func listenToEventSub(conn *websocket.Conn) {
 		handler(base["payload"].(map[string]any), base["metadata"].(map[string]any))
 	}
 
-	/*for {
-		select {
-		case <-quitChan:
-			return
-		default:
-			_, msg, err := conn.ReadMessage()
-			if err != nil {
-				helpers.Logf(helpers.Twitch, "[Twitch EventSub] Erro ao ler: %v", err)
-				return
-			}
-
-			var base map[string]any
-			if err := json.Unmarshal(msg, &base); err != nil {
-				log.Println("[Twitch EventSub] Erro ao decodificar JSON:", err)
-				continue
-			}
-
-			meta, ok := base["metadata"].(map[string]any)
-			if !ok {
-				continue
-			}
-
-			handler := messageHandlers[meta["message_type"].(string)]
-
-			if handler == nil {
-				helpers.Logf(helpers.Red, "[TWITCH EventSub] Handler not found %s", meta["message_type"])
-				continue
-			}
-
-			handler(base["payload"].(map[string]any), base["metadata"].(map[string]any))
-		}
-	}*/
 }
 
 func subscribeToEvents() {

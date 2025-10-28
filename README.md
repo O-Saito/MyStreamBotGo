@@ -18,6 +18,7 @@ go run .
 ## Executing
 ---
 Once you have the `.exe` file inside the `build` folder, run it and then open a tab in your browser with the address `localhost:1699`. Log in the desired streaming platforms and you're all set to enjoy MyStreamBot! 😃
+
 This address can also be accessed through your browser smartphone as long as it is in the same connection of your computer.
 
 **Note:** If you ever encounter changes that aren't being reflected on the browser tab, press `CTRL + F5` to erase all cache and reload the page. Doing this may fix the issue.

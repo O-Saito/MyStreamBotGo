@@ -23,6 +23,8 @@ func HandleLogin() {
 
 	scopes := Scopes
 
+	scopes = fmt.Sprintf("%s %s", scopes, globals.GetConfig().TwitchScopes)
+
 	for _, es := range subTypes {
 		if es != nil && es["requires"] != nil {
 			reqs := strings.SplitSeq(es["requires"].(string), " ")
@@ -76,7 +78,7 @@ func HandleLogin() {
 		json.Unmarshal(body, &tokenResp)
 		Token := tokenResp.AccessToken
 
-		helpers.Logf("[Twitch TOKEN] %s : %s", Token, globals.GetConfig().TwitchClientID)
+		helpers.Logf(helpers.Red, "[Twitch TOKEN] %s : %s", Token, globals.GetConfig().TwitchClientID)
 
 		// Pegar info do usuário
 		req, _ := http.NewRequest("GET", "https://api.twitch.tv/helix/users", nil)

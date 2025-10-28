@@ -23,7 +23,9 @@ func HandleLogin() {
 
 	scopes := Scopes
 
-	scopes = fmt.Sprintf("%s %s", scopes, globals.GetConfig().TwitchScopes)
+	if globals.GetConfig().TwitchScopes != "" {
+		scopes = fmt.Sprintf("%s %s", scopes, globals.GetConfig().TwitchScopes)
+	}
 
 	for _, es := range subTypes {
 		if es != nil && es["requires"] != nil {

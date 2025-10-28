@@ -48,8 +48,9 @@ var (
 func GetConfig() *Config {
 	once.Do(func() {
 		config = &Config{
-			BotPrefix: "!",
-			HTTPPort:  "1699",
+			BotPrefix:    "!",
+			HTTPPort:     "1699",
+			TwitchScopes: "",
 		}
 	})
 	return config

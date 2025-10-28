@@ -22,9 +22,10 @@ type TwitchUser struct {
 
 type State struct {
 	sync.RWMutex
-	ViewersTwitch []string
-	Data          map[string]any
-	TwitchUser    TwitchUser
+	ViewersTwitch           []string
+	Data                    map[string]any
+	TwitchUser              TwitchUser
+	TwitchEventSubSessionId string
 }
 
 type Config struct {
@@ -58,6 +59,7 @@ func GetState() *State {
 		}
 		helpers.Log(helpers.Blue, "State iniciado...")
 	})
+
 	return state
 }
 
@@ -71,6 +73,18 @@ func (s *State) GetViewerList() []string {
 	s.RLock()
 	defer s.RUnlock()
 	return s.ViewersTwitch
+}
+
+func (s *State) GetTwitchEventSubId() string {
+	s.RLock()
+	defer s.RUnlock()
+	return s.TwitchEventSubSessionId
+}
+
+func (s *State) SetTwitchEventSubId(id string) {
+	s.Lock()
+	defer s.Unlock()
+	s.TwitchEventSubSessionId = id
 }
 
 func (s *State) GetData(key string) any {

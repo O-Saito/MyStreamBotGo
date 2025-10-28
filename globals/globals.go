@@ -11,8 +11,9 @@ import (
 )
 
 type SocketMessage struct {
-	Type string `json:"type"`
-	Data string `json:"data"`
+	Filter string `json:"filter"`
+	Type   string `json:"type"`
+	Data   any    `json:"data"`
 }
 
 type MessageFromStream struct {
@@ -27,8 +28,6 @@ type MessageFromStream struct {
 
 type LuaEvent struct {
 	Type string
-	User string
-	Text string
 	Data map[string]interface{}
 }
 
@@ -59,6 +58,7 @@ var (
 	ChatQueue    = make(chan MessageFromStream, 200)
 	CommandQueue = make(chan LuaCommand, 50)
 	EventQueue   = make(chan LuaEvent, 100)
+	LuaRequest   = make(chan SocketMessage, 100)
 )
 var sectionMap = map[string]any{
 	"Config": GetConfig(),

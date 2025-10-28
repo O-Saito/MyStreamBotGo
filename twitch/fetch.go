@@ -13,6 +13,7 @@ import (
 var urlAPIGames = "https://api.twitch.tv/helix/search/categories"
 var urlAPIChannel = "https://api.twitch.tv/helix/channels"
 var urlAPIBadges = "https://api.twitch.tv/helix/chat/badges"
+var urlAPIEventSub = "https://api.twitch.tv/helix/eventsub/subscriptions"
 
 type UserResponse struct {
 	Data []TwitchUserData `json:"data"`

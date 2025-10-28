@@ -40,7 +40,7 @@ function reset_data()
         users_voted = {},
         votos = {},
         alias = {},
-        tempo = 20 -- segundos para final da votação
+        tempo = 30 -- segundos para final da votação
     }
 
     for k, v in pairs(options) do
@@ -60,23 +60,24 @@ end
 function on_start()
     print("[Lua] Evento de teste iniciado!")
     ev.setInterval(1)
-    ev.setPaused(false)
+    --ev.setPaused(false)
     reset_data()
-    g.socket_send("user_vote_update", {
+    ev.socket_send("user_vote_update", {
         votos = ev.data.votos,
         tempo = tempo,
         ended = false
     })
 end
 
-function on_tick()
+function on_tick(data)
+    g.log('[LUA TESTE]', data)
     local tempo = ev.data.tempo
     tempo = tempo - 1
     print("[Lua] Tempo restante:", tempo)
     ev.data.tempo = tempo
 
     if tempo > 0 and tempo % 10 == 0 then
-        g.socket_send("user_vote_update", {
+        ev.socket_send("user_vote_update", {
             votos = ev.data.votos,
             tempo = tempo,
             ended = false
@@ -85,7 +86,7 @@ function on_tick()
 
     if tempo <= 0 then
         ev.setPaused(true)
-        g.socket_send("user_vote_update", {
+        ev.socket_send("user_vote_update", {
             votos = ev.data.votos,
             ended = true
         })
@@ -114,16 +115,10 @@ function on_message(msg)
     ev.data.users_voted[msg.UserId] = true
 end
 
-function on_event(msg)
-    if msg.payload and msg.payload.type == "vote" then
-        local voto = msg.payload.value
-        if ev.data.votos[voto] then
-            ev.data.votos[voto] = ev.data.votos[voto] + 1
-        end
-        print("[Lua] Voto recebido:", voto)
-    end
+function on_event(name, data)
+   g.print("[VOTE] Evento recebido " .. name, data) 
 end
 
 function on_command(name, data)
-    g.print("[Lua] Comando recebido:" .. name)
+    g.print("[Lua] Comando recebido:" .. name, data)
 end

@@ -6,27 +6,27 @@ import (
 	"sync"
 	"time"
 
+	"MyStreamBot/globals"
 	"MyStreamBot/helpers"
 
 	lua "github.com/yuin/gopher-lua"
 )
 
 type DynamicEvent struct {
-	Name       string
-	Path       string
-	LState     *lua.LState
-	OnStart    *lua.LFunction
-	OnTick     *lua.LFunction
-	OnEvent    *lua.LFunction
-	OnMessage  *lua.LFunction
-	OnCommand  *lua.LFunction
-	ModuleData map[string]any
-
-	LastTick time.Time
-	NextTick time.Time
-	Interval time.Duration
-	Paused   bool
-	mu       sync.RWMutex
+	Name      string
+	Path      string
+	LState    *lua.LState
+	OnStart   *lua.LFunction
+	OnTick    *lua.LFunction
+	OnEvent   *lua.LFunction
+	OnMessage *lua.LFunction
+	OnCommand *lua.LFunction
+	OnRequest *lua.LFunction
+	LastTick  time.Time
+	NextTick  time.Time
+	Interval  time.Duration
+	Paused    bool
+	mu        sync.RWMutex
 }
 
 type DynamicEventInfo struct {
@@ -51,11 +51,15 @@ func ListDynamicEvents() []DynamicEventInfo {
 	events := make([]DynamicEventInfo, 0, len(dynamicEvents))
 	for name, val := range dynamicEvents {
 		data := FromLValue(val.LState, val.LState.GetGlobal("ev")).(map[string]any)
+		d := map[string]any{}
+		if data["data"] != nil {
+			d = data["data"].(map[string]any)
+		}
 		events = append(events, DynamicEventInfo{
 			Name:       name,
 			Paused:     val.Paused,
 			Interval:   val.Interval,
-			ModuleData: data["data"].(map[string]any),
+			ModuleData: d,
 		})
 	}
 
@@ -117,27 +121,23 @@ func LoadDyEvents(baseDir string) {
 		}
 
 		ev := &DynamicEvent{
-			Name:       name,
-			Path:       fullPath,
-			LState:     L,
-			OnStart:    getGlobalFunction(L, "on_start"),
-			OnTick:     getGlobalFunction(L, "on_tick"),
-			OnEvent:    getGlobalFunction(L, "on_event"),
-			OnMessage:  getGlobalFunction(L, "on_message"),
-			OnCommand:  getGlobalFunction(L, "on_command"),
-			ModuleData: make(map[string]any),
-			NextTick:   time.Now().Add(time.Second),
-			Interval:   time.Second, // padrão
-			Paused:     true,        // padrão
+			Name:      name,
+			Path:      fullPath,
+			LState:    L,
+			OnStart:   getGlobalFunction(L, "on_start"),
+			OnTick:    getGlobalFunction(L, "on_tick"),
+			OnEvent:   getGlobalFunction(L, "on_event"),
+			OnMessage: getGlobalFunction(L, "on_message"),
+			OnCommand: getGlobalFunction(L, "on_command"),
+			OnRequest: getGlobalFunction(L, "on_request"),
+			NextTick:  time.Now().Add(time.Second),
+			Interval:  time.Second, // padrão
+			Paused:    true,        // padrão
 		}
 
 		setFunctionOnTable(ev, eventTable)
 
-		// Preserva estado se já existia
 		dynamicEventsMutex.Lock()
-		if old, exists := dynamicEvents[name]; exists {
-			ev.ModuleData = old.ModuleData
-		}
 		dynamicEvents[name] = ev
 		dynamicEventsMutex.Unlock()
 
@@ -162,6 +162,23 @@ func setFunctionOnTable(ev *DynamicEvent, tbl *lua.LTable) {
 	if ev.LState == nil {
 		return
 	}
+
+	ev.LState.SetField(tbl, "socket_send", ev.LState.NewFunction(func(L *lua.LState) int {
+		if L.Get(1) == lua.LNil || L.Get(2) == lua.LNil {
+			return -1
+		}
+
+		t := L.CheckString(1)
+		d := L.CheckTable(2)
+
+		globals.WsBroadcast <- globals.SocketMessage{
+			Filter: ev.Name,
+			Type:   t,
+			Data:   TableToMap(d),
+		}
+
+		return 0
+	}))
 
 	ev.LState.SetField(tbl, "setInterval", ev.LState.NewFunction(func(L *lua.LState) int {
 		val := L.CheckNumber(1)

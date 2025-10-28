@@ -4,7 +4,6 @@ import (
 	"MyStreamBot/globals"
 	"MyStreamBot/helpers"
 	"bufio"
-	"encoding/json"
 	"fmt"
 	"net"
 	"strings"
@@ -51,8 +50,32 @@ var ircHandlers = map[string]func(parts []string, afterMetadataIndex int, metada
 		if user == channel {
 			globals.WsBroadcast <- globals.SocketMessage{
 				Type: "twitch-chat-connection",
-				Data: fmt.Sprintf("{\"name\":\"%s\",\"id\":\"#%s\"}", channel, channel),
+				Data: map[string]any{
+					"name": channel,
+					"id":   channel,
+				},
 			}
+		}
+		globals.EventQueue <- globals.LuaEvent{
+			Type: "twitch-user-join",
+			Data: map[string]any{
+				"user":     user,
+				"channel":  channel,
+				"metadata": metadata,
+			},
+		}
+	},
+	"PART": func(parts []string, afterMetadataIndex int, metadata ...map[string]any) {
+		user := strings.Split(parts[0], "!")[0][1:]
+		channel := strings.TrimPrefix(parts[2], "#")
+		helpers.Logf(helpers.Twitch, "[TWITCH PART] User %s joined channel %s", user, channel)
+		globals.EventQueue <- globals.LuaEvent{
+			Type: "twitch-user-part",
+			Data: map[string]any{
+				"user":     user,
+				"channel":  channel,
+				"metadata": metadata,
+			},
 		}
 	},
 	"CLEARMSG": func(parts []string, afterMetadataIndex int, metadata ...map[string]any) {
@@ -62,7 +85,10 @@ var ircHandlers = map[string]func(parts []string, afterMetadataIndex int, metada
 			reason = strings.Join(parts[(afterMetadataIndex+3):], " ")[1:]
 		}
 		helpers.Logf(helpers.Twitch, "[TWITCH CLEARMSG] Chat %s cleared: %s", channel, reason)
-		globals.WsBroadcast <- globals.SocketMessage{Type: "user-message-delete", Data: fmt.Sprintf("\"%s\"", metadata[0]["target-msg-id"].(string))}
+		globals.WsBroadcast <- globals.SocketMessage{
+			Type: "user-message-delete",
+			Data: metadata[0]["target-msg-id"].(string),
+		}
 	},
 	"CLEARCHAT": func(parts []string, afterMetadataIndex int, metadata ...map[string]any) {
 		channel := strings.TrimPrefix(parts[afterMetadataIndex+2], "#")
@@ -73,6 +99,17 @@ var ircHandlers = map[string]func(parts []string, afterMetadataIndex int, metada
 		channel := strings.TrimPrefix(parts[afterMetadataIndex+2], "#")
 		reason := strings.Join(parts[(afterMetadataIndex+3):], " ")[1:]
 		helpers.Logf(helpers.Twitch, "[TWITCH NOTICE] Notice in %s: %s", channel, reason)
+
+		/*globals.CommandQueue <- globals.LuaCommand{
+			Source:  "twitch",
+			Name:    strings.TrimPrefix(parts[0], "#"),
+			Channel: channel,
+			Args:    parts[1:],
+			User:    user,
+			Text:    message,
+			Message: socketdata,
+			Data:    map[string]any{},
+		}*/
 	},
 	"PRIVMSG": func(parts []string, afterMetadataIndex int, metadata ...map[string]any) {
 		user := strings.Split(parts[afterMetadataIndex], "!")[0][1:]
@@ -131,8 +168,7 @@ var ircHandlers = map[string]func(parts []string, afterMetadataIndex int, metada
 
 		socketdata.Metadata["badges-info"] = bi
 
-		dataJSON, _ := json.Marshal(socketdata)
-		globals.WsBroadcast <- globals.SocketMessage{Type: "user-message", Data: string(dataJSON)}
+		globals.WsBroadcast <- globals.SocketMessage{Type: "user-message", Data: socketdata}
 		globals.ChatQueue <- socketdata
 
 		config := globals.GetConfig()

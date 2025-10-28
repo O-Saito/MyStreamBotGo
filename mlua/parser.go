@@ -15,6 +15,25 @@ var (
 // commandTable *lua.LTable
 )
 
+func TableToMap(tbl *lua.LTable) map[string]interface{} {
+	result := make(map[string]interface{})
+	tbl.ForEach(func(key lua.LValue, value lua.LValue) {
+		switch v := value.(type) {
+		case lua.LString:
+			result[key.String()] = string(v)
+		case lua.LNumber:
+			result[key.String()] = float64(v)
+		case lua.LBool:
+			result[key.String()] = bool(v)
+		case *lua.LTable:
+			result[key.String()] = TableToMap(v) // recursivo
+		default:
+			result[key.String()] = v.String()
+		}
+	})
+	return result
+}
+
 func ToLValue(L *lua.LState, val any) lua.LValue {
 	switch v := val.(type) {
 	case nil:
@@ -122,8 +141,8 @@ func ToLTableEvent(L *lua.LState, data globals.LuaEvent, tbl *lua.LTable) *lua.L
 		}
 	}()
 	tbl.RawSetString("Type", lua.LString(data.Type))
-	tbl.RawSetString("User", lua.LString(data.User))
-	tbl.RawSetString("Text", lua.LString(data.Text))
+	//tbl.RawSetString("User", lua.LString(data.User))
+	//tbl.RawSetString("Text", lua.LString(data.Text))
 	dataTable := L.NewTable()
 	for k, v := range data.Data {
 		dataTable.RawSetString(k, lua.LString(fmt.Sprintf("%v", v)))
@@ -171,7 +190,6 @@ func StructToLTable(L *lua.LState, s interface{}) *lua.LTable {
 		v = v.Elem()
 		t = t.Elem()
 	}
-
 	if v.Kind() != reflect.Struct {
 		return tbl
 	}
@@ -198,6 +216,13 @@ func StructToLTable(L *lua.LState, s interface{}) *lua.LTable {
 			lv = lua.LBool(field.Bool())
 		case reflect.Struct:
 			lv = StructToLTable(L, field.Interface())
+		case reflect.Slice, reflect.Array:
+			arr := L.NewTable()
+			rv := reflect.ValueOf(v)
+			for i := 0; i < rv.Len(); i++ {
+				arr.Append(StructToLTable(L, rv.Index(i).Interface()))
+			}
+			return arr
 		default:
 			lv = lua.LNil // tipos não suportados ainda
 		}

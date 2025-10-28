@@ -188,6 +188,9 @@ export default {
             ws.send("init");
         }
     },
+    ignoreBroadcast: () => {
+         ws.send(JSON.stringify({ type: "upgrade-conn", data: { "conn": 'ignore-broadcast' } }));
+    },
     /**
      * @param {string} event 
      * @returns {EventSubcriber | null}
@@ -198,7 +201,7 @@ export default {
             return null;
         }
 
-        ws.send(JSON.stringify({ type: "upgrade-conn", data: { "conn": event } }));
+       
 
         if (!eventsHandlers[event]) eventsHandlers[event] = {};
 

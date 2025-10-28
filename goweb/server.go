@@ -54,6 +54,10 @@ var SocketHandlers = map[string]func(*websocket.Conn, map[string]any){
 			"data": "",
 		}
 		if m["conn"] != nil {
+			if m["conn"].(string) == "ignore-broadcast" {
+				wsClients[c] = false
+				return
+			}
 			if wsClientsUpgraded[m["conn"].(string)] == nil {
 				wsClientsUpgraded[m["conn"].(string)] = make([]*websocket.Conn, 0)
 			}
@@ -167,6 +171,9 @@ func StartHTTPServer() {
 			helpers.Logf(helpers.Cyan, "[WebSocket] Broadcast: %s - %s", msg.Type, msg.Data)
 			jsonData, _ := json.Marshal(msg)
 			for client := range wsClients {
+				if !wsClients[client] {
+					continue
+				}
 				client.WriteMessage(websocket.TextMessage, []byte(jsonData))
 			}
 		}

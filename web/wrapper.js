@@ -53,6 +53,8 @@ const eventsHandlers = {};
 /** @type {Array<string>} eventsToSubscribe */
 const eventsToSubscribe = [];
 
+let connectCalled = false;
+
 /**
  * 
  * @param {MessageEvent<any>} e 
@@ -177,6 +179,10 @@ function parseMessageWithEmotes(message, emoteMap) {
 
 export default {
     connect: () => {
+        if(connectCalled) {
+            return;
+        }
+        connectCalled = true;
         ws.onopen = function () {
             console.log("Conectado ao WebSocket.");
             ws.send("init");

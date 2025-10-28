@@ -5,3 +5,6 @@ modules/commands/
 modules/customevents/
 modules/events/
 web/
+!web/wrapper.js
+!web/index.html
+!web/fontawesome

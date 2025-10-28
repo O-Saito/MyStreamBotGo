@@ -4,4 +4,7 @@ modules/chat/
 modules/commands/
 modules/customevents/
 modules/events/
-web/
+web/*
+!web/wrapper.js
+!web/index.html
+!web/fontawesome

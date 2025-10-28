@@ -7,9 +7,10 @@ import (
 	"MyStreamBot/mlua"
 	"MyStreamBot/twitch"
 	"encoding/json"
-	"log"
+	"fmt"
 	"net"
 	"net/http"
+	"sync"
 
 	"github.com/gorilla/websocket"
 )
@@ -20,6 +21,7 @@ var upgrader = websocket.Upgrader{
 	},
 }
 
+var mu sync.RWMutex
 var wsClients = make(map[*websocket.Conn]bool)
 var wsClientsUpgraded = make(map[string][]*websocket.Conn)
 
@@ -54,11 +56,19 @@ var SocketHandlers = map[string]func(*websocket.Conn, map[string]any){
 			"data": "",
 		}
 		if m["conn"] != nil {
+			if m["conn"].(string) == "ignore-broadcast" {
+				mu.Lock()
+				wsClients[c] = false
+				mu.Unlock()
+				return
+			}
+			mu.Lock()
 			if wsClientsUpgraded[m["conn"].(string)] == nil {
 				wsClientsUpgraded[m["conn"].(string)] = make([]*websocket.Conn, 0)
 			}
 
 			wsClientsUpgraded[m["conn"].(string)] = append(wsClientsUpgraded[m["conn"].(string)], c)
+			mu.Unlock()
 			data["data"] = "conexão atualizada!"
 		} else {
 			data["data"] = "conexão não especificada!"
@@ -85,8 +95,9 @@ func StartHTTPServer() {
 			return
 		}
 		defer conn.Close()
+		mu.Lock()
 		wsClients[conn] = true
-
+		mu.Unlock()
 		for {
 			_, msg, err := conn.ReadMessage()
 			if err != nil {
@@ -153,7 +164,9 @@ func StartHTTPServer() {
 
 			if msg.Filter != "" {
 				helpers.Logf(helpers.Cyan, "[WebSocket] Message filter %s: %s - %s", msg.Filter, msg.Type, msg.Data)
-				wsList := wsClientsUpgraded[msg.Filter]
+				mu.RLock()
+				wsList := append([]*websocket.Conn(nil), wsClientsUpgraded[msg.Filter]...)
+				mu.RUnlock()
 				if len(wsList) == 0 {
 					continue
 				}
@@ -166,9 +179,22 @@ func StartHTTPServer() {
 
 			helpers.Logf(helpers.Cyan, "[WebSocket] Broadcast: %s - %s", msg.Type, msg.Data)
 			jsonData, _ := json.Marshal(msg)
+
+			mu.RLock()
+			clients := make([]*websocket.Conn, 0, len(wsClients))
 			for client := range wsClients {
+				clients = append(clients, client)
+			}
+			mu.RUnlock()
+
+			mu.RLock()
+			for client := range wsClients {
+				if !wsClients[client] {
+					continue
+				}
 				client.WriteMessage(websocket.TextMessage, []byte(jsonData))
 			}
+			mu.RUnlock()
 		}
 	}()
 
@@ -177,14 +203,15 @@ func StartHTTPServer() {
 		panic(err)
 	}
 
-	log.Printf("[MyStreamBot] Possíveis IP's (para os logins TEM que ser pelo localhost):")
+	port := globals.GetConfig().HTTPPort
+	helpers.Log(helpers.Reset, "[MyStreamBot] Possíveis IP's (para os logins TEM que ser pelo localhost):")
 	for _, addr := range addrs {
 		if ipnet, ok := addr.(*net.IPNet); ok && !ipnet.IP.IsLoopback() {
 			if ipnet.IP.To4() != nil {
-				helpers.Logf(helpers.Reset, "http://%s:1699", ipnet.IP.String())
+				helpers.Logf(helpers.Reset, "http://%s:%s", ipnet.IP.String(), port)
 			}
 		}
 	}
-	log.Println("[MyStreamBot] Servidor HTTP iniciado em http://localhost:1699")
-	go http.ListenAndServe("0.0.0.0:1699", nil)
+	helpers.Logf(helpers.Reset, "[MyStreamBot] Servidor HTTP iniciado em http://localhost:%s", port)
+	go http.ListenAndServe(fmt.Sprintf("0.0.0.0:%s", port), nil)
 }

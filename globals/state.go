@@ -34,6 +34,8 @@ type Config struct {
 	KickClientID       string
 	KickClientSecret   string
 	BotPrefix          string
+	TwitchScopes       string
+	HTTPPort           string
 }
 
 var (
@@ -46,7 +48,9 @@ var (
 func GetConfig() *Config {
 	once.Do(func() {
 		config = &Config{
-			BotPrefix: "!",
+			BotPrefix:    "!",
+			HTTPPort:     "1699",
+			TwitchScopes: "",
 		}
 	})
 	return config

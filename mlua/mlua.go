@@ -148,7 +148,6 @@ func loadModule(L *lua.LState, path string, modType string) {
 		}
 	case len(modType) > 6 && modType[:6] == "event:":
 		eventName := modType[6:]
-		helpers.Logf(helpers.Blue, eventName)
 		f := L.GetGlobal("on_event")
 		if fn, ok := f.(*lua.LFunction); ok {
 			eventModules[eventName] = append(eventModules[eventName], mod)

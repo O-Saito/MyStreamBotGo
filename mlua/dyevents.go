@@ -137,6 +137,17 @@ func LoadDyEvents(baseDir string) {
 
 		setFunctionOnTable(ev, eventTable)
 
+		oldEvent := dynamicEvents[name]
+		if oldEvent != nil {
+			data := FromLValue(oldEvent.LState, oldEvent.LState.GetGlobal("ev")).(map[string]any)
+			d := map[string]any{}
+			if data["data"] != nil {
+				d = data["data"].(map[string]any)
+			}
+			oldData := ToLValue(ev.LState, d)
+			eventTable.RawSetString("data", oldData)
+		}
+
 		dynamicEventsMutex.Lock()
 		dynamicEvents[name] = ev
 		dynamicEventsMutex.Unlock()

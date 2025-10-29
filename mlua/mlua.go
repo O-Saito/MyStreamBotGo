@@ -309,7 +309,6 @@ func HandleEvent(eventName string, ev globals.LuaEvent) {
 		}
 
 		dev.mu.RLock()
-
 		ntbl := ToLValue(dev.LState, ev.Data)
 		if err := LEvents.CallByParam(lua.P{Fn: dev.OnEvent, NRet: 0, Protect: true}, lua.LString(eventName), ntbl); err != nil {
 			helpers.Logf(helpers.Red, "[LUA EVENT ERROR] %s: %v", dev.Name, err)
@@ -377,20 +376,29 @@ func StartEventQueues() {
 	}()
 
 	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				helpers.Logf(helpers.Red, "[LuaRequest] panic: %v", r)
+			}
+		}()
 		for ev := range globals.LuaRequest {
 			dynamicEventsMutex.RLock()
-			for _, dev := range dynamicEvents {
+			events := dynamicEvents
+			dynamicEventsMutex.RUnlock()
+			for _, dev := range events {
 				if dev.Name != ev.Filter || dev.OnRequest == nil {
+					helpers.Logf(helpers.Red, "%s : %s", dev.Name, ev.Filter)
 					continue
 				}
-				tbl := ToLValue(LEvents, ev.Data)
 				dev.mu.RLock()
-				if err := LEvents.CallByParam(lua.P{Fn: dev.OnRequest, NRet: 0, Protect: true}, lua.LString(ev.Type), tbl); err != nil {
+				f := dev.OnRequest
+				LState := dev.LState
+				tbl := ToLValue(dev.LState, ev.Data)
+				dev.mu.RUnlock()
+				if err := LState.CallByParam(lua.P{Fn: f, NRet: 0, Protect: true}, lua.LString(ev.Type), tbl); err != nil {
 					helpers.Logf(helpers.Red, "[LUA EVENT ERROR] %s: %v", dev.Name, err)
 				}
-				dev.mu.RUnlock()
 			}
-			dynamicEventsMutex.RUnlock()
 		}
 	}()
 }

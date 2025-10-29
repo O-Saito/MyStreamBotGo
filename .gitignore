@@ -2,8 +2,10 @@ init.txt
 build/
 modules/chat/
 modules/commands/
-modules/customevents/
 modules/events/
+modules/customevents/*
+!modules/customevents/vote.lua
+!modules/customevents/modules/string_helper.lua
 web/*
 !web/wrapper.js
 !web/index.html

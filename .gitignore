@@ -4,6 +4,7 @@ modules/chat/
 modules/commands/
 modules/events/
 modules/customevents/*
+modules/customevents/modules
 !modules/customevents/vote.lua
 !modules/customevents/modules/string_helper.lua
 web/*

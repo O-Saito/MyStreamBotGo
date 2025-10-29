@@ -1,38 +1,6 @@
-local accent_map = {
-    ["á"] = "a",
-    ["é"] = "e",
-    ["í"] = "i",
-    ["ó"] = "o",
-    ["ú"] = "u",
-    ["â"] = "a",
-    ["ê"] = "e",
-    ["ô"] = "o",
-    ["à"] = "a",
-    ["ã"] = "a",
-    ["õ"] = "o",
-    ["Á"] = "A",
-    ["É"] = "E",
-    ["Í"] = "I",
-    ["Ó"] = "O",
-    ["Ú"] = "U",
-    ["Â"] = "A",
-    ["Ê"] = "E",
-    ["Ô"] = "O",
-    ["À"] = "A",
-    ["Ã"] = "A",
-    ["Õ"] = "O"
-};
+local string_helper = require("string_helper")
 
 options = {"Sim", "Não"}
-
-function higieniza_string(str)
-    local lowerStr = string.lower(str)
-    for accent, char in pairs(accent_map) do
-        lowerStr = string.gsub(lowerStr, accent, char)
-    end
-    local cleanedStr = string.gsub(lowerStr, '[^%a%d%s]', '')
-    return cleanedStr
-end
 
 function reset_data()
 
@@ -44,7 +12,7 @@ function reset_data()
     }
 
     for k, v in pairs(options) do
-        local str = higieniza_string(v)
+        local str = string_helper.higieniza_string(v)
         ev.data.votos[str] = {
             descr = v,
             mapValue = str,
@@ -99,7 +67,7 @@ function on_message(msg)
         return
     end
 
-    local cleanedStr = higieniza_string(msg.Message)
+    local cleanedStr = string_helper.higieniza_string(msg.Message)
 
     if ev.data.votos[cleanedStr] == nil then
         local asNumber = tonumber(cleanedStr)

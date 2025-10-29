@@ -38,8 +38,6 @@ func main() {
 
 	// Inicializa o package mlua
 	mlua.Init(RegisterLuaFunctions)
-	//mlua.ExposeFunctions()
-	//mlua.RegisterGlobalState()
 
 	// Carrega todos os módulos Lua e inicia hotreload
 	mlua.LoadAllModules()
@@ -53,28 +51,6 @@ func main() {
 	// iniciar login Twitch
 	twitch.HandleLogin()
 	kick.HandleLogin()
-
-	// Para testes, simula mensagens de chat
-	/*go func() {
-		users := []string{"Alice", "Bob", "Carol"}
-		for i := 0; ; i++ {
-			ev := globals.MessageFromStream{
-				Source:    "twitch",
-				Channel:   "test_channel",
-				User:      users[i%len(users)],
-				UserId:    users[i%len(users)],
-				MessageId: fmt.Sprintf("msgid-%d", i),
-				Message:   fmt.Sprintf("Mensagem %d", i),
-				Metadata:  nil,
-			}
-			select {
-			case globals.ChatQueue <- ev:
-			default:
-				fmt.Println("[WARN] ChatQueue cheia, descartando mensagem")
-			}
-			time.Sleep(2 * time.Second)
-		}
-	}()*/
 
 	go func() {
 		mem := getMemUsage()

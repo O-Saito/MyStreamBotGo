@@ -611,7 +611,7 @@
                 <div class="content-body"></div>
                 `;
 
-                import(`./dyevents/${m.name}.js`)
+                import(`./dyevents/${m.name}.js?t=${new Date().toISOString()}`)
                     .then(module => {
                         if (module.default) module.default();
                     })

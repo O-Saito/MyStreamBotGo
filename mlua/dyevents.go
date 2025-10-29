@@ -1,6 +1,7 @@
 package mlua
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"sync"
@@ -97,7 +98,7 @@ func LoadDyEvents(baseDir string) {
 		name := file.Name()
 
 		L := lua.NewState()
-
+		L.DoString(fmt.Sprintf(`package.path = package.path .. ";%s/modules/?.lua;"`, baseDir))
 		RegisterGlobalState(L)
 
 		dynamicEventsMutex.RLock()

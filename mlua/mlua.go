@@ -378,9 +378,9 @@ func StartEventQueues() {
 
 	go func() {
 		for ev := range globals.LuaRequest {
-			dynamicEventsMutex.Lock()
+			dynamicEventsMutex.RLock()
 			for _, dev := range dynamicEvents {
-				if dev.Name != ev.Filter || dev.OnRequest == nil || dev.Paused {
+				if dev.Name != ev.Filter || dev.OnRequest == nil {
 					continue
 				}
 				tbl := ToLValue(LEvents, ev.Data)
@@ -390,7 +390,7 @@ func StartEventQueues() {
 				}
 				dev.mu.RUnlock()
 			}
-			dynamicEventsMutex.Unlock()
+			dynamicEventsMutex.RUnlock()
 		}
 	}()
 }

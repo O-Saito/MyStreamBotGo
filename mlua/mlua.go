@@ -278,19 +278,29 @@ func HandleChat(ev globals.MessageFromStream) {
 			helpers.Logf(helpers.Red, "[LUA CHAT ERROR] %s: %v", name, err)
 		}
 	}
-	dynamicEventsMutex.Lock()
-	for _, dev := range dynamicEvents {
-		if dev.OnMessage == nil || dev.Paused {
+	dynamicEventsMutex.RLock()
+	events := dynamicEvents
+	dynamicEventsMutex.RUnlock()
+
+	for _, dev := range events {
+		dev.mu.RLock()
+		LState := dev.LState
+		paused := dev.Paused
+		f := dev.OnMessage
+		dev.mu.RUnlock()
+
+		if f == nil || paused {
 			continue
 		}
 
 		dev.mu.RLock()
-		if err := LEvents.CallByParam(lua.P{Fn: dev.OnMessage, NRet: 0, Protect: true}, tbl); err != nil {
+		tbl := LChat.NewTable()
+		tbl = ToLTable(LState, ev, tbl)
+		dev.mu.RUnlock()
+		if err := LState.CallByParam(lua.P{Fn: f, NRet: 0, Protect: true}, tbl); err != nil {
 			helpers.Logf(helpers.Red, "[LUA EVENT ERROR] %s: %v", dev.Name, err)
 		}
-		dev.mu.RUnlock()
 	}
-	dynamicEventsMutex.Unlock()
 }
 
 func HandleEvent(eventName string, ev globals.LuaEvent) {
@@ -387,7 +397,6 @@ func StartEventQueues() {
 			dynamicEventsMutex.RUnlock()
 			for _, dev := range events {
 				if dev.Name != ev.Filter || dev.OnRequest == nil {
-					helpers.Logf(helpers.Red, "%s : %s", dev.Name, ev.Filter)
 					continue
 				}
 				dev.mu.RLock()

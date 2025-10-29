@@ -101,6 +101,7 @@ func StartHTTPServer() {
 		for {
 			_, msg, err := conn.ReadMessage()
 			if err != nil {
+				helpers.Logf(helpers.Red, "[Socket] Error: %v", err)
 				delete(wsClients, conn)
 				break
 			}
@@ -181,20 +182,14 @@ func StartHTTPServer() {
 			jsonData, _ := json.Marshal(msg)
 
 			mu.RLock()
-			clients := make([]*websocket.Conn, 0, len(wsClients))
+			clientsList := make([]*websocket.Conn, 0, len(wsClients))
 			for client := range wsClients {
-				clients = append(clients, client)
+				clientsList = append(clientsList, client)
 			}
 			mu.RUnlock()
-
-			mu.RLock()
-			for client := range wsClients {
-				if !wsClients[client] {
-					continue
-				}
+			for _, client := range clientsList {
 				client.WriteMessage(websocket.TextMessage, []byte(jsonData))
 			}
-			mu.RUnlock()
 		}
 	}()
 

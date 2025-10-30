@@ -403,6 +403,16 @@
         w.on('user-message-delete', function (data) {
             updateMessageDelete(data);
         });
+        w.on('clear-chat', function (data) {
+            if(data.metadata && data.metadata['target-user-id']) {
+                const msgs = chatDiv.querySelectorAll(`[data-source="twitch"][data-user-id="${data.metadata['target-user-id']}"]`);
+                for(let i = 0; i < msgs.length; i++) {
+                    const msg = msgs[i];
+                    msg.classList.add('message-deleted');
+                    msg.querySelectorAll('button').forEach(x => { x.remove(); });
+                }
+            }
+        });
         w.on('result-query-stream-games', function (data) {
             streamGameList.innerHTML = data.map(x => `<option data-id="${x.id}" data-name="${x.name}" >${x.name}</option>`).join('');
         });

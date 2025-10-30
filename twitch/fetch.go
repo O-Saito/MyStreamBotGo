@@ -102,6 +102,38 @@ func DeleteMessage(msgID string) error {
 	return nil
 }
 
+func BanUser(userId string, duration int32, reason string) (string, error) {
+	user := globals.GetState().TwitchUser
+	d := map[string]map[string]any{
+		"data": {
+			"user_id": userId,
+			"reason":  reason,
+		},
+	}
+
+	if duration > 0 {
+		d["data"]["duration"] = duration
+	}
+
+	data, _ := json.Marshal(d)
+	urlAPI := fmt.Sprintf("https://api.twitch.tv/helix/moderation/bans?broadcaster_id=%s&moderator_id=%s", user.UserID, user.UserID)
+	req, _ := http.NewRequest("POST", urlAPI, bytes.NewBuffer(data))
+	req.Header.Set("Authorization", "Bearer "+user.Token)
+	req.Header.Set("Client-ID", globals.GetConfig().TwitchClientID)
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != 204 {
+		body, _ := io.ReadAll(resp.Body)
+		return "", fmt.Errorf("erro ao excluir mensagem: %s", body)
+	}
+	body, _ := io.ReadAll(resp.Body)
+	return string(body), nil
+}
+
 func GetListOfGames(query string) ([]GameData, error) {
 	urlAPI := fmt.Sprintf("%s?query=%s", urlAPIGames, query)
 	req, _ := http.NewRequest("GET", urlAPI, nil)

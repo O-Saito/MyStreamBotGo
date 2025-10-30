@@ -39,9 +39,6 @@ var ircHandlers = map[string]func(parts []string, afterMetadataIndex int, metada
 		// fazer o reconnect
 		helpers.Logf(helpers.Twitch, "[TWITCH RECONNECT] Server requested reconnect")
 		Disconnect()
-		/*for _, channel := range Channels {
-			JoinChannel(channel)
-		}*/
 	},
 	"JOIN": func(parts []string, afterMetadataIndex int, metadata ...map[string]any) {
 		user := strings.Split(parts[0], "!")[0][1:]
@@ -93,7 +90,10 @@ var ircHandlers = map[string]func(parts []string, afterMetadataIndex int, metada
 	"CLEARCHAT": func(parts []string, afterMetadataIndex int, metadata ...map[string]any) {
 		channel := strings.TrimPrefix(parts[afterMetadataIndex+2], "#")
 		helpers.Logf(helpers.Twitch, "[TWITCH CLEARCHAT] Chat %s cleared", channel)
-		globals.WsBroadcast <- globals.SocketMessage{Type: "clear-chat", Data: channel}
+		globals.WsBroadcast <- globals.SocketMessage{Type: "clear-chat", Data: map[string]any{
+			"channel":  channel,
+			"metadata": metadata[0],
+		}}
 	},
 	"NOTICE": func(parts []string, afterMetadataIndex int, metadata ...map[string]any) {
 		channel := strings.TrimPrefix(parts[afterMetadataIndex+2], "#")

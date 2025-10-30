@@ -150,13 +150,22 @@ func StartHTTPServer() {
 			return
 		}
 		var req struct {
-			User string `json:"user"`
+			UserId   string `json:"userId"`
+			Duration int32  `json:"duration"`
+			Reason   string `json:"reason"`
 		}
 		json.NewDecoder(r.Body).Decode(&req)
+		d, err := twitch.BanUser(req.UserId, req.Duration, req.Reason)
 		//if IrcHandler != nil {
 		//	IrcHandler.SendMessage("/ban " + req.User)
 		//}
+		if err != nil {
+			w.WriteHeader(200)
+			w.Write([]byte(fmt.Sprintf("Error %v", err)))
+			return
+		}
 		w.WriteHeader(200)
+		w.Write([]byte(d))
 	})
 
 	// Goroutine para enviar mensagens do backend para todos os clients

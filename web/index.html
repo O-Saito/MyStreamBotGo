@@ -376,14 +376,16 @@
             // criar botões de ação
             if (msg.source === "twitch") {
                 let delBtn = document.createElement("button");
+                delBtn.title = "Deletar mensagem";
                 delBtn.innerHTML = `<i class="fa fa-trash" aria-hidden="true"></i>`;
                 delBtn.onclick = deleteTwitchMessage;
                 let banBtn = document.createElement("button");
+                banBtn.title = "Timeout de 1h";
                 banBtn.innerHTML = `<i class="fa fa-ban" aria-hidden="true"></i>`;
                 banBtn.onclick = banTwitchUser;
 
                 div.appendChild(delBtn);
-                //div.appendChild(banBtn);
+                div.appendChild(banBtn);
             }
 
             if (msg.source == "kick") {
@@ -455,15 +457,14 @@
 
         function banTwitchUser(e) {
             e.preventDefault();
-            const messageDiv = e.target.parentElement;
-            const user = messageDiv.dataset.user;
-            const message = messageDiv.dataset.messageId;
+            const messageDiv = e.target.closest('.message');
+            const userId = messageDiv.dataset.userId;
 
             fetch("/admin/ban/twitch", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ user })
-            }).then(res => console.log("Usuário banido:", user));
+                body: JSON.stringify({ userId: userId, duration: 3600 /*1h em segundos*/, reason: "" })
+            }).then(res => console.log("Usuário banido:", userId));
         }
 
         // KICK FUNCS

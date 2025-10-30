@@ -1,16 +1,19 @@
 local string_helper = require("string_helper")
 
-options = {"Sim", "Não"}
+local defaultTempo = 60 * 2
 
 function reset_data()
-
     ev.data = {
+        votacao_ativa = false,
         users_voted = {},
         votos = {},
         alias = {},
-        tempo = 30 -- segundos para final da votação
+        tempo = defaultTempo 
     }
+end
 
+function setar_opcoes(options)
+    ev.data.votos = {}
     for k, v in pairs(options) do
         local str = string_helper.higieniza_string(v)
         ev.data.votos[str] = {
@@ -19,42 +22,60 @@ function reset_data()
             indexValue = k,
             count = 0
         }
-
         table.insert(ev.data.alias, ev.data.votos[str])
     end
+end
 
+function on_request(type, data)
+    g.log("[VOTE] Request "..type, data)
+    if type == "setup" then
+        setar_opcoes(data.opcoes)
+        if data.tempo == nil then
+            data.tempo = defaultTempo
+        end
+        ev.data.tempo = data.tempo
+        ev.socket_send('config', ev.data)
+    end
+
+    if type == "start" then
+        if data.opcoes ~= nil then
+            setar_opcoes(data.opcoes)
+        end
+        if data.tempo ~= nil then
+            ev.data.tempo = data.tempo
+        end
+        ev.data.ended = false
+        ev.data.users_voted = {}
+        ev.setPaused(false)
+    end
 end
 
 function on_start()
-    print("[Lua] Evento de teste iniciado!")
+    print("[VOTE] Evento iniciado!")
     ev.setInterval(1)
-    --ev.setPaused(false)
     reset_data()
-    ev.socket_send("user_vote_update", {
+    ev.socket_send("config", {
         votos = ev.data.votos,
-        tempo = tempo,
+        tempo = defaultTempo,
         ended = false
     })
 end
 
 function on_tick(data)
-    g.log('[LUA TESTE]', data)
     local tempo = ev.data.tempo
     tempo = tempo - 1
-    print("[Lua] Tempo restante:", tempo)
     ev.data.tempo = tempo
 
-    if tempo > 0 and tempo % 10 == 0 then
-        ev.socket_send("user_vote_update", {
-            votos = ev.data.votos,
-            tempo = tempo,
-            ended = false
-        })
-    end
+    ev.socket_send("user_vote_update", {
+        votos = ev.data.votos,
+        tempo = tempo,
+        ended = false
+    })
 
     if tempo <= 0 then
         ev.setPaused(true)
         ev.socket_send("user_vote_update", {
+            tempo = tempo,
             votos = ev.data.votos,
             ended = true
         })
@@ -64,6 +85,7 @@ end
 
 function on_message(msg)
     if ev.data.users_voted[msg.UserId] ~= nil then
+        print('Usuário já votou ' ..msg.UserId)
         return
     end
 
@@ -72,7 +94,7 @@ function on_message(msg)
     if ev.data.votos[cleanedStr] == nil then
         local asNumber = tonumber(cleanedStr)
         if asNumber == nil or ev.data.alias[asNumber] == nil then
-            --g.print("[Lua] Voto inválido de" .. msg.User .. ":" .. msg.Message)
+            -- g.print("[Lua] Voto inválido de" .. msg.User .. ":" .. msg.Message)
             return
         end
         cleanedStr = ev.data.alias[asNumber].mapValue
@@ -84,7 +106,7 @@ function on_message(msg)
 end
 
 function on_event(name, data)
-   g.print("[VOTE] Evento recebido " .. name, data) 
+    g.print("[VOTE] Evento recebido " .. name, data)
 end
 
 function on_command(name, data)

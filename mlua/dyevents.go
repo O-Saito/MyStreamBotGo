@@ -28,6 +28,7 @@ type DynamicEvent struct {
 	Interval  time.Duration
 	Paused    bool
 	mu        sync.RWMutex
+	stateMu   sync.RWMutex
 }
 
 type DynamicEventInfo struct {
@@ -194,13 +195,17 @@ func setFunctionOnTable(ev *DynamicEvent, tbl *lua.LTable) {
 
 	ev.LState.SetField(tbl, "setInterval", ev.LState.NewFunction(func(L *lua.LState) int {
 		val := L.CheckNumber(1)
+		ev.stateMu.Lock()
 		ev.Interval = time.Duration(float64(val) * float64(time.Second))
+		ev.stateMu.Unlock()
 		return 0
 	}))
 
 	ev.LState.SetField(tbl, "setPaused", ev.LState.NewFunction(func(L *lua.LState) int {
 		val := L.CheckBool(1)
+		ev.stateMu.Lock()
 		ev.Paused = val
+		ev.stateMu.Unlock()
 		return 0
 	}))
 
@@ -243,10 +248,13 @@ func globalEventLoop() {
 					continue
 				}
 
-				ev.mu.Lock()
-				if ev.OnTick != nil {
-					err := ev.LState.CallByParam(lua.P{
-						Fn:      ev.OnTick,
+				ev.mu.RLock()
+				LState := ev.LState
+				f := ev.OnTick
+				ev.mu.RUnlock()
+				if f != nil {
+					err := LState.CallByParam(lua.P{
+						Fn:      f,
 						NRet:    0,
 						Protect: true,
 					})
@@ -254,9 +262,10 @@ func globalEventLoop() {
 						helpers.Logf(helpers.Red, "[DYNAMIC] Erro no on_tick de %s: %v", ev.Name, err)
 					}
 				}
+				ev.stateMu.Lock()
 				ev.LastTick = now
 				ev.NextTick = now.Add(ev.Interval)
-				ev.mu.Unlock()
+				ev.stateMu.Unlock()
 			}
 			dynamicEventsMutex.RUnlock()
 		}

@@ -101,6 +101,7 @@ func StartHTTPServer() {
 		for {
 			_, msg, err := conn.ReadMessage()
 			if err != nil {
+				helpers.Logf(helpers.Red, "[Socket] Error: %v", err)
 				delete(wsClients, conn)
 				break
 			}
@@ -149,13 +150,22 @@ func StartHTTPServer() {
 			return
 		}
 		var req struct {
-			User string `json:"user"`
+			UserId   string `json:"userId"`
+			Duration int32  `json:"duration"`
+			Reason   string `json:"reason"`
 		}
 		json.NewDecoder(r.Body).Decode(&req)
+		d, err := twitch.BanUser(req.UserId, req.Duration, req.Reason)
 		//if IrcHandler != nil {
 		//	IrcHandler.SendMessage("/ban " + req.User)
 		//}
+		if err != nil {
+			w.WriteHeader(200)
+			w.Write([]byte(fmt.Sprintf("Error %v", err)))
+			return
+		}
 		w.WriteHeader(200)
+		w.Write([]byte(d))
 	})
 
 	// Goroutine para enviar mensagens do backend para todos os clients
@@ -181,20 +191,14 @@ func StartHTTPServer() {
 			jsonData, _ := json.Marshal(msg)
 
 			mu.RLock()
-			clients := make([]*websocket.Conn, 0, len(wsClients))
+			clientsList := make([]*websocket.Conn, 0, len(wsClients))
 			for client := range wsClients {
-				clients = append(clients, client)
+				clientsList = append(clientsList, client)
 			}
 			mu.RUnlock()
-
-			mu.RLock()
-			for client := range wsClients {
-				if !wsClients[client] {
-					continue
-				}
+			for _, client := range clientsList {
 				client.WriteMessage(websocket.TextMessage, []byte(jsonData))
 			}
-			mu.RUnlock()
 		}
 	}()
 

@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	Scopes = "chat:read chat:edit user:read:email moderator:manage:chat_messages channel:moderate channel:read:subscriptions"
+	Scopes = "chat:read chat:edit user:read:email moderator:manage:chat_messages moderator:manage:banned_users channel:moderate channel:read:subscriptions"
 )
 
 func HandleLogin() {

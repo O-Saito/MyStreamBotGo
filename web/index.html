@@ -248,7 +248,7 @@
     <h1>Eventos</h1>
     <div id="events" class="box-content"></div>
 
-    <h1>DyEvents <input id="toggle-dyevents" type="checkbox" /></h1>
+    <h1 id="dyeventstitle">DyEvents <input id="toggle-dyevents" type="checkbox" /></h1>
     <div id="dyevents" class="box-content"></div>
 
     <div style="display: none;">
@@ -287,6 +287,7 @@
         const toggledyevents = document.getElementById('toggle-dyevents');
         toggledyevents.onchange = function  () {
             dyEventsDiv.style.display = this.checked ? 'none' : 'block';
+            document.getElementById('dyeventstitle').style.fontSize = this.checked ? '14px' : '';
         }
 
         let twitchData = null;
@@ -666,9 +667,11 @@
         }
 
         function loadDyModules(modules) {
-            if (!modules || modules.length == 0)
+            if (!modules || modules.length == 0){
+                document.getElementById('dyeventstitle').style.display = 'none';
+                dyEventsDiv.style.display = 'none';
                 return;
-
+            }
 
             modules.forEach(m => {
                 const div = document.createElement('div');

@@ -113,7 +113,7 @@ func FromLValue(L *lua.LState, lv lua.LValue) any {
 	}
 }
 
-func ToLTable(L *lua.LState, data globals.MessageFromStream, tbl *lua.LTable) *lua.LTable {
+func ToLTable(L *lua.LState, data *globals.MessageFromStream, tbl *lua.LTable) *lua.LTable {
 	defer func() {
 		if r := recover(); r != nil {
 			helpers.Logf(helpers.Red, "Panic em ToLTable: %v", r)
@@ -134,7 +134,7 @@ func ToLTable(L *lua.LState, data globals.MessageFromStream, tbl *lua.LTable) *l
 	return tbl
 }
 
-func ToLTableEvent(L *lua.LState, data globals.LuaEvent, tbl *lua.LTable) *lua.LTable {
+func ToLTableEvent(L *lua.LState, data *globals.LuaEvent, tbl *lua.LTable) *lua.LTable {
 	defer func() {
 		if r := recover(); r != nil {
 			helpers.Logf(helpers.Red, "Panic em ToLTableEvent: %v", r)
@@ -152,7 +152,7 @@ func ToLTableEvent(L *lua.LState, data globals.LuaEvent, tbl *lua.LTable) *lua.L
 	return tbl
 }
 
-func ToLTableCommand(L *lua.LState, data globals.LuaCommand, tbl *lua.LTable) *lua.LTable {
+func ToLTableCommand(L *lua.LState, data *globals.LuaCommand, tbl *lua.LTable) *lua.LTable {
 	defer func() {
 		if r := recover(); r != nil {
 			helpers.Logf(helpers.Red, "Panic em ToLTableCommand: %v", r)
@@ -177,7 +177,7 @@ func ToLTableCommand(L *lua.LState, data globals.LuaCommand, tbl *lua.LTable) *l
 	if _, ok := tbl.RawGetString("Message").(*lua.LTable); !ok {
 		tbl.RawSetString("Message", L.NewTable())
 	}
-	tbl.RawSetString("Message", ToLTable(L, data.Message, tbl.RawGetString("Message").(*lua.LTable)))
+	tbl.RawSetString("Message", ToLTable(L, &data.Message, tbl.RawGetString("Message").(*lua.LTable)))
 	return tbl
 }
 

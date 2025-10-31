@@ -247,7 +247,7 @@ func RegisterGlobalState(L *lua.LState) {
 }
 
 // Dispatch events to modules
-func HandleCommand(name string, ev globals.LuaCommand) {
+func HandleCommand(name string, ev *globals.LuaCommand) {
 	tbl := LCommands.NewTable()
 	tbl = ToLTableCommand(LCommands, ev, tbl)
 	if fn, ok := commandFunctions[name]; ok {
@@ -282,7 +282,7 @@ func HandleCommand(name string, ev globals.LuaCommand) {
 	//helpers.Logf(helpers.Yellow, "[LUA COMMAND WARNING] Comando sem handler: %s", name)
 }
 
-func HandleChat(ev globals.MessageFromStream) {
+func HandleChat(ev *globals.MessageFromStream) {
 	tbl := LChat.NewTable()
 	tbl = ToLTable(LChat, ev, tbl)
 	for name, fn := range chatFunctions {
@@ -316,7 +316,7 @@ func HandleChat(ev globals.MessageFromStream) {
 	}
 }
 
-func HandleEvent(eventName string, ev globals.LuaEvent) {
+func HandleEvent(eventName string, ev *globals.LuaEvent) {
 	tbl := ToLValue(LEvents, ev.Data)
 	for name, fn := range eventFunctions {
 		if strings.Contains(name, eventName) {
@@ -393,19 +393,19 @@ func StartWatcher() {
 func StartEventQueues() {
 	go func() {
 		for ev := range globals.ChatQueue {
-			HandleChat(ev)
+			HandleChat(&ev)
 		}
 	}()
 
 	go func() {
 		for ev := range globals.CommandQueue {
-			HandleCommand(ev.Name, ev)
+			HandleCommand(ev.Name, &ev)
 		}
 	}()
 
 	go func() {
 		for ev := range globals.EventQueue {
-			HandleEvent(ev.Type, ev)
+			HandleEvent(ev.Type, &ev)
 		}
 	}()
 

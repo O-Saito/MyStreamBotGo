@@ -22,8 +22,26 @@ type EventSubCondition struct {
 }
 
 type EventSubTransport struct {
-	Method    string `json:"method"`
-	SessionId string `json:"session_id"`
+	Method         string `json:"method"`
+	SessionId      string `json:"session_id"`
+	ConnectedAt    string `json:"connected_at"`
+	DisconnectedAt string `json:"disconnected_at"`
+}
+
+type EventSubData struct {
+	Data []struct {
+		Id        string            `json:"id"`
+		Status    string            `json:"status"`
+		Type      string            `json:"type"`
+		Version   string            `json:"version"`
+		Condition EventSubCondition `json:"condition"`
+		CreatedAt string            `json:"created_at"`
+		Transport EventSubTransport `json:"transport"`
+		Cost      int32             `json:"cost"`
+	} `json:"data"`
+	TotalCost    int32          `json:"total_cost"`
+	MaxTotalCost int32          `json:"max_total_cost"`
+	Pagination   map[string]any `json:"pagination"`
 }
 
 type EventSub struct {
@@ -48,11 +66,11 @@ type SessionWelcome struct {
 }
 
 var subTypes = map[string]map[string]any{
-	// //automod.message.hold,
-	// //automod.message.update,
-	// //automod.settings.update,
-	// //automod.terms.update,
-	// //channel.update,
+	//automod.message.hold,
+	//automod.message.update,
+	//automod.settings.update,
+	//automod.terms.update,
+	//channel.update,
 	"channel.follow": {"version": 2, "requires": "moderator:read:followers"},
 	// channel.ad_break.begin,
 	// channel.chat.clear,
@@ -60,9 +78,9 @@ var subTypes = map[string]map[string]any{
 	//'channel.chat.message',
 	//"channel.chat.message_delete": {},
 	// channel.chat.notification,
-	// //channel.chat_settings.update,
-	// //channel.chat.user_message_hold,
-	// //channel.chat.user_message_update,
+	//channel.chat_settings.update,
+	//channel.chat.user_message_hold,
+	//channel.chat.user_message_update,
 	"channel.shared_chat.begin":  {},
 	"channel.shared_chat.update": {},
 	"channel.shared_chat.end":    {},
@@ -132,6 +150,7 @@ var messageHandlers = map[string]func(map[string]any, map[string]any){
 	"session_welcome": func(payload, metadata map[string]any) {
 		globals.GetState().SetTwitchEventSubId(payload["session"].(map[string]any)["id"].(string))
 		subscribeToEvents()
+		helpers.Logf(helpers.Twitch, "Session: %s", payload["session"].(map[string]any)["id"].(string))
 		//ts.execute("session_welcome", payload);
 		globals.WsBroadcast <- globals.SocketMessage{
 			Type: "twitch-eventsub-session-welcome",
@@ -242,6 +261,7 @@ func listenToEventSub(conn *websocket.Conn) {
 
 		meta, ok := base["metadata"].(map[string]any)
 		if !ok {
+			helpers.Logf(helpers.Red, "[Twitch EventSub] Metadata !ok")
 			continue
 		}
 
@@ -255,6 +275,7 @@ func listenToEventSub(conn *websocket.Conn) {
 		handler(base["payload"].(map[string]any), base["metadata"].(map[string]any))
 	}
 
+	helpers.Logf(helpers.Red, "[TWITCH EventSub] Is not in the loop!")
 }
 
 func subscribeToEvents() {
@@ -277,6 +298,15 @@ func subscribeToEvents() {
 	if e != nil {
 		events = e.([]string)
 	}
+
+	oldSubs, _ := GetEventSubscriptions()
+
+	for _, sub := range oldSubs.Data {
+		if sub.Transport.Method == "websocket" && sub.Condition.BroadcasterUserId == data.Condition.BroadcasterUserId && sub.Transport.SessionId != data.Transport.SessionId {
+			DeleteEventSubscriptions(sub.Id)
+		}
+	}
+
 	for name, sub := range subTypes {
 		data.Type = name
 		data.Version = 1
@@ -290,6 +320,7 @@ func subscribeToEvents() {
 		req.Header.Set("Content-Type", "application/json")
 		resp, err := http.DefaultClient.Do(req)
 		if err != nil {
+			helpers.Logf(helpers.Red, "[Twitch Sub] err: %v", err)
 			continue
 		}
 		defer resp.Body.Close()

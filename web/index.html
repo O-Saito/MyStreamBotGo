@@ -248,7 +248,7 @@
     <h1>Eventos</h1>
     <div id="events" class="box-content"></div>
 
-    <h1>DyEvents</h1>
+    <h1>DyEvents <input id="toggle-dyevents" type="checkbox" /></h1>
     <div id="dyevents" class="box-content"></div>
 
     <div style="display: none;">
@@ -283,6 +283,11 @@
         const eventDiv = document.getElementById('events');
 
         const dyEventsDiv = document.getElementById('dyevents');
+
+        const toggledyevents = document.getElementById('toggle-dyevents');
+        toggledyevents.onchange = function  () {
+            dyEventsDiv.style.display = this.checked ? 'none' : 'block';
+        }
 
         let twitchData = null;
 
@@ -406,9 +411,9 @@
             updateMessageDelete(data);
         });
         w.on('clear-chat', function (data) {
-            if(data.metadata && data.metadata['target-user-id']) {
+            if (data.metadata && data.metadata['target-user-id']) {
                 const msgs = chatDiv.querySelectorAll(`[data-source="twitch"][data-user-id="${data.metadata['target-user-id']}"]`);
-                for(let i = 0; i < msgs.length; i++) {
+                for (let i = 0; i < msgs.length; i++) {
                     const msg = msgs[i];
                     msg.classList.add('message-deleted');
                     msg.querySelectorAll('button').forEach(x => { x.remove(); });
@@ -425,6 +430,62 @@
             twitchLastEventsub.innerHTML = `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}:${date.getSeconds().toString().padStart(2, '0')}`;
         });
 
+        w.onTwitch("automod.message.hold", (data) => {
+            const event = data.payload?.event;
+            if (!event) {
+                console.error("automod.message.hold without event", data);
+                return;
+            }
+            //eventDiv.innerHTML += `<div class="event"><span><span class="user">automod.message.hold</span>${JSON.stringify(data)}</span></div>`;
+
+            let div = document.createElement("div");
+            div.className = "message";
+
+            let span = document.createElement("span");
+
+            let source = document.createElement("span");
+            let channel = document.createElement("span");
+            let badges = document.createElement('span');
+            let user = document.createElement('span');
+            let message = document.createElement('span');
+
+            source.className = "chat-source";
+            channel.className = "chat-channel";
+            badges.className = "chat-badges";
+            user.className = "chat-user";
+            message.className = "chat-message";
+
+
+            span.append(source, channel, badges, user, message);
+
+            source.textContent = 'twitch';
+            channel.textContent = event.broadcaster_user_name;
+            user.textContent = event.user_name;
+            message.innerHTML = `[${event.reason} - ${event.automod?.category}] ${event.message.text}`;
+            source.innerHTML = `<img src="https://assets.twitch.tv/assets/favicon-32-e29e246c157142c94346.png" />`
+
+            /*if (msg.metadata) {
+                user.style.color = msg.metadata.color;
+                if (msg.metadata['display-name'])
+                    user.textContent = msg.metadata['display-name']
+                if (msg.metadata['badges-info'])
+                    badges.innerHTML = Object.getOwnPropertyNames(msg.metadata['badges-info']).map(x => msg.metadata['badges-info'][x] && msg.metadata['badges-info'][x][0] != null && msg.metadata['badges-info'][x][0] != '' ? `<img src="${msg.metadata['badges-info'][x][0].image_url_1x}" alt="${msg.metadata['badges-info'][x][0].title}" />` : '').join('');
+
+                if (msg.metadata['room']) {
+                    channel.innerHTML = `<img src="${msg.metadata['room'].profile_image_url}" alt="${msg.metadata['room'].display_name}" />`;
+                }
+                if (msg.metadata['source-room']) {
+                    channel.innerHTML = `<img src="${msg.metadata['source-room'].profile_image_url}" alt="${msg.metadata['source-room'].display_name}" />`;
+                }
+
+                if (msg.metadata["source-room-id"])
+                    div.dataset.sourceRoom = msg.metadata["source-room-id"];
+            }*/
+            div.appendChild(span);
+            chatDiv.appendChild(div);
+            chatDiv.scrollTop = chatDiv.scrollHeight;
+
+        });
         w.onTwitch("channel.follow", (data) => {
             eventDiv.innerHTML += `<div class="event"><span><span class="user">${data.payload.event.user_name}</span> seguiu ${twitchData == null || twitchData.userId == data.payload.event.broadcaster_user_id ? data.payload.event.broadcaster_user_name : 'você'}!</span></div>`;
         });

@@ -3,6 +3,7 @@ package globals
 import (
 	"MyStreamBot/helpers"
 	"bufio"
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -127,6 +128,18 @@ func LoadInitFile() {
 	if err := scanner.Err(); err != nil {
 		helpers.Logf(helpers.Red, "Erro ao ler o arquivo: %v", err)
 	}
+}
+
+func LoadTwitchSubTypes() {
+	filePath := filepath.Join(".", "twitchsubtypes.json")
+	contentBytes, err := os.ReadFile(filePath)
+	if err != nil {
+		helpers.Logf(helpers.Red, "Error reading twitchsubtypes.json file: %v\n", err)
+		return
+	}
+	data := map[string]map[string]any{}
+	json.Unmarshal(contentBytes, &data)
+	GetConfig().SetTwitchSubTypes(data)
 }
 
 // Define campos simples via reflection (ex: Config.BotPrefix)

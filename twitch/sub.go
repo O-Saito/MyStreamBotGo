@@ -46,7 +46,7 @@ type EventSubData struct {
 
 type EventSub struct {
 	Type      string            `json:"type"`
-	Version   int               `json:"version"`
+	Version   float64           `json:"version"`
 	Condition EventSubCondition `json:"condition"`
 	Transport EventSubTransport `json:"transport"`
 }
@@ -65,8 +65,9 @@ type SessionWelcome struct {
 	} `json:"payload"`
 }
 
+/*
 var subTypes = map[string]map[string]any{
-	//automod.message.hold,
+	"automod.message.hold": {"version": 2, "requires": "moderator:manage:automod"},
 	//automod.message.update,
 	//automod.settings.update,
 	//automod.terms.update,
@@ -89,9 +90,9 @@ var subTypes = map[string]map[string]any{
 	// channel.subscription.gift,
 	// channel.subscription.message,
 	// channel.cheer,
-	"channel.raid": {},
-	"channel.ban":  {"requires": "channel:moderate"},
-	// channel.unban,
+	"channel.raid":  {},
+	"channel.ban":   {"requires": "channel:moderate"},
+	"channel.unban": {"requires": "channel:moderate"},
 	// channel.unban_request.create,
 	// channel.unban_request.resolve,
 	//"channel.moderate',
@@ -144,7 +145,7 @@ var subTypes = map[string]map[string]any{
 	// user.authorization.revoke,
 	// user.update,
 	// user.whisper.message
-}
+}*/
 
 var messageHandlers = map[string]func(map[string]any, map[string]any){
 	"session_welcome": func(payload, metadata map[string]any) {
@@ -306,12 +307,12 @@ func subscribeToEvents() {
 			DeleteEventSubscriptions(sub.Id)
 		}
 	}
-
+	subTypes := globals.GetConfig().GetTwitchSubTypes()
 	for name, sub := range subTypes {
 		data.Type = name
 		data.Version = 1
 		if sub["version"] != nil {
-			data.Version = sub["version"].(int)
+			data.Version = sub["version"].(float64)
 		}
 		jsonData, _ := json.Marshal(data)
 		req, _ := http.NewRequest("POST", urlAPIEventSub, bytes.NewBuffer(jsonData))

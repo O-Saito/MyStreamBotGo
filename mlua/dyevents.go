@@ -47,6 +47,95 @@ var (
 	stopGlobalLoop chan struct{}
 )
 
+func (dev *DynamicEvent) ProcessChat(evm *globals.MessageFromStream) {
+	dev.stateMu.RLock()
+	paused := dev.Paused
+	dev.stateMu.RUnlock()
+
+	dev.mu.RLock()
+	LState := dev.LState
+	f := dev.OnMessage
+	dev.mu.RUnlock()
+
+	if f == nil || paused {
+		return
+	}
+
+	tbl := LState.NewTable()
+	tbl = ToLTable(LState, evm, tbl)
+
+	dev.mu.RLock()
+	if err := LState.CallByParam(lua.P{Fn: f, NRet: 0, Protect: true}, tbl); err != nil {
+		helpers.Logf(helpers.Red, "[LUA CHAT ERROR] %s: %v", dev.Name, err)
+	}
+	dev.mu.RUnlock()
+}
+
+func (dev *DynamicEvent) ProcessCommand(evm *globals.LuaCommand) {
+	dev.stateMu.RLock()
+	paused := dev.Paused
+	dev.stateMu.RUnlock()
+
+	dev.mu.RLock()
+	f := dev.OnCommand
+	LState := dev.LState
+	dev.mu.RUnlock()
+
+	if f == nil || paused {
+		return
+	}
+
+	lname := lua.LString(evm.Name)
+	tbl := LState.NewTable()
+	tbl = ToLTableCommand(LState, evm, tbl)
+
+	dev.mu.RLock()
+	if err := LState.CallByParam(lua.P{Fn: f, NRet: 0, Protect: true}, lname, tbl); err != nil {
+		helpers.Logf(helpers.Red, "[LUA COMMAND ERROR] %s: %v", dev.Name, err)
+	}
+	dev.mu.RUnlock()
+}
+
+func (dev *DynamicEvent) ProcessEvent(evm *globals.LuaEvent) {
+	dev.stateMu.RLock()
+	paused := dev.Paused
+	dev.stateMu.RUnlock()
+
+	dev.mu.RLock()
+	LState := dev.LState
+	f := dev.OnEvent
+	dev.mu.RUnlock()
+
+	if f == nil || paused {
+		return
+	}
+
+	evName := lua.LString(evm.Type)
+	ntbl := ToLValue(LState, evm.Data)
+
+	if err := LState.CallByParam(lua.P{Fn: f, NRet: 0, Protect: true}, evName, ntbl); err != nil {
+		helpers.Logf(helpers.Red, "[LUA EVENT ERROR] %s: %v", dev.Name, err)
+	}
+}
+
+func (dev *DynamicEvent) ProcessRequest(evm *globals.SocketMessage) {
+	dev.mu.RLock()
+	if dev.Name != evm.Filter || dev.OnRequest == nil {
+		dev.mu.RUnlock()
+		return
+	}
+	f := dev.OnRequest
+	LState := dev.LState
+	dev.mu.RUnlock()
+
+	tbl := ToLValue(LState, evm.Data)
+	dev.mu.RLock()
+	if err := LState.CallByParam(lua.P{Fn: f, NRet: 0, Protect: true}, lua.LString(evm.Type), tbl); err != nil {
+		helpers.Logf(helpers.Red, "[LUA EVENT ERROR] %s: %v", dev.Name, err)
+	}
+	dev.mu.RUnlock()
+}
+
 func ListDynamicEvents() []DynamicEventInfo {
 	dynamicEventsMutex.RLock()
 	defer dynamicEventsMutex.RUnlock()

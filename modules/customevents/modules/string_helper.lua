@@ -35,4 +35,13 @@ function M.higieniza_string(str)
     return cleanedStr
 end
 
+function M.split(str, sep)
+    local t = {}
+    local pattern = "([^" .. sep .. "]+)"
+    for s in string.gmatch(str, pattern) do
+        table.insert(t, s)
+    end
+    return t
+end
+
 return M

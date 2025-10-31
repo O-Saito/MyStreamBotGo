@@ -338,7 +338,7 @@ func HandleEvent(eventName string, ev globals.LuaEvent) {
 
 		dev.mu.RLock()
 		LState := dev.LState
-		f := dev.OnMessage
+		f := dev.OnEvent
 		if f == nil || paused {
 			dev.mu.RUnlock()
 			continue

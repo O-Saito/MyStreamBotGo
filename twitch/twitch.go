@@ -16,11 +16,12 @@ type Message struct {
 }
 
 // variaveis globais do streamer logado
-var LoginDone = make(chan bool)
-
-var Conn net.Conn
-var Channels []string
-var MsgQueue = make(chan Message, 100)
+var (
+	LoginDone = make(chan bool)
+	Conn      net.Conn
+	Channels  []string
+	MsgQueue  = make(chan Message, 100)
+)
 
 func partseTags(tagsStr string) map[string]any {
 	metadata := map[string]any{}
@@ -125,6 +126,11 @@ var ircHandlers = map[string]func(parts []string, afterMetadataIndex int, metada
 			MessageId: metadata[0]["id"].(string),
 			Message:   message,
 			Metadata:  metadata[0],
+		}
+
+		// adding tag to facilitate user-type validation
+		if user == channel {
+			socketdata.Metadata["user-type"] = "mod"
 		}
 
 		state := globals.GetState()

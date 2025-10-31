@@ -226,3 +226,49 @@ func GetBadges(broadcasterId ...string) (map[string]any, error) {
 
 	return d, nil
 }
+
+func GetEventSubscriptions() (EventSubData, error) {
+	req, _ := http.NewRequest("GET", urlAPIEventSub, nil)
+	req.Header.Set("Authorization", "Bearer "+globals.GetState().GetTwitchUser().Token)
+	req.Header.Set("Client-ID", globals.GetConfig().TwitchClientID)
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		helpers.Logf(helpers.Red, "[TWITCH FETCH] Erro ao buscar lista de event subscriptions: %s", err.Error())
+		return EventSubData{}, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != 200 {
+		body, _ := io.ReadAll(resp.Body)
+		helpers.Logf(helpers.Red, "[TWITCH FETCH] Erro ao buscar lsita de event subscriptions: (%d) %s", resp.StatusCode, body)
+		return EventSubData{}, fmt.Errorf("erro ao buscar lista de event subscriptions: %s", body)
+	}
+	body, _ := io.ReadAll(resp.Body)
+	//helpers.Logf(helpers.Twitch, "[TWITCH FETCH] GetBadges: %s", body)
+	var reqData EventSubData
+	_ = json.Unmarshal(body, &reqData)
+
+	return reqData, nil
+}
+
+func DeleteEventSubscriptions(id string) error {
+	req, _ := http.NewRequest("DELETE", fmt.Sprintf("%s?id=%s", urlAPIEventSub, id), nil)
+	req.Header.Set("Authorization", "Bearer "+globals.GetState().GetTwitchUser().Token)
+	req.Header.Set("Client-ID", globals.GetConfig().TwitchClientID)
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		helpers.Logf(helpers.Red, "[TWITCH FETCH] Erro ao deletar event subscriptions: %s", err.Error())
+		return err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != 200 && resp.StatusCode != 204 {
+		body, _ := io.ReadAll(resp.Body)
+		helpers.Logf(helpers.Red, "[TWITCH FETCH] Erro ao deletar event subscriptions: (%d) %s", resp.StatusCode, body)
+		return fmt.Errorf("erro ao deletar event subscriptions: %s", body)
+	}
+	body, _ := io.ReadAll(resp.Body)
+	//helpers.Logf(helpers.Twitch, "[TWITCH FETCH] GetBadges: %s", body)
+	var reqData EventSubData
+	_ = json.Unmarshal(body, &reqData)
+
+	return nil
+}

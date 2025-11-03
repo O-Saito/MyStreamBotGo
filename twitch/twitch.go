@@ -5,6 +5,7 @@ import (
 	"MyStreamBot/helpers"
 	"bufio"
 	"fmt"
+	"hash/fnv"
 	"net"
 	"strings"
 )
@@ -35,6 +36,49 @@ func partseTags(tagsStr string) map[string]any {
 	return metadata
 }
 
+func defaultTwitchColor(username string) string {
+	colors := []string{
+		"#FF0000", "#0000FF", "#008000", "#B22222", "#FF7F50",
+		"#9ACD32", "#FF4500", "#2E8B57", "#DAA520", "#D2691E",
+		"#5F9EA0", "#1E90FF", "#FF69B4", "#8A2BE2", "#00FF7F",
+	}
+
+	h := fnv.New32a()
+	h.Write([]byte(strings.ToLower(username)))
+	index := int(h.Sum32()) % len(colors)
+
+	return colors[index]
+}
+
+func GetCacheUserChatColor(user string) string {
+	state := globals.GetState()
+	userColor := state.GetData("twitch-user-color")
+	color := ""
+	if userColor == nil {
+		userColor = make(map[string]any)
+	}
+
+	if userColor.(map[string]any)[user] == nil {
+		d, err := GetUserData(user)
+		if err == nil {
+			c, err := GetUserChatColor(d.ID)
+			if err == nil {
+				color = c.Color
+			}
+		}
+
+		if color == "" {
+			color = defaultTwitchColor(user)
+		}
+
+		userColor.(map[string]any)[user] = color
+
+		state.SetData("twitch-user-color", userColor)
+	}
+
+	return userColor.(map[string]any)[user].(string)
+}
+
 var ircHandlers = map[string]func(parts []string, afterMetadataIndex int, metadata ...map[string]any){
 	"RECONNECT": func(parts []string, afterMetadataIndex int, metadata ...map[string]any) {
 		// fazer o reconnect
@@ -54,12 +98,14 @@ var ircHandlers = map[string]func(parts []string, afterMetadataIndex int, metada
 				},
 			}
 		}
+
 		globals.EventQueue <- globals.LuaEvent{
 			Type: "twitch-user-join",
 			Data: map[string]any{
 				"user":     user,
 				"channel":  channel,
 				"metadata": metadata,
+				"color":    GetCacheUserChatColor(user),
 			},
 		}
 	},
@@ -73,6 +119,7 @@ var ircHandlers = map[string]func(parts []string, afterMetadataIndex int, metada
 				"user":     user,
 				"channel":  channel,
 				"metadata": metadata,
+				"color":    GetCacheUserChatColor(user),
 			},
 		}
 	},
@@ -86,6 +133,10 @@ var ircHandlers = map[string]func(parts []string, afterMetadataIndex int, metada
 		globals.WsBroadcast <- globals.SocketMessage{
 			Type: "user-message-delete",
 			Data: metadata[0]["target-msg-id"].(string),
+		}
+		globals.EventQueue <- globals.LuaEvent{
+			Type: "user-message-delete",
+			Data: metadata[0],
 		}
 	},
 	"CLEARCHAT": func(parts []string, afterMetadataIndex int, metadata ...map[string]any) {
@@ -164,6 +215,18 @@ var ircHandlers = map[string]func(parts []string, afterMetadataIndex int, metada
 
 				socketdata.Metadata["room"] = streamerInfo.(map[string]any)[id]
 			}
+		}
+
+		if socketdata.Metadata["color"] == nil || socketdata.Metadata["color"] == "" {
+			userColor := state.GetData("twitch-user-color")
+			if userColor == nil {
+				userColor = make(map[string]any)
+			}
+			if userColor.(map[string]any)[user] == nil {
+				userColor.(map[string]any)[user] = defaultTwitchColor(user)
+				state.SetData("twitch-user-color", userColor)
+			}
+			socketdata.Metadata["color"] = userColor.(map[string]any)[user]
 		}
 
 		bi := make(map[string]any)

@@ -63,6 +63,29 @@ func ToLValue(L *lua.LState, val any) lua.LValue {
 		}
 		return tbl
 	default:
+		// Se for uma struct, converte via reflection
+		rv := reflect.ValueOf(v)
+		rt := reflect.TypeOf(v)
+		if rv.Kind() == reflect.Struct {
+			tbl := L.NewTable()
+			for i := 0; i < rv.NumField(); i++ {
+				field := rt.Field(i)
+				// Só exportados
+				if field.PkgPath != "" {
+					continue
+				}
+				name := field.Name
+				fv := rv.Field(i).Interface()
+				tbl.RawSetString(name, ToLValue(L, fv))
+			}
+			return tbl
+		}
+
+		// Se for ponteiro pra struct
+		if rv.Kind() == reflect.Ptr && rv.Elem().Kind() == reflect.Struct {
+			return ToLValue(L, rv.Elem().Interface())
+		}
+
 		return lua.LString(fmt.Sprintf("%v", v)) // fallback
 	}
 }

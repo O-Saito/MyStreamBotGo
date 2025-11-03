@@ -84,4 +84,61 @@ func RegisterLuaFunctions(L *lua.LState) {
 			return 0
 		},
 	})
+
+	mlua.ExposeServiceToLua(L, "twitch", map[string]func(*lua.LState) int{
+		"get_cache_user_chat_color": func(l *lua.LState) int {
+			if L.Get(1) == lua.LNil {
+				L.Push(lua.LNil)
+				return 1
+			}
+			username := L.CheckString(1)
+			d := twitch.GetCacheUserChatColor(username)
+			helpers.Logf(helpers.Blue, "TESTE %v", d)
+			L.Push(mlua.ToLValue(L, d))
+			return 1
+		},
+		"get_user_data": func(l *lua.LState) int {
+			if L.Get(1) == lua.LNil {
+				L.Push(lua.LNil)
+				return 1
+			}
+			username := L.CheckString(1)
+			d, err := twitch.GetUserData(username)
+			if err != nil {
+				L.Push(lua.LNil)
+				return 1
+			}
+			L.Push(mlua.ToLValue(L, d))
+			return 1
+		},
+		"get_user_data_by_id": func(l *lua.LState) int {
+			if L.Get(1) == lua.LNil {
+				L.Push(lua.LNil)
+				return 1
+			}
+			userid := L.CheckString(1)
+			d, err := twitch.GetUserDataById(userid)
+			if err != nil {
+				L.Push(lua.LNil)
+				return 1
+			}
+			L.Push(mlua.ToLValue(L, d))
+			return 1
+		},
+		"get_followers_data": func(l *lua.LState) int {
+			if L.Get(1) == lua.LNil {
+				L.Push(lua.LNil)
+				return 1
+			}
+			userid := L.CheckString(1)
+			d, err := twitch.GetFollowersData("", userid)
+			helpers.Logf(helpers.Red, "TESTE F %v %v", d, err)
+			if err == nil {
+				L.Push(lua.LNil)
+				return 1
+			}
+			L.Push(mlua.ToLValue(L, d))
+			return 1
+		},
+	})
 }

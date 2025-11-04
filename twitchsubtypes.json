@@ -1,0 +1,13 @@
+{
+    "automod.message.hold": {"version": 2, "requires": "moderator:manage:automod"},
+    "channel.follow": {"version": 2, "requires": "moderator:read:followers"},
+    "channel.shared_chat.begin":  {},
+	"channel.shared_chat.update": {},
+	"channel.shared_chat.end":    {},
+    "channel.raid":  {},
+	"channel.ban":   {"requires": "channel:moderate"},
+	"channel.unban": {"requires": "channel:moderate"},
+    "channel.channel_points_automatic_reward_redemption.add": {"requires": "channel:manage:redemptions"},
+    "stream.online":  {},
+	"stream.offline": {}
+}

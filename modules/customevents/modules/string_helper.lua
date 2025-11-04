@@ -1,4 +1,3 @@
-
 local accent_map = {
     ["á"] = "a",
     ["é"] = "e",
@@ -33,6 +32,25 @@ function M.higieniza_string(str)
     end
     local cleanedStr = string.gsub(lowerStr, '[^%a%d%s]', '')
     return cleanedStr
+end
+
+function M.split(str, sep)
+    if not (type(str) == "string") then
+        return {}
+    end
+    local t = {}
+    local pattern = "([^" .. sep .. "]+)"
+    for s in string.gmatch(str, pattern) do
+        table.insert(t, s)
+    end
+    return t
+end
+
+function M.trim(s)
+    if not (type(s) == "string") then
+        return {}
+    end
+    return s:gsub("^%s*(.-)%s*$", "%1")
 end
 
 return M

@@ -8,12 +8,10 @@ import (
 
 	"MyStreamBot/globals"
 	"MyStreamBot/goweb"
-	"MyStreamBot/helpers"
 	"MyStreamBot/kick"
 	"MyStreamBot/mlua"
 	"MyStreamBot/twitch"
 	"runtime"
-	"time"
 )
 
 var (
@@ -33,6 +31,7 @@ func main() {
 	twitch.Channels = []string{}
 
 	globals.LoadInitFile()
+	globals.LoadTwitchSubTypes()
 
 	RegisterSocketHandlers()
 
@@ -52,11 +51,13 @@ func main() {
 	twitch.HandleLogin()
 	kick.HandleLogin()
 
-	go func() {
-		mem := getMemUsage()
-		helpers.Logf(helpers.Blue, "Mem: %.1f MB | Goroutines: %d", mem, runtime.NumGoroutine())
-		time.Sleep(5 * time.Second)
-	}()
+	/*go func() {
+		for {
+			mem := getMemUsage()
+			helpers.Logf(helpers.Blue, "Mem: %.1f MB | Goroutines: %d", mem, runtime.NumGoroutine())
+			time.Sleep(5 * time.Second)
+		}
+	}()*/
 
 	select {} // manter aplicação rodando
 }

@@ -25,7 +25,7 @@ func HandleLogin() {
 	if globals.GetConfig().TwitchScopes != "" {
 		scopes = fmt.Sprintf("%s %s", scopes, globals.GetConfig().TwitchScopes)
 	}
-
+	subTypes := globals.GetConfig().GetTwitchSubTypes()
 	for _, es := range subTypes {
 		if es != nil && es["requires"] != nil {
 			reqs := strings.SplitSeq(es["requires"].(string), " ")

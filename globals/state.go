@@ -29,6 +29,7 @@ type State struct {
 }
 
 type Config struct {
+	sync.RWMutex
 	TwitchClientID     string
 	TwitchClientSecret string
 	KickClientID       string
@@ -36,6 +37,7 @@ type Config struct {
 	BotPrefix          string
 	TwitchScopes       string
 	HTTPPort           string
+	TwitchSubTypes     map[string]map[string]any
 }
 
 var (
@@ -54,6 +56,18 @@ func GetConfig() *Config {
 		}
 	})
 	return config
+}
+
+func (c *Config) GetTwitchSubTypes() map[string]map[string]any {
+	c.RLock()
+	defer c.RUnlock()
+	return c.TwitchSubTypes
+}
+
+func (c *Config) SetTwitchSubTypes(data map[string]map[string]any) {
+	c.Lock()
+	defer c.Unlock()
+	c.TwitchSubTypes = data
 }
 
 func GetState() *State {

@@ -23,6 +23,14 @@
             margin-bottom: 0px;
         }
 
+        h1:has(+.box-options+.box-content) {
+            margin-bottom: 0px;
+        }
+
+        h1:has(+.box-options) {
+            display: inline-block;
+        }
+
         .box-content {
             border: 1px solid white;
         }
@@ -118,8 +126,29 @@
             line-height: 27px;
         }
 
+        #chat .message:has(.streamer-ref) {
+            font-weight: bold;
+            background-color: #430000;
+            border-radius: 5px;
+            padding: 2px;
+        }
+
+        #chat .message .reply-message {
+            margin-top: 5px;
+            margin-bottom: 2px;
+            padding-left: 5px;
+            font-size: 13px;
+            line-height: 4px;
+            color: rgb(204, 204, 204);
+        }
+
+        #chat .message:has(button) .reply-message {
+            padding-left: 65px;
+        }
+
         #chat .message.message-deleted {
             text-decoration: line-through;
+            color: #99999a;
         }
 
         #chat .message .chat-badges {
@@ -238,14 +267,15 @@
             </div>
         </div>
     </div>
-    <h1>Chat Live</h1>
+    <h1 style="display: inline-block;">Chat Live</h1>
+    <span class="box-options"><input type="checkbox" id="chk-acompanhar-chat" checked />Acompanhe o chat</span>
     <div id="chat" class="box-content">
         <div class="content"></div>
         <div class="sender">
             <button type="button" id="btn-mandar-msg">Mandar Mensagem</button>
         </div>
     </div>
-    <h1>Eventos</h1>
+    <h1 id="events-title">Eventos <input id="collapse-events" type="checkbox" /> </h1>
     <div id="events" class="box-content"></div>
 
     <h1 id="dyeventstitle">DyEvents <input id="toggle-dyevents" type="checkbox" /></h1>
@@ -270,6 +300,9 @@
     <script type="module">
         import w from './wrapper.js'
 
+        // quando for reply mostrar a mensagem acima menorzinho
+        // first chatter
+
         const logins = document.getElementById('logins');
         const kickConnections = document.querySelector('#chat-connection-kick');
         const twitchConnections = document.querySelector('#chat-connection-twitch');
@@ -280,12 +313,13 @@
         const streamGameList = document.getElementById('stream-games')
 
         const chatDiv = document.querySelector("#chat .content");
+        const chatAcompanhar = document.getElementById('chk-acompanhar-chat');
         const eventDiv = document.getElementById('events');
 
         const dyEventsDiv = document.getElementById('dyevents');
 
         const toggledyevents = document.getElementById('toggle-dyevents');
-        toggledyevents.onchange = function  () {
+        toggledyevents.onchange = function () {
             dyEventsDiv.style.display = this.checked ? 'none' : 'block';
             document.getElementById('dyeventstitle').style.fontSize = this.checked ? '14px' : '';
         }
@@ -348,13 +382,12 @@
             user.className = "chat-user";
             message.className = "chat-message";
 
-
             span.append(source, channel, badges, user, message);
 
             source.textContent = msg.source;
             channel.textContent = msg.channel;
             user.textContent = msg.user;
-            message.innerHTML = parseText(msg);
+            message.innerHTML = checkuserReference(parseText(msg));
 
             if (msg.metadata) {
                 user.style.color = msg.metadata.color;
@@ -372,6 +405,16 @@
 
                 if (msg.metadata["source-room-id"])
                     div.dataset.sourceRoom = msg.metadata["source-room-id"];
+
+                if (msg.metadata['reply-parent-msg-body']) {
+                    let userref = `@${msg.metadata['reply-parent-display-name']}`;
+                    let text = parseMessageWithEmotes(msg.metadata['reply-parent-msg-body']);
+                    message.innerHTML = message.innerHTML.replace(userref, "");
+                    const replyDiv = document.createElement('div');
+                    replyDiv.className = 'reply-message';
+                    replyDiv.innerHTML = checkuserReference(`Respondendo a <span>${userref}</span>: ${text}`).replaceAll('\\s', '&nbsp;').replaceAll('\n', '');
+                    div.prepend(replyDiv);
+                }
             }
             if (msg.source == "twitch") {
                 source.innerHTML = `<img src="https://assets.twitch.tv/assets/favicon-32-e29e246c157142c94346.png" />`
@@ -403,7 +446,8 @@
 
             div.appendChild(span);
             chatDiv.appendChild(div);
-            chatDiv.scrollTop = chatDiv.scrollHeight;
+            if (chatAcompanhar.checked)
+                chatDiv.scrollTop = chatDiv.scrollHeight;
         });
         w.on('user-message-update', function (data) {
             updateMessageDelete(data?.metadata['target-msg-id']);
@@ -441,6 +485,7 @@
 
             let div = document.createElement("div");
             div.className = "message";
+            div.style.color = "#99999a";
 
             let span = document.createElement("span");
 
@@ -484,7 +529,8 @@
             }*/
             div.appendChild(span);
             chatDiv.appendChild(div);
-            chatDiv.scrollTop = chatDiv.scrollHeight;
+            if (chatAcompanhar.checked)
+                chatDiv.scrollTop = chatDiv.scrollHeight;
 
         });
         w.onTwitch("channel.follow", (data) => {
@@ -497,6 +543,16 @@
         w.connect();
 
         // TWITCH FUNCS
+
+        function checkuserReference(text) {
+            let t1 = `@${twitchData.userLogin}`;
+            let t2 = `@${twitchData.display_name}`;
+
+            if (t1 == t2)
+                return text.replaceAll(t1, `<span class="streamer-ref">${t1}</span>`);
+
+            return text.replaceAll(t1, `<span class="streamer-ref">${t1}</span>`).replaceAll(t2, `<span class="streamer-ref">${t2}</span>`);
+        }
 
         function connectToTwitchChat(slug) {
             w.send('connect-chat-twitch', { channel: slug });
@@ -562,6 +618,20 @@
 
 
         // VISUALS
+
+        chatDiv.onscroll = function () {
+            const atBottom = chatDiv.scrollHeight - chatDiv.scrollTop <= chatDiv.clientHeight + 20;
+            if (atBottom) {
+                chatAcompanhar.checked = true;
+            } else {
+                chatAcompanhar.checked = false;
+            }
+        }
+
+        document.getElementById('collapse-events').onchange = function () {
+            document.getElementById('events-title').style.fontSize = this.checked ? '14px' : '';
+            eventDiv.style.display = this.checked ? 'none' : 'block';
+        }
 
         document.getElementById('btn-mandar-msg').onclick = function (e) {
             e.preventDefault();
@@ -667,7 +737,7 @@
         }
 
         function loadDyModules(modules) {
-            if (!modules || modules.length == 0){
+            if (!modules || modules.length == 0) {
                 document.getElementById('dyeventstitle').style.display = 'none';
                 dyEventsDiv.style.display = 'none';
                 return;
@@ -697,7 +767,6 @@
                 dyEventsDiv.append(div);
             });
         }
-
 
     </script>
 

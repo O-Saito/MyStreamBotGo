@@ -35,58 +35,66 @@ func TableToMap(tbl *lua.LTable) map[string]interface{} {
 }
 
 func ToLValue(L *lua.LState, val any) lua.LValue {
-	switch v := val.(type) {
-	case nil:
+	if val == nil {
 		return lua.LNil
-	case string:
-		return lua.LString(v)
-	case bool:
-		return lua.LBool(v)
-	case int:
-		return lua.LNumber(v)
-	case int64:
-		return lua.LNumber(v)
-	case float32:
-		return lua.LNumber(v)
-	case float64:
-		return lua.LNumber(v)
-	case map[string]any:
-		tbl := L.NewTable()
-		for k, vv := range v {
-			tbl.RawSetString(k, ToLValue(L, vv))
-		}
-		return tbl
-	case []any:
-		tbl := L.NewTable()
-		for i, vv := range v {
-			tbl.RawSetInt(i+1, ToLValue(L, vv)) // Lua é 1-index
-		}
-		return tbl
-	default:
-		// Se for uma struct, converte via reflection
-		rv := reflect.ValueOf(v)
-		rt := reflect.TypeOf(v)
-		if rv.Kind() == reflect.Struct {
-			tbl := L.NewTable()
-			for i := 0; i < rv.NumField(); i++ {
-				field := rt.Field(i)
-				// Só exportados
-				if field.PkgPath != "" {
-					continue
-				}
-				name := field.Name
-				fv := rv.Field(i).Interface()
-				tbl.RawSetString(name, ToLValue(L, fv))
-			}
-			return tbl
-		}
+	}
 
-		// Se for ponteiro pra struct
-		if rv.Kind() == reflect.Ptr && rv.Elem().Kind() == reflect.Struct {
+	rv := reflect.ValueOf(val)
+	rt := reflect.TypeOf(val)
+
+	switch rv.Kind() {
+	case reflect.String:
+		return lua.LString(rv.String())
+	case reflect.Bool:
+		return lua.LBool(rv.Bool())
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		return lua.LNumber(rv.Int())
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+		return lua.LNumber(int64(rv.Uint()))
+	case reflect.Float32, reflect.Float64:
+		return lua.LNumber(rv.Float())
+	case reflect.Map:
+		tbl := L.NewTable()
+		for _, key := range rv.MapKeys() {
+			k := fmt.Sprint(key.Interface())
+			v := rv.MapIndex(key).Interface()
+			tbl.RawSetString(k, ToLValue(L, v))
+		}
+		return tbl
+	case reflect.Slice, reflect.Array:
+		tbl := L.NewTable()
+		for i := 0; i < rv.Len(); i++ {
+			elem := rv.Index(i).Interface()
+			tbl.RawSetInt(i+1, ToLValue(L, elem))
+		}
+		return tbl
+	case reflect.Struct:
+		tbl := L.NewTable()
+		for i := 0; i < rv.NumField(); i++ {
+			field := rt.Field(i)
+			// Ignora campos não exportados
+			if field.PkgPath != "" {
+				continue
+			}
+			name := field.Name
+			/*if tag := field.Tag.Get("json"); tag != "" {
+				tag = strings.Split(tag, ",")[0]
+				if tag != "" && tag != "-" {
+					name = tag
+				}
+			}*/
+			fv := rv.Field(i).Interface()
+			tbl.RawSetString(name, ToLValue(L, fv))
+		}
+		return tbl
+	case reflect.Ptr:
+		if !rv.IsNil() {
 			return ToLValue(L, rv.Elem().Interface())
 		}
-
-		return lua.LString(fmt.Sprintf("%v", v)) // fallback
+		return lua.LNil
+	default:
+		helpers.Logf(helpers.Red, "[LUA PARSER] Default fallback %T", val)
+		return lua.LString(fmt.Sprintf("%v", val))
 	}
 }
 

@@ -450,7 +450,7 @@ func StartEventQueues() {
 		}()
 		for ev := range globals.LuaRequest {
 			DyEventQueue <- DyEventQueueData{
-				Type:          DyEventEvent,
+				Type:          DyEventRequest,
 				SocketMessage: ev,
 			}
 			/*dynamicEventsMutex.RLock()

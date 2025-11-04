@@ -133,7 +133,7 @@ func RegisterLuaFunctions(L *lua.LState) {
 			userid := L.CheckString(1)
 			d, err := twitch.GetFollowersData("", userid)
 			helpers.Logf(helpers.Red, "TESTE F %v %v", d, err)
-			if err == nil {
+			if err != nil {
 				L.Push(lua.LNil)
 				return 1
 			}

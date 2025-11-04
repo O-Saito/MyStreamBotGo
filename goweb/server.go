@@ -106,7 +106,7 @@ func StartHTTPServer() {
 				break
 			}
 
-			helpers.Logf(helpers.Cyan, "[Socket] Message: %s", string(msg))
+			//helpers.Logf(helpers.Cyan, "[Socket] Message: %s", string(msg))
 			m := string(msg)
 			if m == "init" {
 				SocketHandlers["init"](conn, nil)

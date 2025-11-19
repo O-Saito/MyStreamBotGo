@@ -34,6 +34,23 @@ type TwitchUserData struct {
 	CreatedAt              string `json:"created_at"`
 }
 
+type TwitchStreamData struct {
+	ID           string   `json:"id"`
+	UserId       string   `json:"user_id"`
+	UserLogin    string   `json:"user_login"`
+	UserName     string   `json:"user_name"`
+	GameId       string   `json:"game_id"`
+	GameName     string   `json:"game_name"`
+	Type         string   `json:"type"`
+	Title        string   `json:"title"`
+	Tags         []string `json:"tags"`
+	ViewerCount  int32    `json:"viewer_count"`
+	StartedAt    string   `json:"started_at"`
+	Language     string   `json:"language"`
+	ThumbnailURL string   `json:"thumbnail_url"`
+	IsMature     bool     `json:"is_mature"`
+}
+
 type TwitchViewerData struct {
 	UserId     string `json:"user_id"`
 	UserName   string `json:"user_name"`
@@ -350,4 +367,26 @@ func GetUserChatColor(id string) (struct {
 	}
 
 	return d.Data[0], nil
+}
+
+func GetStreamData(id string) (TwitchStreamData, error) {
+	urlAPI := fmt.Sprintf("https://api.twitch.tv/helix/streams?user_id=%s", id)
+	req, _ := http.NewRequest("GET", urlAPI, nil)
+	req.Header.Set("Authorization", "Bearer "+globals.GetState().GetTwitchUser().Token)
+	req.Header.Set("Client-ID", globals.GetConfig().TwitchClientID)
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return TwitchStreamData{}, err
+	}
+	defer resp.Body.Close()
+
+	var u struct {
+		Data []TwitchStreamData `json:"data"`
+	}
+	body, _ := io.ReadAll(resp.Body)
+	json.Unmarshal(body, &u)
+	if len(u.Data) == 0 {
+		return TwitchStreamData{}, nil
+	}
+	return u.Data[0], nil
 }

@@ -9,6 +9,10 @@
             box-sizing: border-box;
         }
 
+        :root {
+            --bg-color: #18181b;
+        }
+
         body {
             font-family: sans-serif;
             /*font-size: 50px;*/
@@ -16,7 +20,7 @@
 
         .dark {
             color: white;
-            background-color: #18181b;
+            background-color: var(--bg-color);
         }
 
         h1:has(+.box-content) {
@@ -126,6 +130,31 @@
             line-height: 27px;
         }
 
+        #chat .message .chat-user>img {
+            width: 20px;
+            vertical-align: middle;
+            margin-left: 5px;
+        }
+
+        #chat .message.first-message:not(.message-deleted) {
+            border: 2px solid #8400c7;
+            border-radius: 5px;
+            padding-top: 9px;
+            margin-top: 8px;
+            position: relative;
+        }
+
+        #chat .message.first-message:not(.message-deleted)::after {
+            content: "Primeira Mensagem!";
+            background-color: var(--bg-color);
+            padding: 0 10px;
+            position: absolute;
+            top: -15px;
+            left: 20px;
+            font-size: 15px;
+            font-weight: bold;
+        }
+
         #chat .message:has(.streamer-ref) {
             font-weight: bold;
             background-color: #430000;
@@ -138,8 +167,13 @@
             margin-bottom: 2px;
             padding-left: 5px;
             font-size: 13px;
-            line-height: 4px;
+            line-height: 13px;
             color: rgb(204, 204, 204);
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            width: 100%;
+            overflow: hidden;
+            height: 14px;
         }
 
         #chat .message:has(button) .reply-message {
@@ -266,9 +300,34 @@
                 </div>
             </div>
         </div>
+        <div id="youtube" class="areas">
+            <div class="header">
+                <label id="login-youtube"><a href="/youtube/login" target="_blank">Logar Youtube</a></label>
+            </div>
+            <div class="body">
+                <div id="chat-connection-youtube" class="chat-list">
+                    <div class="form">
+                    </div>
+                    <ul class="list"></ul>
+                </div>
+            </div>
+        </div>
     </div>
     <h1 style="display: inline-block;">Chat Live</h1>
-    <span class="box-options"><input type="checkbox" id="chk-acompanhar-chat" checked />Acompanhe o chat</span>
+    <span class="box-options" style=" width: calc(100% - 152px); display: inline-block;">
+        <label>
+            <input type="checkbox" id="chk-acompanhar-chat" checked />Acompanhar chat
+        </label>
+        <label>
+            <input type="checkbox" id="chk-show-view-count" checked />Contador de View
+        </label>
+        <span class="view-count-area" style="float: right; vertical-align: middle;">
+            <span>
+                <img src="https://assets.twitch.tv/assets/favicon-32-e29e246c157142c94346.png" style="height: 20px;" />
+                <span id="twitch-view-count"></span>
+            </span>
+        </span>
+    </span>
     <div id="chat" class="box-content">
         <div class="content"></div>
         <div class="sender">
@@ -300,12 +359,12 @@
     <script type="module">
         import w from './wrapper.js'
 
-        // quando for reply mostrar a mensagem acima menorzinho
         // first chatter
 
         const logins = document.getElementById('logins');
         const kickConnections = document.querySelector('#chat-connection-kick');
         const twitchConnections = document.querySelector('#chat-connection-twitch');
+        const youtubeConnections = document.querySelector('#chat-connection-youtube');
 
         const twitchLastEventsub = document.getElementById('twitch-last-eventsub');
 
@@ -317,6 +376,8 @@
         const eventDiv = document.getElementById('events');
 
         const dyEventsDiv = document.getElementById('dyevents');
+        const lblTwitchViewCount = document.getElementById("twitch-view-count");
+        const chkShowViewCount = document.getElementById('chk-show-view-count');
 
         const toggledyevents = document.getElementById('toggle-dyevents');
         toggledyevents.onchange = function () {
@@ -324,7 +385,7 @@
             document.getElementById('dyeventstitle').style.fontSize = this.checked ? '14px' : '';
         }
 
-        let twitchData = null;
+        let twitchData = null, youtubeData = null;
 
         w.on('init', (data) => {
             console.log(data);
@@ -341,12 +402,16 @@
                 }
             }
             updateTwitchConnectionDetails(data.twitch);
+            updateYouTubeConnectionDetails(data.youtube);
             updateKickConnectionDetails(data.kick.connected_as);
 
             loadDyModules(data.custom_events_modules);
+
+            w.send("get-streamer-data", {});
         });
 
         w.on('twitch-connection', updateTwitchConnectionDetails);
+        w.on('youtube-connection', updateYouTubeConnectionDetails);
         w.on('kick-connection', updateKickConnectionDetails);
         w.on('twitch-chat-connection', function (data) {
             const li = document.createElement('li');
@@ -387,20 +452,43 @@
             source.textContent = msg.source;
             channel.textContent = msg.channel;
             user.textContent = msg.user;
-            message.innerHTML = checkuserReference(parseText(msg));
+
+            if (msg.source == "twitch") {
+                message.innerHTML = checkuserReference(parseText(msg));
+            } else {
+                message.innerHTML = parseText(msg);
+            }
+
+            if (msg.source == "twitch") {
+                source.innerHTML = `<img src="https://assets.twitch.tv/assets/favicon-32-e29e246c157142c94346.png" alt="twitch" title="twitch" />`;
+            } else if (msg.source == "kick") {
+                source.innerHTML = `<img src="https://kick.com/favicon.ico" alt="kick" title="kick" />`;
+            } else if (msg.source == "youtube") {
+                source.innerHTML = `<img src="https://www.youtube.com/s/desktop/d0c6b06b/img/favicon.ico" alt="YouTube" title="YouTube" />`;
+            }
 
             if (msg.metadata) {
                 user.style.color = msg.metadata.color;
+
+                if (msg.metadata['first-msg'] && msg.metadata['first-msg'] == '1') {
+                    div.classList.add('first-message');
+                }
+
                 if (msg.metadata['display-name'])
                     user.textContent = msg.metadata['display-name']
+                if (msg.metadata['authorDetails'])
+                    user.innerHTML = `<img src="${msg.metadata['authorDetails']['profileImageUrl']}" /> ${msg.user}`;
                 if (msg.metadata['badges-info'])
-                    badges.innerHTML = Object.getOwnPropertyNames(msg.metadata['badges-info']).map(x => msg.metadata['badges-info'][x] && msg.metadata['badges-info'][x][0] != null && msg.metadata['badges-info'][x][0] != '' ? `<img src="${msg.metadata['badges-info'][x][0].image_url_1x}" alt="${msg.metadata['badges-info'][x][0].title}" />` : '').join('');
+                    badges.innerHTML = Object.getOwnPropertyNames(msg.metadata['badges-info']).map(x =>
+                        msg.metadata['badges-info'][x] && msg.metadata['badges-info'][x][0] != null && msg.metadata['badges-info'][x][0] != '' ?
+                            `<img src="${msg.metadata['badges-info'][x][0].image_url_1x}" alt="${msg.metadata['badges-info'][x][0].title}" title="${msg.metadata['badges-info'][x][0].title}" />` :
+                            '').join('');
 
                 if (msg.metadata['room']) {
-                    channel.innerHTML = `<img src="${msg.metadata['room'].profile_image_url}" alt="${msg.metadata['room'].display_name}" />`;
+                    channel.innerHTML = `<img src="${msg.metadata['room'].profile_image_url}" alt="${msg.metadata['room'].display_name}" title="${msg.metadata['room'].display_name}" />`;
                 }
                 if (msg.metadata['source-room']) {
-                    channel.innerHTML = `<img src="${msg.metadata['source-room'].profile_image_url}" alt="${msg.metadata['source-room'].display_name}" />`;
+                    channel.innerHTML = `<img src="${msg.metadata['source-room'].profile_image_url}" alt="${msg.metadata['source-room'].display_name}" title="${msg.metadata['source-room'].display_name}" />`;
                 }
 
                 if (msg.metadata["source-room-id"])
@@ -415,12 +503,6 @@
                     replyDiv.innerHTML = checkuserReference(`Respondendo a <span>${userref}</span>: ${text}`).replaceAll('\\s', '&nbsp;').replaceAll('\n', '');
                     div.prepend(replyDiv);
                 }
-            }
-            if (msg.source == "twitch") {
-                source.innerHTML = `<img src="https://assets.twitch.tv/assets/favicon-32-e29e246c157142c94346.png" />`
-            }
-            if (msg.source == "kick") {
-                source.innerHTML = `<img src="https://kick.com/favicon.ico" />`
             }
             // criar botões de ação
             if (msg.source === "twitch") {
@@ -481,7 +563,6 @@
                 console.error("automod.message.hold without event", data);
                 return;
             }
-            //eventDiv.innerHTML += `<div class="event"><span><span class="user">automod.message.hold</span>${JSON.stringify(data)}</span></div>`;
 
             let div = document.createElement("div");
             div.className = "message";
@@ -501,32 +582,14 @@
             user.className = "chat-user";
             message.className = "chat-message";
 
-
             span.append(source, channel, badges, user, message);
 
             source.textContent = 'twitch';
             channel.textContent = event.broadcaster_user_name;
             user.textContent = event.user_name;
             message.innerHTML = `[${event.reason} - ${event.automod?.category}] ${event.message.text}`;
-            source.innerHTML = `<img src="https://assets.twitch.tv/assets/favicon-32-e29e246c157142c94346.png" />`
+            source.innerHTML = `<img src="https://assets.twitch.tv/assets/favicon-32-e29e246c157142c94346.png" title="twitch" alt="twitch" />`
 
-            /*if (msg.metadata) {
-                user.style.color = msg.metadata.color;
-                if (msg.metadata['display-name'])
-                    user.textContent = msg.metadata['display-name']
-                if (msg.metadata['badges-info'])
-                    badges.innerHTML = Object.getOwnPropertyNames(msg.metadata['badges-info']).map(x => msg.metadata['badges-info'][x] && msg.metadata['badges-info'][x][0] != null && msg.metadata['badges-info'][x][0] != '' ? `<img src="${msg.metadata['badges-info'][x][0].image_url_1x}" alt="${msg.metadata['badges-info'][x][0].title}" />` : '').join('');
-
-                if (msg.metadata['room']) {
-                    channel.innerHTML = `<img src="${msg.metadata['room'].profile_image_url}" alt="${msg.metadata['room'].display_name}" />`;
-                }
-                if (msg.metadata['source-room']) {
-                    channel.innerHTML = `<img src="${msg.metadata['source-room'].profile_image_url}" alt="${msg.metadata['source-room'].display_name}" />`;
-                }
-
-                if (msg.metadata["source-room-id"])
-                    div.dataset.sourceRoom = msg.metadata["source-room-id"];
-            }*/
             div.appendChild(span);
             chatDiv.appendChild(div);
             if (chatAcompanhar.checked)
@@ -540,9 +603,23 @@
             eventDiv.innerHTML += `<div class="event"><span><span class="user">${data.payload.event.from_broadcaster_user_name}</span> está raidando ${twitchData == null || twitchData.userId == data.payload.event.to_broadcaster_user_id ? data.payload.event.to_broadcaster_user_name : 'você'} com ${data.payload.event.viewers} viewers!</span></div>`;
         });
 
+        w.on('result-get-streamer-data', function (data) {
+            console.log('result-get-streamer-data', data);
+            //if (data.id == '') return;
+            lblTwitchViewCount.innerHTML = data.viewer_count.toString();
+        });
+
         w.connect();
 
         // TWITCH FUNCS
+        setInterval(() => {
+            if (twitchData == null || twitchData == undefined) return;
+            w.send("get-streamer-data", {});
+        }, 1000 * 60);
+
+        chkShowViewCount.onchange = function () {
+            lblTwitchViewCount.style.color = chkShowViewCount.checked ? "" : "var(--bg-color)";
+        }
 
         function checkuserReference(text) {
             let t1 = `@${twitchData.userLogin}`;
@@ -556,6 +633,10 @@
 
         function connectToTwitchChat(slug) {
             w.send('connect-chat-twitch', { channel: slug });
+        }
+
+        function connectToYouTubeChat(id) {
+            w.send('connect-chat-youtube', { channel: id });
         }
 
         function deleteTwitchMessage(e) {
@@ -665,6 +746,25 @@
             }
         }
 
+        function updateYouTubeConnectionDetails(data) {
+            youtubeData = data;
+
+            if (!data || !data.Channels || data.Channels.length == 0) {
+                logins.querySelector('#login-youtube').innerHTML = `<a href="/youtube/login" target="_blank">Logar Twitch</a>`;
+                youtubeConnections.style.display = 'none';
+                return;
+            }
+            logins.querySelector('#login-youtube').innerHTML = `YouTube: ${data.Channels.map(x => `<img src="${x.thumbnail}" /> ${x.title}`).join('')}`;
+
+            youtubeConnections.querySelector('.form').innerHTML = data.Channels.map(x => `<button type="button" data-id="${x.id}" class="btn-youtube-chat-connect">Connectar ao Chat: ${x.title}</button>`).join('');
+
+            youtubeConnections.style.display = 'block';
+            youtubeConnections.querySelector('.btn-youtube-chat-connect').onclick = function (e) {
+                e.preventDefault();
+                connectToYouTubeChat(e.target.dataset.id);
+            }
+        }
+
         function updateKickConnectionDetails(user) {
             logins.querySelector('#login-kick').innerHTML = user == '' ? `<a href="/kick/login" target="_blank">Logar Kick</a>` : `Kick: ${user}`;
             if (!user || user == '') {
@@ -715,7 +815,7 @@
 
                 for (let i = 0; i < emotes.length; i++) {
                     const emote = emotes[i];
-                    text = text.replaceAll(emote.name, `<img src="${emote.url}" />`)
+                    text = text.replaceAll(emote.name, `<img src="${emote.url}" alt="${emote.name}" title="${emote.name}" />`)
                 }
 
             }

@@ -12,9 +12,10 @@ import (
 )
 
 type SocketMessage struct {
-	Filter string `json:"filter"`
-	Type   string `json:"type"`
-	Data   any    `json:"data"`
+	Filter  string `json:"filter"`
+	Type    string `json:"type"`
+	Data    any    `json:"data"`
+	Respond int
 }
 
 type MessageFromStream struct {

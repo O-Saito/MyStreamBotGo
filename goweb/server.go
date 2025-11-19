@@ -22,16 +22,17 @@ var upgrader = websocket.Upgrader{
 }
 
 var mu sync.RWMutex
-var wsClients = make(map[*websocket.Conn]bool)
+var lastTagIndex = 0
+var wsClients = make(map[*websocket.Conn]int)
 var wsClientsUpgraded = make(map[string][]*websocket.Conn)
 
-var SocketHandlers = map[string]func(*websocket.Conn, map[string]any){
-	"init": func(c *websocket.Conn, m map[string]any) {
-
-		jsonData := globals.SocketMessage{
+var SocketHandlers = map[string]func(*websocket.Conn, map[string]any, int){
+	"init": func(c *websocket.Conn, m map[string]any, mytag int) {
+		globals.WsBroadcast <- globals.SocketMessage{
 			Type: "init",
 			Data: map[string]any{
-				"twitch": globals.GetState().GetTwitchUser(),
+				"twitch":  globals.GetState().GetTwitchUser(),
+				"youtube": globals.GetState().GetYouTubeUser(),
 				"kick": map[string]any{
 					"connected_as": kick.UserLogin,
 				},
@@ -40,25 +41,20 @@ var SocketHandlers = map[string]func(*websocket.Conn, map[string]any){
 				"custom_events_modules": mlua.ListDynamicEvents(),
 				"twitch_eventsubs":      globals.GetState().GetData("TwitchSubEventsConnectedEvents"),
 			},
+			Respond: mytag,
 		}
-		helpers.Log(helpers.Cyan, "[Socket] Init message")
-		d, err := json.Marshal(jsonData)
-		if err != nil {
-			helpers.Logf(helpers.Red, "[Socket] Init error: %s", err.Error())
-			return
-		}
-		helpers.Logf(helpers.Cyan, "[Socket] Init message: %s", d)
-		c.WriteMessage(websocket.TextMessage, []byte(d))
+		//c.WriteMessage(websocket.TextMessage, []byte(d))
 	},
-	"upgrade-conn": func(c *websocket.Conn, m map[string]any) {
-		data := map[string]any{
-			"type": "response-upgrade",
-			"data": "",
+	"upgrade-conn": func(c *websocket.Conn, m map[string]any, mytag int) {
+		data := globals.SocketMessage{
+			Type:    "response-upgrade",
+			Data:    "",
+			Respond: mytag,
 		}
 		if m["conn"] != nil {
 			if m["conn"].(string) == "ignore-broadcast" {
 				mu.Lock()
-				wsClients[c] = false
+				wsClients[c] = -1
 				mu.Unlock()
 				return
 			}
@@ -69,17 +65,13 @@ var SocketHandlers = map[string]func(*websocket.Conn, map[string]any){
 
 			wsClientsUpgraded[m["conn"].(string)] = append(wsClientsUpgraded[m["conn"].(string)], c)
 			mu.Unlock()
-			data["data"] = "conexão atualizada!"
+			data.Data = "conexão atualizada!"
 		} else {
-			data["data"] = "conexão não especificada!"
+			data.Data = "conexão não especificada!"
 		}
 
-		d, err := json.Marshal(data)
-		if err != nil {
-			helpers.Logf(helpers.Red, "[Socket] Upgrade-conn parse error: %s", err.Error())
-			return
-		}
-		c.WriteMessage(websocket.TextMessage, []byte(d))
+		globals.WsBroadcast <- data
+		//c.WriteMessage(websocket.TextMessage, []byte(d))
 	},
 }
 
@@ -96,7 +88,9 @@ func StartHTTPServer() {
 		}
 		defer conn.Close()
 		mu.Lock()
-		wsClients[conn] = true
+		lastTagIndex += 1
+		mytag := lastTagIndex
+		wsClients[conn] = mytag
 		mu.Unlock()
 		for {
 			_, msg, err := conn.ReadMessage()
@@ -109,7 +103,7 @@ func StartHTTPServer() {
 			//helpers.Logf(helpers.Cyan, "[Socket] Message: %s", string(msg))
 			m := string(msg)
 			if m == "init" {
-				SocketHandlers["init"](conn, nil)
+				SocketHandlers["init"](conn, nil, mytag)
 				continue
 			}
 			var data globals.SocketMessage
@@ -121,7 +115,7 @@ func StartHTTPServer() {
 			}
 
 			if handler, exists := SocketHandlers[string(data.Type)]; exists {
-				handler(conn, data.Data.(map[string]any))
+				handler(conn, data.Data.(map[string]any), mytag)
 				continue
 			}
 		}
@@ -173,7 +167,7 @@ func StartHTTPServer() {
 		for msg := range globals.WsBroadcast {
 
 			if msg.Filter != "" {
-				helpers.Logf(helpers.Cyan, "[WebSocket] Message filter %s: %s - %s", msg.Filter, msg.Type, msg.Data)
+				//helpers.Logf(helpers.Cyan, "[WebSocket] Message filter %s: %s - %s", msg.Filter, msg.Type, msg.Data)
 				mu.RLock()
 				wsList := append([]*websocket.Conn(nil), wsClientsUpgraded[msg.Filter]...)
 				mu.RUnlock()
@@ -182,17 +176,24 @@ func StartHTTPServer() {
 				}
 				jsonData, _ := json.Marshal(msg)
 				for _, client := range wsList {
-					client.WriteMessage(websocket.TextMessage, []byte(jsonData))
+					_ = client.WriteMessage(websocket.TextMessage, []byte(jsonData))
 				}
 				continue
 			}
 
-			helpers.Logf(helpers.Cyan, "[WebSocket] Broadcast: %s - %s", msg.Type, msg.Data)
+			//helpers.Logf(helpers.Cyan, "[WebSocket] Broadcast: %s - %s", msg.Type, msg.Data)
 			jsonData, _ := json.Marshal(msg)
-
 			mu.RLock()
 			clientsList := make([]*websocket.Conn, 0, len(wsClients))
-			for client := range wsClients {
+			for client, tag := range wsClients {
+				if tag == -1 {
+					continue
+				}
+				if msg.Respond != 0 && msg.Respond != -1 {
+					if msg.Respond != tag {
+						continue
+					}
+				}
 				clientsList = append(clientsList, client)
 			}
 			mu.RUnlock()

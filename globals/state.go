@@ -20,24 +20,44 @@ type TwitchUser struct {
 	Email                  string `json:"email"`
 }
 
+type YouTubeChannel struct {
+	ID          string `json:"id"`
+	Title       string `json:"title"`
+	Description string `json:"description"`
+	CustomURL   string `json:"customUrl,omitempty"`
+	Thumbnail   string `json:"thumbnail,omitempty"`
+}
+
+type YouTubeUser struct {
+	Token          string
+	RefreshToken   string
+	TokenExpiresIn int
+	Channels       []YouTubeChannel
+}
+
 type State struct {
 	sync.RWMutex
 	ViewersTwitch           []string
 	Data                    map[string]any
 	TwitchUser              TwitchUser
 	TwitchEventSubSessionId string
+	YouTubeUser             YouTubeUser
 }
 
 type Config struct {
 	sync.RWMutex
-	TwitchClientID     string
-	TwitchClientSecret string
-	KickClientID       string
-	KickClientSecret   string
-	BotPrefix          string
-	TwitchScopes       string
-	HTTPPort           string
-	TwitchSubTypes     map[string]map[string]any
+	TwitchClientID      string
+	TwitchClientSecret  string
+	KickClientID        string
+	KickClientSecret    string
+	YouTubeClientID     string
+	YouTubeClientSecret string
+	BotPrefix           string
+	TwitchScopes        string
+	HTTPPort            string
+	TwitchSubTypes      map[string]map[string]any
+
+	YouTubeRefresh string
 }
 
 var (
@@ -126,5 +146,23 @@ func (s *State) GetTwitchUser() TwitchUser {
 func (s *State) SetTwitchUser(user TwitchUser) {
 	s.Lock()
 	s.TwitchUser = user
+	s.Unlock()
+}
+
+func (s *State) GetYouTubeUser() YouTubeUser {
+	s.Lock()
+	defer s.Unlock()
+	return s.YouTubeUser
+}
+
+func (s *State) SetYouTubeUser(user YouTubeUser) {
+	s.Lock()
+	s.YouTubeUser = user
+	s.Unlock()
+}
+
+func (s *State) AddYouTubeChannel(channel YouTubeChannel) {
+	s.Lock()
+	s.YouTubeUser.Channels = append(s.YouTubeUser.Channels, channel)
 	s.Unlock()
 }

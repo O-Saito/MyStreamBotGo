@@ -11,6 +11,7 @@ import (
 	"MyStreamBot/kick"
 	"MyStreamBot/mlua"
 	"MyStreamBot/twitch"
+	"MyStreamBot/youtube"
 	"runtime"
 )
 
@@ -50,6 +51,7 @@ func main() {
 	// iniciar login Twitch
 	twitch.HandleLogin()
 	kick.HandleLogin()
+	youtube.HandleLogin()
 
 	/*go func() {
 		for {
@@ -58,6 +60,10 @@ func main() {
 			time.Sleep(5 * time.Second)
 		}
 	}()*/
+
+	go func() {
+		// validar refresh tokens
+	}()
 
 	select {} // manter aplicação rodando
 }

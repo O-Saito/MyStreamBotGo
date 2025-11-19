@@ -31,7 +31,8 @@ var SocketHandlers = map[string]func(*websocket.Conn, map[string]any, int){
 		globals.WsBroadcast <- globals.SocketMessage{
 			Type: "init",
 			Data: map[string]any{
-				"twitch": globals.GetState().GetTwitchUser(),
+				"twitch":  globals.GetState().GetTwitchUser(),
+				"youtube": globals.GetState().GetYouTubeUser(),
 				"kick": map[string]any{
 					"connected_as": kick.UserLogin,
 				},

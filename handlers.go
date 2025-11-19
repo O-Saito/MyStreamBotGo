@@ -6,6 +6,7 @@ import (
 	"MyStreamBot/helpers"
 	"MyStreamBot/kick"
 	"MyStreamBot/twitch"
+	"MyStreamBot/youtube"
 
 	"github.com/gorilla/websocket"
 )
@@ -24,6 +25,22 @@ func RegisterSocketHandlers() {
 	goweb.SocketHandlers["connect-chat-twitch"] = func(c *websocket.Conn, data map[string]any, tag int) {
 		helpers.Logf(helpers.Reset, "[Socket Handler] connect-chat-twitch %s\r\n", data["channel"].(string))
 		twitch.JoinChannel(data["channel"].(string))
+	}
+
+	goweb.SocketHandlers["connect-chat-youtube"] = func(c *websocket.Conn, data map[string]any, tag int) {
+		helpers.Logf(helpers.Reset, "[Socket Handler] connect-chat-youtube %s\r\n", data["channel"].(string))
+		lives, err := youtube.GetCurrentStreamings()
+		if err != nil {
+			helpers.Logf(helpers.Red, "Falha ao buscar YouTubeStreamings %v", err)
+			return
+		}
+
+		helpers.Logf(helpers.Cyan, "YT LIVES: %v", len(lives.Items))
+		for _, v := range lives.Items {
+			helpers.Logf(helpers.Cyan, "YT Listen to: %v", v)
+			youtube.ListenToChat(v.Snippet.LiveChatID)
+		}
+
 	}
 
 	goweb.SocketHandlers["send-chat-message"] = func(c *websocket.Conn, data map[string]any, tag int) {
@@ -51,7 +68,7 @@ func RegisterSocketHandlers() {
 	}
 
 	goweb.SocketHandlers["get-streamer-data"] = func(c *websocket.Conn, m map[string]any, tag int) {
-		data, _ := twitch.GetUserDataById(globals.GetState().GetTwitchUser().UserID)
+		data, _ := twitch.GetStreamData(globals.GetState().GetTwitchUser().UserID)
 		globals.WsBroadcast <- globals.SocketMessage{
 			Respond: tag,
 			Type:    "result-get-streamer-data",

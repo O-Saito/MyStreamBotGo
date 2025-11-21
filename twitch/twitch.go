@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"hash/fnv"
 	"net"
+	"slices"
 	"strings"
 )
 
@@ -302,6 +303,9 @@ func Disconnect() {
 }
 
 func JoinChannel(channel string) {
+	if slices.Contains(Channels, channel) {
+		return
+	}
 	helpers.Logf(helpers.Blue, "[TWITCH] Joining channel: %s", channel)
 	fmt.Fprintf(Conn, "JOIN #%s\r\n", channel)
 	Channels = append(Channels, channel)

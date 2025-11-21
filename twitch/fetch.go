@@ -34,23 +34,6 @@ type TwitchUserData struct {
 	CreatedAt              string `json:"created_at"`
 }
 
-type TwitchStreamData struct {
-	ID           string   `json:"id"`
-	UserId       string   `json:"user_id"`
-	UserLogin    string   `json:"user_login"`
-	UserName     string   `json:"user_name"`
-	GameId       string   `json:"game_id"`
-	GameName     string   `json:"game_name"`
-	Type         string   `json:"type"`
-	Title        string   `json:"title"`
-	Tags         []string `json:"tags"`
-	ViewerCount  int32    `json:"viewer_count"`
-	StartedAt    string   `json:"started_at"`
-	Language     string   `json:"language"`
-	ThumbnailURL string   `json:"thumbnail_url"`
-	IsMature     bool     `json:"is_mature"`
-}
-
 type TwitchViewerData struct {
 	UserId     string `json:"user_id"`
 	UserName   string `json:"user_name"`
@@ -59,8 +42,17 @@ type TwitchViewerData struct {
 }
 
 type StreamData struct {
-	GameID string `json:"game_id"`
-	Title  string `json:"title"`
+	BroadcasterId               string   `json:"broadcaster_id"`
+	BroadcasterLogin            string   `json:"broadcaster_login"`
+	BroadcasterName             string   `json:"broadcaster_name"`
+	BroadcasterLanguage         string   `json:"broadcaster_language"`
+	GameID                      string   `json:"game_id"`
+	GameName                    string   `json:"game_name"`
+	Title                       string   `json:"title"`
+	Delay                       int      `json:"delay"`
+	Tags                        []string `json:"tags"`
+	ContentClassificationLabels []string `json:"content_classification_labels"`
+	IsBrandedContent            bool     `json:"is_branded_content"`
 }
 
 type GameData struct {
@@ -211,7 +203,31 @@ func GetListOfGames(query string) ([]GameData, error) {
 	return reqData.Data, nil
 }
 
-func UpdateStreamData(sd StreamData) error {
+func GetChannelStreamData(id string) (*StreamData, error) {
+	urlAPI := fmt.Sprintf("%s?broadcaster_id=%s", urlAPIChannel, id)
+	req, _ := http.NewRequest("GET", urlAPI, nil)
+	req.Header.Set("Authorization", "Bearer "+globals.GetState().GetTwitchUser().Token)
+	req.Header.Set("Client-ID", globals.GetConfig().TwitchClientID)
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		helpers.Logf(helpers.Red, "[TWITCH] GetStreamData: %s", err.Error())
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	var u struct {
+		Data []StreamData `json:"data"`
+	}
+	body, _ := io.ReadAll(resp.Body)
+	json.Unmarshal(body, &u)
+	if len(u.Data) == 0 {
+		helpers.Logf(helpers.Red, "[TWITCH] No stream data on GetStreamData")
+		return nil, nil
+	}
+	return &u.Data[0], nil
+}
+
+func UpdateChannelStreamData(sd StreamData) error {
 	user := globals.GetState().GetTwitchUser()
 	jsonData, _ := json.Marshal(sd)
 	urlAPI := fmt.Sprintf("%s?broadcaster_id=%s", urlAPIChannel, user.UserID)
@@ -369,24 +385,26 @@ func GetUserChatColor(id string) (struct {
 	return d.Data[0], nil
 }
 
-func GetStreamData(id string) (TwitchStreamData, error) {
+func GetStreamData(id string) (*globals.TwitchStreamData, error) {
 	urlAPI := fmt.Sprintf("https://api.twitch.tv/helix/streams?user_id=%s", id)
 	req, _ := http.NewRequest("GET", urlAPI, nil)
 	req.Header.Set("Authorization", "Bearer "+globals.GetState().GetTwitchUser().Token)
 	req.Header.Set("Client-ID", globals.GetConfig().TwitchClientID)
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return TwitchStreamData{}, err
+		helpers.Logf(helpers.Red, "[TWITCH] GetStreamData: %s", err.Error())
+		return nil, err
 	}
 	defer resp.Body.Close()
 
 	var u struct {
-		Data []TwitchStreamData `json:"data"`
+		Data []globals.TwitchStreamData `json:"data"`
 	}
 	body, _ := io.ReadAll(resp.Body)
 	json.Unmarshal(body, &u)
 	if len(u.Data) == 0 {
-		return TwitchStreamData{}, nil
+		helpers.Logf(helpers.Red, "[TWITCH] No stream data on GetStreamData")
+		return nil, nil
 	}
-	return u.Data[0], nil
+	return &u.Data[0], nil
 }

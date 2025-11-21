@@ -121,6 +121,18 @@ func HandleLogin() {
 		}
 		globals.GetState().SetTwitchUser(user)
 		helpers.Logf(helpers.Reset, "[TWITCH LOGIN] UserID: %s, UserLogin: %s", user.UserID, user.UserLogin)
+		streamData, _ := GetChannelStreamData(user.UserID)
+		if streamData != nil {
+			user.StreamDetails = &globals.TwitchStreamData{
+				GameId:      streamData.GameID,
+				GameName:    streamData.GameName,
+				Title:       streamData.Title,
+				Tags:        streamData.Tags,
+				ViewerCount: 0,
+				Language:    streamData.BroadcasterLanguage,
+			}
+		}
+		globals.GetState().SetTwitchUser(user)
 
 		fmt.Fprintf(w, "Login concluído! Pode fechar esta página.")
 

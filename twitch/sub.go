@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"slices"
 	"sync"
 	"time"
 
@@ -174,6 +175,8 @@ var messageHandlers = map[string]func(map[string]any, map[string]any){
 	},
 	"notification": func(payload, metadata map[string]any) {
 		helpers.Logf(helpers.Twitch, "[TWITCH EventSub] notification %v", payload)
+
+		eventType := payload["subscription"].(map[string]any)["type"].(string)
 		//ts.execute(metadata.subscription_type, payload.event, payload.subscription);
 		globals.WsBroadcast <- globals.SocketMessage{
 			Type: "twitch-eventsub-notification",
@@ -183,18 +186,61 @@ var messageHandlers = map[string]func(map[string]any, map[string]any){
 			},
 		}
 		globals.EventQueue <- globals.LuaEvent{
-			Type: payload["subscription"].(map[string]any)["type"].(string),
+			Type: eventType,
 			Data: map[string]any{
 				"payload":  payload,
 				"metadata": metadata,
 			},
 		}
+
+		if payload["event"] == nil {
+			return
+		}
+		switch eventType {
+		case "stream.online":
+			user := globals.GetState().GetTwitchUser()
+			if user.StreamDetails == nil {
+				user.StreamDetails, _ = GetStreamData(user.UserID)
+				// recreate copy to garantee sync data
+				u := globals.GetState().GetTwitchUser()
+				u.StreamDetails = user.StreamDetails
+				globals.GetState().SetTwitchUser(u)
+				return
+			}
+
+			user.StreamDetails.StartedAt = payload["event"].(map[string]any)["started_at"].(string)
+			globals.GetState().SetTwitchUser(user)
+		case "stream.offline":
+			user := globals.GetState().GetTwitchUser()
+			if user.StreamDetails == nil {
+				return
+			}
+			user.StreamDetails.StartedAt = ""
+			globals.GetState().SetTwitchUser(user)
+		case "channel.update":
+			user := globals.GetState().GetTwitchUser()
+			if user.StreamDetails == nil {
+				user.StreamDetails, _ = GetStreamData(user.UserID)
+				// recreate copy to garantee sync data
+				u := globals.GetState().GetTwitchUser()
+				u.StreamDetails = user.StreamDetails
+				globals.GetState().SetTwitchUser(u)
+				return
+			}
+			event := payload["event"].(map[string]any)
+			user.StreamDetails.Title = event["title"].(string)
+			user.StreamDetails.Language = event["language"].(string)
+			user.StreamDetails.GameId = event["category_id"].(string)
+			user.StreamDetails.GameName = event["category_name"].(string)
+			if event["content_classification_labels"] != nil && slices.Contains(event["content_classification_labels"].([]string), "MatureGame") {
+				user.StreamDetails.IsMature = false
+			}
+			globals.GetState().SetTwitchUser(user)
+		}
 	},
 }
 
 var (
-	//EventSubConn *websocket.Conn
-	//quitChan   = make(chan struct{})
 	eventSubMu sync.RWMutex
 )
 

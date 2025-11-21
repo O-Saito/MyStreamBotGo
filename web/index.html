@@ -11,6 +11,7 @@
 
         :root {
             --bg-color: #18181b;
+            --form-width: 55px;
         }
 
         body {
@@ -294,6 +295,40 @@
         .live-on {
             color: green;
         }
+
+        .inline-list {
+            display: inline-block;
+            margin: 0;
+            padding: 0;
+            list-style: none;
+            margin-bottom: 10px;
+            margin-top: 10px;
+        }
+
+        .inline-list li {
+            display: inline;
+            margin-left: 10px;
+            border: 1px solid;
+        }
+        .inline-list.removeable li::before {
+            content: "x";
+            text-align: center;
+            vertical-align: middle;
+            margin-right: 5px;
+        }
+
+        .form label {
+            display: inline-block;
+            width: var(--form-width);
+            left: 0px;
+            text-align: end;
+            margin-bottom: 5px;
+        }
+        .form input {
+            display: inline-block;
+            width: 50%;
+            left: 0px;
+        }
     </style>
     <link rel="stylesheet" href="/fontawesome/css/font-awesome.min.css">
 </head>
@@ -320,21 +355,31 @@
                 <label class="stream-status"></label>
             </div>
             <div class="body collapse-area">
-                <div>
-                    <div class="form">
+                <div style="display: grid; justify-items: start; align-items: baseline; align-content: stretch; justify-content: center; grid-template-columns: 2fr 1fr;">
+                    <div class="form" style="width: 100%;">
+                        <label>Title: </label>
+                        <input type="text" id="twitch-title" /><br />
+                        <label>Game: </label>
+                        <input type="text" id="twitch-game" list="twitch-game-list" /><br />
+                        <datalist id="twitch-game-list"></datalist>
+                        <label>Idioma: </label>
+                        <input type="text" id="twitch-lang" /><br />
+                        Tags:
+                        <ul id="twitch-tags" class="inline-list"></ul>
                     </div>
-                    <div id="chat-connection-twitch" class="chat-list">
-                        <button type="button" class="btn-novo-chat">Conectar a um chat Twitch</button>
+                    <div id="chat-connection-twitch" class="chat-list" style="display: inline-block;">
+                        <button type="button" class="btn-novo-chat" style="display: none;">Conectar a um chat Twitch</button>
                         <ul class="list"></ul>
                     </div>
                 </div>
             </div>
         </div>
-        <div id="kick" class="areas">
+        <div id="kick" class="areas collapse">
             <div class="header">
+                <label><input type="checkbox" class="display-collapse" /></label>
                 <label id="login-kick"></label>
             </div>
-            <div class="body">
+            <div class="body collapse-area">
                 <div id="chat-connection-kick" class="chat-list">
                     <div class="form">
                         <button type="button" class="btn-novo-chat">Conectar a um chat Kick</button>
@@ -343,11 +388,12 @@
                 </div>
             </div>
         </div>
-        <div id="youtube" class="areas">
+        <div id="youtube" class="areas collapse">
             <div class="header">
+                <label><input type="checkbox" class="display-collapse" /></label>
                 <label id="login-youtube"><a href="/youtube/login" target="_blank">Logar Youtube</a></label>
             </div>
-            <div class="body">
+            <div class="body collapse-area">
                 <div id="chat-connection-youtube" class="chat-list">
                     <div class="form">
                     </div>
@@ -613,6 +659,39 @@
             twitchLastEventsub.innerHTML = `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}:${date.getSeconds().toString().padStart(2, '0')}`;
         });
 
+        w.onTwitch('channel.update', (data) => {
+            const e = data.payload?.event;
+            if (!e) {
+                console.error("stream.online without event", data);
+                return;
+            }
+            if (!twitchData.stream_details) twitchData.stream_details = {};
+            twitchData.stream_details.title = e.title;
+            twitchData.stream_details.language = e.language;
+            twitchData.stream_details.game_id = e.category_id;
+            twitchData.stream_details.game_name = e.category_name;
+            updateTwitchConnectionDetails();
+        })
+        w.onTwitch("stream.online", (data) => {
+            const e = data.payload?.event;
+            if (!e) {
+                console.error("stream.online without event", data);
+                return;
+            }
+            if (!twitchData.stream_details) twitchData.stream_details = {};
+            twitchData.stream_details.started_at = e.started_at;
+            updateTwitchConnectionDetails();
+        });
+        w.onTwitch("stream.offline", (data) => {
+            const e = data.payload?.event;
+            if (!e) {
+                console.error("stream.online without event", data);
+                return;
+            }
+            if (!twitchData.stream_details) return;
+            twitchData.stream_details.started_at = '';
+            updateTwitchConnectionDetails();
+        });
         w.onTwitch("automod.message.hold", (data) => {
             const event = data.payload?.event;
             if (!event) {
@@ -676,7 +755,7 @@
             const hours = Math.floor(totalSeconds / 3600);
             const minutes = Math.floor((totalSeconds % 3600) / 60);
             const seconds = totalSeconds % 60;
-            return { hours, minutes, seconds };
+            return { hours, minutes, seconds, toString: () => { return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}` } };
         }
 
         let timeToUpdateTwitchData = 0;
@@ -687,13 +766,14 @@
                     if (twitchData.stream_details.started_at != "") {
                         const current = new Date(twitchData.stream_details.started_at);
                         const time = getDateDiff(new Date(), new Date(current.getTime() - current.getTimezoneOffset() * 60 * 1000));
-                        twitchDiv.querySelector('.stream-time').innerText = `${time.hours.toString().padStart(2, '0')}:${time.minutes.toString().padStart(2, '0')}:${time.seconds.toString().padStart(2, '0')}`;
+                        twitchDiv.querySelector('.stream-time').innerText = time.toString();
+
+                        timeToUpdateTwitchData++
+                        if (timeToUpdateTwitchData >= 60) {
+                            timeToUpdateTwitchData = 0;
+                            w.send("get-streamer-data", {});
+                        }
                     }
-                }
-                timeToUpdateTwitchData++
-                if (timeToUpdateTwitchData >= 60) {
-                    timeToUpdateTwitchData = 0;
-                    w.send("get-streamer-data", {});
                 }
             }
         }, 1000);
@@ -811,10 +891,10 @@
         }
 
         function updateTwitchConnectionDetails(data) {
-            twitchData = data;
-            console.log(twitchData);
-            logins.querySelector('#login-twitch').innerHTML = !data || data.userLogin == '' ? `<a href="/twitch/login" target="_blank">Logar Twitch</a>` : `Twitch: <img src="${data.profile_image_url}" /> ${data.userLogin}`;
-            if (!data || !data.userLogin || data.userLogin == '') {
+            if (data) twitchData = data;
+
+            logins.querySelector('#login-twitch').innerHTML = !twitchData || twitchData.userLogin == '' ? `<a href="/twitch/login" target="_blank">Logar Twitch</a>` : `Twitch: <img src="${twitchData.profile_image_url}" /> ${twitchData.userLogin}`;
+            if (!twitchData || !twitchData.userLogin || twitchData.userLogin == '') {
                 twitchConnections.style.display = 'none';
                 return;
             }
@@ -831,20 +911,19 @@
                 }
                 lblTwitchViewCount.innerText = sd.viewer_count;
                 twitchGameIdLabel.innerText = sd.game_id;
-                twitchDiv.querySelector('.form').innerHTML = `
-<div>
-    Jogo: <label>${sd.game_name}</label><br/>
-    Idioma: <label>${sd.language}</label><br/>
-    Titulo: <label>${sd.title}</label><br/>
-    Tags:
-    <ul>
-        ${sd.tags.map(x => `<li>${x}</li>`).join('')}
-    </ul>
-</div>
-`;
+                twitchDiv.querySelector('#twitch-title').value = sd.title;
+                if (twitchDiv.querySelectorAll(`#twitch-game-list option[content="${sd.game_id}"]`).length == 0) {
+                    const gameoption = document.createElement("option");
+                    gameoption.innerText = sd.game_id;
+                    gameoption.value = sd.game_name;
+                    twitchDiv.querySelector('#twitch-game-list').append(gameoption);
+                }
+                twitchDiv.querySelector('#twitch-game').value = sd.game_name;
+                twitchDiv.querySelector('#twitch-lang').value = sd.language;
+                twitchDiv.querySelector('#twitch-tags').innerHTML = sd.tags.map(x => `<li>${x}</li>`).join('');
             }
 
-            twitchConnections.style.display = 'block';
+            twitchConnections.style.display = 'inline-block';
             twitchConnections.querySelector('.btn-novo-chat').onclick = function (e) {
                 e.preventDefault();
                 const t = prompt('Informe o usuário Twitch');

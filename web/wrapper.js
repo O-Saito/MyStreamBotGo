@@ -18,7 +18,10 @@ let emoteMap = {};
     console.log(emoteMap);
 })()
 
-const ws = new WebSocket(`ws://${location.host}/ws`);
+let ws = new WebSocket(`ws://${location.host}/ws`);
+let reconnectInterval = 1000; // Initial delay in milliseconds
+let maxReconnectInterval = 30000; // Maximum delay
+let reconnectAttempts = 0;
 
 /** @type {Object.<string, Array<Function>>} */
 const handlers = {
@@ -54,34 +57,6 @@ const eventsHandlers = {};
 const eventsToSubscribe = [];
 
 let connectCalled = false;
-
-/**
- * 
- * @param {MessageEvent<any>} e 
- * @returns 
- */
-ws.onmessage = function (e) {
-    console.log("Mensagem recebida:", e.data);
-
-    /** @type {SocketMessage} */
-    const data = JSON.parse(e.data);
-
-    if (data.filter && data.filter != "" && eventsHandlers[data.filter] && eventsHandlers[data.filter][data.type]) {
-        eventsHandlers[data.filter][data.type].forEach(f => {
-            f(data.data);
-        });
-        return;
-    }
-
-    if (!handlers[data.type]) {
-        console.log("Handler não encontrado para o tipo:", data.type);
-        return;
-    }
-
-    handlers[data.type].forEach(f => {
-        f(data.data);
-    });
-};
 
 /**
  * @param {string} [twitchId] 
@@ -159,6 +134,35 @@ async function loadAllEmotes(twitchId, login) {
     return { ...bttv, ...ffz, ...stv };
 }
 
+function webSocketConnect() {
+    ws = new WebSocket(`ws://${location.host}/ws`);
+    /** @param {MessageEvent<any>} e  */
+    ws.onmessage = function (e) {
+        console.log("WS Message:", e.data);
+        /** @type {SocketMessage} */
+        const data = JSON.parse(e.data);
+        if (data.filter && data.filter != "" && eventsHandlers[data.filter] && eventsHandlers[data.filter][data.type]) {
+            eventsHandlers[data.filter][data.type].forEach(f => {
+                f(data.data);
+            });
+            return;
+        }
+        if (!handlers[data.type]) {
+            console.log("Handler not found:", data.type);
+            return;
+        }
+        handlers[data.type].forEach(f => { f(data.data); });
+    };
+
+    ws.onclose = () => {
+        console.log('WebSocket disconnected. Attempting to reconnect...');
+        reconnectAttempts++;
+        const delay = Math.min(reconnectInterval * Math.pow(2, reconnectAttempts - 1), maxReconnectInterval);
+        setTimeout(webSocketConnect, delay);
+    };
+}
+
+
 export default {
     connect: () => {
         if (connectCalled) {
@@ -166,8 +170,9 @@ export default {
             return;
         }
         connectCalled = true;
+        webSocketConnect();
         ws.onopen = function () {
-            console.log("Conectado ao WebSocket.");
+            console.log("Connecting to WebSocket.");
             ws.send("init");
         }
     },
@@ -183,11 +188,8 @@ export default {
             console.error(`Evento não encontrado ${event}`);
             return null;
         }
-
         ws.send(JSON.stringify({ type: "upgrade-conn", data: { "conn": event } }));
-
         if (!eventsHandlers[event]) eventsHandlers[event] = {};
-
         return {
             /**
              * @param {string} type 
@@ -259,7 +261,7 @@ export default {
      */
     loadEmote: async (twitchId, login) => {
         const emotes = await loadAllEmotes(twitchId, login);
-        emoteMap = {...emoteMap, ...emotes};
+        emoteMap = { ...emoteMap, ...emotes };
         return emotes;
     },
 }

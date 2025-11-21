@@ -267,23 +267,66 @@
         #dyevents .content-body {
             padding: 5px;
         }
+
+        .collapse-area {
+            display: grid;
+            grid-template-rows: 1fr;
+            transition: grid-template-rows 0.5s ease-out;
+        }
+
+        .collapse-area>* {
+            overflow: hidden;
+        }
+
+        .collapse-area.closed {
+            grid-template-rows: 0fr;
+        }
+
+        .stream-status {
+            float: right;
+        }
+
+        .stream-time {
+            float: right;
+            margin-left: 10px;
+        }
+
+        .live-on {
+            color: green;
+        }
     </style>
     <link rel="stylesheet" href="/fontawesome/css/font-awesome.min.css">
 </head>
 
 <body class="dark">
     <div id="logins">
-        <div id="twitch" class="areas">
+        <div class="areas collapse">
             <div class="header">
-                <label id="login-twitch"></label>
-                <span style="float: right;">Ultimo Keepalive: <label id="twitch-last-eventsub"></label></span>
+                <label><input type="checkbox" class="display-collapse" checked /></label>
+                Nerd
             </div>
-            <div class="body">
-                <div id="chat-connection-twitch" class="chat-list">
+            <div class="body collapse-area">
+                <div>
+                    <div>Twitch Ultimo Keepalive: <label id="twitch-last-eventsub"></label></div>
+                    <div>Twitch GameID: <label id="twitch-game-id"></label></div>
+                </div>
+            </div>
+        </div>
+        <div id="twitch" class="areas collapse">
+            <div class="header">
+                <label><input type="checkbox" class="display-collapse" /></label>
+                <label id="login-twitch"></label>
+                <label class="stream-time"></label>
+                <label class="stream-status"></label>
+            </div>
+            <div class="body collapse-area">
+                <div>
                     <div class="form">
-                        <button type="button" class="btn-novo-chat">Conectar a um chat Twitch</button>
                     </div>
-                    <ul class="list"></ul>
+                    <div id="chat-connection-twitch" class="chat-list">
+                        <button type="button" class="btn-novo-chat">Conectar a um chat Twitch</button>
+                        <ul class="list"></ul>
+                    </div>
                 </div>
             </div>
         </div>
@@ -359,7 +402,7 @@
     <script type="module">
         import w from './wrapper.js'
 
-        // first chatter
+        const twitchDiv = document.getElementById('twitch');
 
         const logins = document.getElementById('logins');
         const kickConnections = document.querySelector('#chat-connection-kick');
@@ -378,6 +421,19 @@
         const dyEventsDiv = document.getElementById('dyevents');
         const lblTwitchViewCount = document.getElementById("twitch-view-count");
         const chkShowViewCount = document.getElementById('chk-show-view-count');
+
+        const twitchGameIdLabel = document.getElementById('twitch-game-id');
+
+        const displayChks = document.getElementsByClassName('display-collapse')
+
+        for (let i = 0; i < displayChks.length; i++) {
+            displayChks[i].onchange = function () {
+                const area = this.closest('.collapse').querySelector('.collapse-area');
+                if (this.checked) area.classList.add('closed')
+                else area.classList.remove('closed');
+            }
+            displayChks[i].onchange(new Event('change'));
+        }
 
         const toggledyevents = document.getElementById('toggle-dyevents');
         toggledyevents.onchange = function () {
@@ -606,16 +662,41 @@
         w.on('result-get-streamer-data', function (data) {
             console.log('result-get-streamer-data', data);
             //if (data.id == '') return;
-            lblTwitchViewCount.innerHTML = data.viewer_count.toString();
+            if (data == null) return;
+            if (!twitchData.stream_details) twitchData.stream_details = {};
+            twitchData.stream_details.viewer_count = data.viewer_count;
+            twitchData.stream_details.started_at = data.started_at;
         });
 
         w.connect();
 
-        // TWITCH FUNCS
+        function getDateDiff(date1, date2) {
+            const diffInMilliseconds = Math.abs(date2.getTime() - date1.getTime());
+            const totalSeconds = Math.floor(diffInMilliseconds / 1000);
+            const hours = Math.floor(totalSeconds / 3600);
+            const minutes = Math.floor((totalSeconds % 3600) / 60);
+            const seconds = totalSeconds % 60;
+            return { hours, minutes, seconds };
+        }
+
+        let timeToUpdateTwitchData = 0;
         setInterval(() => {
-            if (twitchData == null || twitchData == undefined) return;
-            w.send("get-streamer-data", {});
-        }, 1000 * 60);
+            if (twitchData) {
+                if (twitchData.stream_details) {
+                    lblTwitchViewCount.innerHTML = twitchData.stream_details.viewer_count.toString();
+                    if (twitchData.stream_details.started_at != "") {
+                        const current = new Date(twitchData.stream_details.started_at);
+                        const time = getDateDiff(new Date(), new Date(current.getTime() - current.getTimezoneOffset() * 60 * 1000));
+                        twitchDiv.querySelector('.stream-time').innerText = `${time.hours.toString().padStart(2, '0')}:${time.minutes.toString().padStart(2, '0')}:${time.seconds.toString().padStart(2, '0')}`;
+                    }
+                }
+                timeToUpdateTwitchData++
+                if (timeToUpdateTwitchData >= 60) {
+                    timeToUpdateTwitchData = 0;
+                    w.send("get-streamer-data", {});
+                }
+            }
+        }, 1000);
 
         chkShowViewCount.onchange = function () {
             lblTwitchViewCount.style.color = chkShowViewCount.checked ? "" : "var(--bg-color)";
@@ -731,10 +812,36 @@
 
         function updateTwitchConnectionDetails(data) {
             twitchData = data;
+            console.log(twitchData);
             logins.querySelector('#login-twitch').innerHTML = !data || data.userLogin == '' ? `<a href="/twitch/login" target="_blank">Logar Twitch</a>` : `Twitch: <img src="${data.profile_image_url}" /> ${data.userLogin}`;
             if (!data || !data.userLogin || data.userLogin == '') {
                 twitchConnections.style.display = 'none';
                 return;
+            }
+
+            const streamStatus = twitchDiv.querySelector('.stream-status');
+            streamStatus.innerText = "offline";
+            streamStatus.classList.remove('live-on');
+
+            const sd = twitchData.stream_details;
+            if (sd) {
+                if (sd.started_at != '') {
+                    twitchDiv.querySelector('.stream-status').innerText = "online";
+                    streamStatus.classList.add('live-on');
+                }
+                lblTwitchViewCount.innerText = sd.viewer_count;
+                twitchGameIdLabel.innerText = sd.game_id;
+                twitchDiv.querySelector('.form').innerHTML = `
+<div>
+    Jogo: <label>${sd.game_name}</label><br/>
+    Idioma: <label>${sd.language}</label><br/>
+    Titulo: <label>${sd.title}</label><br/>
+    Tags:
+    <ul>
+        ${sd.tags.map(x => `<li>${x}</li>`).join('')}
+    </ul>
+</div>
+`;
             }
 
             twitchConnections.style.display = 'block';
@@ -750,7 +857,7 @@
             youtubeData = data;
 
             if (!data || !data.Channels || data.Channels.length == 0) {
-                logins.querySelector('#login-youtube').innerHTML = `<a href="/youtube/login" target="_blank">Logar Twitch</a>`;
+                logins.querySelector('#login-youtube').innerHTML = `<a href="/youtube/login" target="_blank">Logar YouTube</a>`;
                 youtubeConnections.style.display = 'none';
                 return;
             }

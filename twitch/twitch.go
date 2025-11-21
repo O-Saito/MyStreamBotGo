@@ -288,7 +288,11 @@ func Connect() error {
 		Connect()
 	}
 
-	for _, channel := range Channels {
+	reconnectChannels := Channels
+
+	Channels = Channels[:0]
+
+	for _, channel := range reconnectChannels {
 		JoinChannel(channel)
 	}
 

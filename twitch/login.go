@@ -9,7 +9,9 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"slices"
 	"strings"
+	"time"
 )
 
 const (
@@ -34,6 +36,53 @@ func HandleLogin() {
 					continue
 				}
 				scopes = fmt.Sprintf("%s %s", scopes, req)
+			}
+		}
+	}
+
+	currentAccess, err := globals.GetGlobalDB().GetToken("twitch")
+	if err != nil {
+		helpers.Logf(helpers.Red, "[TWITCH HANDLELOGIN] Falha ao buscar access token %s", err.Error())
+	}
+
+	if currentAccess != nil {
+		data, err := ValidateAccessToken(currentAccess.AccessToken)
+		helpers.Logf(helpers.Red, "[TWITCH LOG VALIDATE ACCESS TOKEN] %v", data)
+		if err != nil {
+			helpers.Logf(helpers.Red, "[TWITCH HANDLELOGIN] Falha ao validar access token %s", err.Error())
+		}
+
+		if data != nil && data.Status != 401 { // status 401 = invalid
+			scopesValid := true
+			//missingScopes := []string{}
+			for v := range strings.SplitSeq(scopes, " ") {
+				if !slices.Contains(data.Scopes, v) {
+					scopesValid = false
+					//missingScopes = append(missingScopes, v)
+					break
+				}
+			}
+
+			//helpers.Logf(helpers.Red, "[TWITCH HANDLELOGIN] MISSING %v", missingScopes)
+			if scopesValid {
+				if data.ExpiresIn <= 0 {
+					d, err := refreshToken(currentAccess.RefreshToken)
+					if err != nil {
+						helpers.Logf(helpers.Red, "[TWITCH HANDLELOGIN] Falha ao buscar token %s", err.Error())
+					}
+					if d != nil {
+						sqlErr := globals.GetGlobalDB().SaveToken("twitch", d.AccessToken, d.RefreshToken, time.Now().Add(time.Duration(d.Expires)*time.Second))
+						if sqlErr != nil {
+							helpers.Logf(helpers.Red, "[TWITCH HANDLELOGIN] Falha ao salvar token %s", sqlErr.Error())
+						}
+						initTwitchUser(d.AccessToken)
+					}
+				} else {
+					err := initTwitchUser(currentAccess.AccessToken)
+					if err != nil {
+						helpers.Logf(helpers.Red, "[TWITCH HANDLELOGIN] Falha ao inicializar twitch user")
+					}
+				}
 			}
 		}
 	}
@@ -74,77 +123,104 @@ func HandleLogin() {
 		body, _ := io.ReadAll(resp.Body)
 
 		var tokenResp struct {
-			AccessToken string `json:"access_token"`
+			AccessToken  string `json:"access_token"`
+			Expires      int    `json:"expires_in"`
+			RefreshToken string `json:"refresh_token"`
 		}
+
 		json.Unmarshal(body, &tokenResp)
 		Token := tokenResp.AccessToken
 
-		helpers.Logf(helpers.Red, "[Twitch TOKEN] %s : %s", Token, globals.GetConfig().TwitchClientID)
+		sqlErr := globals.GetGlobalDB().SaveToken("twitch", tokenResp.AccessToken, tokenResp.RefreshToken, time.Now().Add(time.Duration(tokenResp.Expires)*time.Second))
 
-		// Pegar info do usuário
-		req, _ := http.NewRequest("GET", "https://api.twitch.tv/helix/users", nil)
-		req.Header.Set("Authorization", "Bearer "+Token)
-		req.Header.Set("Client-ID", globals.GetConfig().TwitchClientID)
-		userResp, err := http.DefaultClient.Do(req)
-		if err != nil {
-			http.Error(w, "Erro users: "+err.Error(), 500)
+		if sqlErr != nil {
+			helpers.Logf(helpers.Red, "[TWITCH LOGIN] Falha ao salvar refresh token %s", sqlErr.Error())
+		}
+
+		initError := initTwitchUser(Token)
+		if initError != nil {
+			http.Error(w, "Falha ao fazer login: "+initError.Error(), http.StatusTeapot)
 			return
 		}
-		defer userResp.Body.Close()
-		dataUser, _ := io.ReadAll(userResp.Body)
-
-		var u struct {
-			Data []TwitchUserData `json:"data"`
-		}
-		json.Unmarshal(dataUser, &u)
-
-		if len(u.Data) == 0 {
-			helpers.Log(helpers.Red, "[TWITCH LOGIN] Erro: Nenhum usuário retornado. Verifique token e scopes.")
-			return
-		}
-
-		d := u.Data[0]
-
-		user := globals.TwitchUser{
-			Token:                  Token,
-			UserID:                 d.ID,
-			UserLogin:              d.Login,
-			DisplayName:            d.DisplayName,
-			Type:                   d.Type,
-			BroadcasterType:        d.BroadcasterType,
-			Description:            d.Description,
-			ProfileImageURL:        d.ProfileImageURL,
-			ProfileOfflineImageURL: d.ProfileOfflineImageURL,
-			ViewCount:              d.ViewCount,
-			Email:                  d.Email,
-			Connected:              true,
-		}
-		globals.GetState().SetTwitchUser(user)
-		helpers.Logf(helpers.Reset, "[TWITCH LOGIN] UserID: %s, UserLogin: %s", user.UserID, user.UserLogin)
-		streamData, _ := GetChannelStreamData(user.UserID)
-		if streamData != nil {
-			user.StreamDetails = &globals.TwitchStreamData{
-				GameId:      streamData.GameID,
-				GameName:    streamData.GameName,
-				Title:       streamData.Title,
-				Tags:        streamData.Tags,
-				ViewerCount: 0,
-				Language:    streamData.BroadcasterLanguage,
-			}
-		}
-		globals.GetState().SetTwitchUser(user)
 
 		fmt.Fprintf(w, "Login concluído! Pode fechar esta página.")
-
-		if err := Connect(); err != nil {
-			log.Fatal(err)
-		}
-		globals.WsBroadcast <- globals.SocketMessage{
-			Type: "twitch-connection",
-			Data: user,
-		}
-		JoinChannel(user.UserLogin)
-
-		connectToEventSub()
 	})
+}
+
+func refreshToken(refreshToken string) (*struct {
+	AccessToken  string `json:"access_token"`
+	Expires      int    `json:"expires_in"`
+	RefreshToken string `json:"refresh_token"`
+}, error) {
+	data := url.Values{}
+	data.Set("client_id", globals.GetConfig().TwitchClientID)
+	data.Set("client_secret", globals.GetConfig().TwitchClientSecret)
+	data.Set("grant_type", "refresh_token")
+	data.Set("refresh_token", refreshToken)
+
+	resp, err := http.PostForm("https://id.twitch.tv/oauth2/token", data)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	body, _ := io.ReadAll(resp.Body)
+
+	var tokenResp struct {
+		AccessToken  string `json:"access_token"`
+		Expires      int    `json:"expires_in"`
+		RefreshToken string `json:"refresh_token"`
+	}
+
+	json.Unmarshal(body, &tokenResp)
+	return &tokenResp, nil
+}
+
+func initTwitchUser(token string) error {
+	globals.GetState().SetTwitchUser(globals.TwitchUser{
+		Token: token,
+	})
+	d, err := GetStreamerData()
+	if err != nil {
+		return err
+	}
+
+	user := globals.TwitchUser{
+		Token:                  token,
+		UserID:                 d.ID,
+		UserLogin:              d.Login,
+		DisplayName:            d.DisplayName,
+		Type:                   d.Type,
+		BroadcasterType:        d.BroadcasterType,
+		Description:            d.Description,
+		ProfileImageURL:        d.ProfileImageURL,
+		ProfileOfflineImageURL: d.ProfileOfflineImageURL,
+		ViewCount:              d.ViewCount,
+		Email:                  d.Email,
+		Connected:              true,
+	}
+	globals.GetState().SetTwitchUser(user)
+	helpers.Logf(helpers.Reset, "[TWITCH LOGIN] UserID: %s, UserLogin: %s", user.UserID, user.UserLogin)
+	streamData, _ := GetChannelStreamData(user.UserID)
+	if streamData != nil {
+		user.StreamDetails = &globals.TwitchStreamData{
+			GameId:      streamData.GameID,
+			GameName:    streamData.GameName,
+			Title:       streamData.Title,
+			Tags:        streamData.Tags,
+			ViewerCount: 0,
+			Language:    streamData.BroadcasterLanguage,
+		}
+	}
+	globals.GetState().SetTwitchUser(user)
+
+	if err := Connect(); err != nil {
+		log.Fatal(err)
+	}
+	globals.WsBroadcast <- globals.SocketMessage{
+		Type: "twitch-connection",
+		Data: user,
+	}
+	JoinChannel(user.UserLogin)
+	connectToEventSub()
+	return nil
 }

@@ -61,6 +61,61 @@ type GameData struct {
 	BoxArt string `json:"box_art_url"`
 }
 
+func ValidateAccessToken(accessToken string) (*struct {
+	ClientId  string   `json:"client_id"`
+	Login     string   `json:"login"`
+	Scopes    []string `json:"scopes"`
+	UserId    string   `json:"user_id"`
+	ExpiresIn int      `json:"expires_in"`
+	Status    int      `json:"status"`
+	Message   string   `json:"message"`
+}, error) {
+	req, _ := http.NewRequest("GET", "https://id.twitch.tv/oauth2/validate", nil)
+	req.Header.Set("Authorization", "OAuth "+accessToken)
+	req.Header.Set("Client-ID", globals.GetConfig().TwitchClientID)
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	var u struct {
+		ClientId  string   `json:"client_id"`
+		Login     string   `json:"login"`
+		Scopes    []string `json:"scopes"`
+		UserId    string   `json:"user_id"`
+		ExpiresIn int      `json:"expires_in"`
+		Status    int      `json:"status"`
+		Message   string   `json:"message"`
+	}
+	body, _ := io.ReadAll(resp.Body)
+	json.Unmarshal(body, &u)
+	return &u, nil
+}
+
+func GetStreamerData() (*TwitchUserData, error) {
+	req, _ := http.NewRequest("GET", "https://api.twitch.tv/helix/users", nil)
+	req.Header.Set("Authorization", "Bearer "+globals.GetState().GetTwitchUser().Token)
+	req.Header.Set("Client-ID", globals.GetConfig().TwitchClientID)
+	userResp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer userResp.Body.Close()
+	dataUser, _ := io.ReadAll(userResp.Body)
+
+	var u struct {
+		Data []TwitchUserData `json:"data"`
+	}
+	json.Unmarshal(dataUser, &u)
+
+	if len(u.Data) == 0 {
+		return nil, fmt.Errorf("nenhum usuário retornado, verifique token e scopes")
+	}
+
+	return &u.Data[0], nil
+}
+
 func GetUserData(login string) (TwitchUserData, error) {
 	urlAPI := fmt.Sprintf("https://api.twitch.tv/helix/users?login=%s", login)
 	req, _ := http.NewRequest("GET", urlAPI, nil)

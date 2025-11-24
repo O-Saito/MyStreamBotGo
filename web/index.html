@@ -310,6 +310,7 @@
             margin-left: 10px;
             border: 1px solid;
         }
+
         .inline-list.removeable li::before {
             content: "x";
             text-align: center;
@@ -324,6 +325,7 @@
             text-align: end;
             margin-bottom: 5px;
         }
+
         .form input {
             display: inline-block;
             width: 50%;
@@ -355,7 +357,8 @@
                 <label class="stream-status"></label>
             </div>
             <div class="body collapse-area">
-                <div style="display: grid; justify-items: start; align-items: baseline; align-content: stretch; justify-content: center; grid-template-columns: 2fr 1fr;">
+                <div
+                    style="display: grid; justify-items: start; align-items: baseline; align-content: stretch; justify-content: center; grid-template-columns: 2fr 1fr;">
                     <div class="form" style="width: 100%;">
                         <label>Title: </label>
                         <input type="text" id="twitch-title" /><br />
@@ -368,7 +371,8 @@
                         <ul id="twitch-tags" class="inline-list"></ul>
                     </div>
                     <div id="chat-connection-twitch" class="chat-list" style="display: inline-block;">
-                        <button type="button" class="btn-novo-chat" style="display: none;">Conectar a um chat Twitch</button>
+                        <button type="button" class="btn-novo-chat" style="display: none;">Conectar a um chat
+                            Twitch</button>
                         <ul class="list"></ul>
                     </div>
                 </div>
@@ -576,8 +580,8 @@
                     div.classList.add('first-message');
                 }
 
-                if (msg.metadata['display-name'])
-                    user.textContent = msg.metadata['display-name']
+                //if (msg.metadata['display-name'])
+                //user.textContent = msg.metadata['display-name']
                 if (msg.metadata['authorDetails'])
                     user.innerHTML = `<img src="${msg.metadata['authorDetails']['profileImageUrl']}" /> ${msg.user}`;
                 if (msg.metadata['badges-info'])
@@ -758,6 +762,10 @@
             return { hours, minutes, seconds, toString: () => { return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}` } };
         }
 
+        function parseTimeZone(date) {
+            return new Date(date.getTime() - date.getTimezoneOffset() * 60 * 1000);
+        }
+
         let timeToUpdateTwitchData = 0;
         setInterval(() => {
             if (twitchData) {
@@ -765,7 +773,7 @@
                     lblTwitchViewCount.innerHTML = twitchData.stream_details.viewer_count.toString();
                     if (twitchData.stream_details.started_at != "") {
                         const current = new Date(twitchData.stream_details.started_at);
-                        const time = getDateDiff(new Date(), new Date(current.getTime() - current.getTimezoneOffset() * 60 * 1000));
+                        const time = getDateDiff(parseTimeZone(new Date()), parseTimeZone(current));
                         twitchDiv.querySelector('.stream-time').innerText = time.toString();
 
                         timeToUpdateTwitchData++

@@ -34,5 +34,15 @@ function g.get(key)end
 ---@param value any
 function g.set(key, value)end
 
+---Get a value from the bot global db
+---@param key string
+---@return any
+function g.kv_get(key)end
+
+---Set a value in the bot global db
+---@param key string
+---@param value any
+function g.kv_set(key, value)end
+
 -- declare global
 _G.g = g

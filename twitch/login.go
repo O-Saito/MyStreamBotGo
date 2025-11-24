@@ -52,6 +52,7 @@ func HandleLogin() {
 			helpers.Logf(helpers.Red, "[TWITCH HANDLELOGIN] Falha ao validar access token %s", err.Error())
 		}
 
+		reconnect := true
 		if data != nil && data.Status != 401 { // status 401 = invalid
 			scopesValid := true
 			//missingScopes := []string{}
@@ -63,26 +64,26 @@ func HandleLogin() {
 				}
 			}
 
-			//helpers.Logf(helpers.Red, "[TWITCH HANDLELOGIN] MISSING %v", missingScopes)
-			if scopesValid {
-				if data.ExpiresIn <= 0 {
-					d, err := refreshToken(currentAccess.RefreshToken)
-					if err != nil {
-						helpers.Logf(helpers.Red, "[TWITCH HANDLELOGIN] Falha ao buscar token %s", err.Error())
-					}
-					if d != nil {
-						sqlErr := globals.GetGlobalDB().SaveToken("twitch", d.AccessToken, d.RefreshToken, time.Now().Add(time.Duration(d.Expires)*time.Second))
-						if sqlErr != nil {
-							helpers.Logf(helpers.Red, "[TWITCH HANDLELOGIN] Falha ao salvar token %s", sqlErr.Error())
-						}
-						initTwitchUser(d.AccessToken)
-					}
-				} else {
-					err := initTwitchUser(currentAccess.AccessToken)
-					if err != nil {
-						helpers.Logf(helpers.Red, "[TWITCH HANDLELOGIN] Falha ao inicializar twitch user")
-					}
+			if scopesValid && data.ExpiresIn > 0 {
+				reconnect = false
+				err := initTwitchUser(currentAccess.AccessToken)
+				if err != nil {
+					helpers.Logf(helpers.Red, "[TWITCH HANDLELOGIN] Falha ao inicializar twitch user")
 				}
+			}
+		}
+
+		if reconnect {
+			d, err := refreshToken(currentAccess.RefreshToken)
+			if err != nil {
+				helpers.Logf(helpers.Red, "[TWITCH HANDLELOGIN] Falha ao buscar token %s", err.Error())
+			}
+			if d != nil {
+				sqlErr := globals.GetGlobalDB().SaveToken("twitch", d.AccessToken, d.RefreshToken, time.Now().Add(time.Duration(d.Expires)*time.Second))
+				if sqlErr != nil {
+					helpers.Logf(helpers.Red, "[TWITCH HANDLELOGIN] Falha ao salvar token %s", sqlErr.Error())
+				}
+				initTwitchUser(d.AccessToken)
 			}
 		}
 	}

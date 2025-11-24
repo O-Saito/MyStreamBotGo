@@ -1,15 +1,11 @@
 package main
 
 import (
-
-	//"MyStreamBot/eventsub"
-	//"MyStreamBot/irc"
-	//"MyStreamBot/lua"
-
 	"MyStreamBot/globals"
 	"MyStreamBot/goweb"
 	"MyStreamBot/kick"
 	"MyStreamBot/mlua"
+	"MyStreamBot/sql"
 	"MyStreamBot/twitch"
 	"MyStreamBot/youtube"
 	"runtime"
@@ -33,6 +29,12 @@ func main() {
 
 	globals.LoadInitFile()
 	globals.LoadTwitchSubTypes()
+
+	db, err := sql.NewCoreDB(globals.GetConfig().DBName)
+	if err != nil {
+		panic(err)
+	}
+	globals.SetGlobalDB(db)
 
 	RegisterSocketHandlers()
 

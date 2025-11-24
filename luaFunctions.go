@@ -83,6 +83,28 @@ func RegisterLuaFunctions(L *lua.LState) {
 			globals.GetState().SetData(key, val)
 			return 0
 		},
+		"kv_get": func(L *lua.LState) int {
+			key := L.CheckString(1)
+			v, err := globals.GetGlobalDB().KVGet(key)
+			if err != nil {
+				helpers.Logf(helpers.Red, "[LUA KV_GET] %s", err.Error())
+				return 0
+			}
+			helpers.Logf(helpers.Lua, "[LUA KV_GET] %s: %v", key, v)
+			L.Push(mlua.ToLValue(L, v))
+			return 1
+		},
+		"kv_set": func(L *lua.LState) int {
+			key := L.CheckString(1)
+			val := mlua.FromLValue(L, L.Get(2))
+			helpers.Logf(helpers.Lua, "[LUA KV_SET] %s: %v", key, val)
+			err := globals.GetGlobalDB().KVSet(key, val)
+			if err != nil {
+				helpers.Logf(helpers.Red, "[LUA KV_SET] %s", err.Error())
+				return 0
+			}
+			return 0
+		},
 	})
 
 	mlua.ExposeServiceToLua(L, "twitch", map[string]func(*lua.LState) int{
@@ -93,7 +115,7 @@ func RegisterLuaFunctions(L *lua.LState) {
 			}
 			username := L.CheckString(1)
 			d := twitch.GetCacheUserChatColor(username)
-			helpers.Logf(helpers.Blue, "TESTE %v", d)
+			//helpers.Logf(helpers.Blue, "TESTE %v", d)
 			L.Push(mlua.ToLValue(L, d))
 			return 1
 		},
@@ -132,7 +154,7 @@ func RegisterLuaFunctions(L *lua.LState) {
 			}
 			userid := L.CheckString(1)
 			d, err := twitch.GetFollowersData("", userid)
-			helpers.Logf(helpers.Red, "TESTE F %v %v", d, err)
+			//helpers.Logf(helpers.Red, "TESTE F %v %v", d, err)
 			if err != nil {
 				L.Push(lua.LNil)
 				return 1

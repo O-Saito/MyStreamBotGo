@@ -2,7 +2,9 @@ package globals
 
 import (
 	"MyStreamBot/helpers"
+	"MyStreamBot/sql"
 	"sync"
+	"sync/atomic"
 )
 
 type TwitchStreamData struct {
@@ -73,6 +75,7 @@ type Config struct {
 	BotPrefix           string
 	TwitchScopes        string
 	HTTPPort            string
+	DBName              string
 	TwitchSubTypes      map[string]map[string]any
 
 	YouTubeRefresh string
@@ -83,6 +86,7 @@ var (
 	config    *Config
 	once      sync.Once
 	onceState sync.Once
+	db        atomic.Pointer[sql.CoreDB]
 )
 
 func GetConfig() *Config {
@@ -91,9 +95,18 @@ func GetConfig() *Config {
 			BotPrefix:    "!",
 			HTTPPort:     "1699",
 			TwitchScopes: "",
+			DBName:       "main",
 		}
 	})
 	return config
+}
+
+func GetGlobalDB() *sql.CoreDB {
+	return db.Load()
+}
+
+func SetGlobalDB(ndb *sql.CoreDB) {
+	db.Store(ndb)
 }
 
 func (c *Config) GetTwitchSubTypes() map[string]map[string]any {

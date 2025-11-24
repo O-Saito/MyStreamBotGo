@@ -580,8 +580,8 @@
                     div.classList.add('first-message');
                 }
 
-                //if (msg.metadata['display-name'])
-                //user.textContent = msg.metadata['display-name']
+                if (msg.metadata['display-name'] && isValidLatinString(msg.metadata['display_name']))
+                    user.textContent = msg.metadata['display-name']
                 if (msg.metadata['authorDetails'])
                     user.innerHTML = `<img src="${msg.metadata['authorDetails']['profileImageUrl']}" /> ${msg.user}`;
                 if (msg.metadata['badges-info'])
@@ -752,6 +752,12 @@
         });
 
         w.connect();
+
+
+        function isValidLatinString(str) {
+            const regex = /^[\p{L}\p{N}!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?~`\s]+$/u;
+            return regex.test(str);
+        }
 
         function getDateDiff(date1, date2) {
             const diffInMilliseconds = Math.abs(date2.getTime() - date1.getTime());

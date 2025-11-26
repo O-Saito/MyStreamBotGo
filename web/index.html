@@ -705,6 +705,12 @@
 
             let div = document.createElement("div");
             div.className = "message";
+            div.dataset.messageId = event.message_id;
+            div.dataset.userId = event.user_id;
+            /*
+            div.dataset.channel = msg.channel;
+            div.dataset.user = msg.user;*/
+            div.dataset.source = 'twitch';
             div.style.color = "#99999a";
 
             let span = document.createElement("span");
@@ -723,11 +729,30 @@
 
             span.append(source, channel, badges, user, message);
 
+            let textMessage = event.message.text;
+            const badWords = [];
+            if (event.automod.boundaries) {
+                event.automod.boundaries.forEach(x => {
+                    const text = textMessage.substr(x.start_pos, x.end_pos + 1 - x.start_pos);
+                    badWords.push(text);
+                });
+            }
+
+            badWords.forEach(x => {
+                textMessage = textMessage.replace(x, `<span style="background-color: yellow;">${x}</span>`)
+            })
+
             source.textContent = 'twitch';
             channel.textContent = event.broadcaster_user_name;
             user.textContent = event.user_name;
-            message.innerHTML = `[${event.reason} - ${event.automod?.category}] ${event.message.text}`;
+            message.innerHTML = `[${event.reason} - ${event.automod?.category}] ${textMessage}`;
             source.innerHTML = `<img src="https://assets.twitch.tv/assets/favicon-32-e29e246c157142c94346.png" title="twitch" alt="twitch" />`
+
+            let allowBtn = document.createElement("button");
+            allowBtn.title = "Permitir";
+            allowBtn.innerHTML = `<i class="fa fa-check" aria-hidden="true"></i>`;
+            allowBtn.onclick = automodTwitchUser;
+            div.appendChild(allowBtn);
 
             div.appendChild(span);
             chatDiv.appendChild(div);
@@ -839,6 +864,22 @@
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ userId: userId, duration: 3600 /*1h em segundos*/, reason: "" })
             }).then(res => console.log("Usuário banido:", userId));
+        }
+        function automodTwitchUser(e) {
+            e.preventDefault();
+            const messageDiv = e.target.closest('.message');
+            const userId = messageDiv.dataset.userId;
+            const messageId = messageDiv.dataset.messageId;
+            const action = "ALLOW";
+
+            fetch("/admin/automod/twitch", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ userId: userId, msgId: messageId, action: action })
+            }).then(res => {
+                if(!res.bodyUsed) 
+                    e.target.closest('.message').remove();
+            });
         }
 
         // KICK FUNCS

@@ -162,6 +162,36 @@ func StartHTTPServer() {
 		w.Write([]byte(d))
 	})
 
+	http.HandleFunc("/admin/automod/twitch", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "POST" {
+			http.Error(w, "Método inválido", http.StatusMethodNotAllowed)
+			return
+		}
+		var req struct {
+			UserId string `json:"userId"`
+			MsgId  string `json:"msgId"`
+			Action string `json:"action"`
+		}
+
+		json.NewDecoder(r.Body).Decode(&req)
+		if req.Action != "ALLOW" && req.Action != "DENY" {
+			w.WriteHeader(400)
+			w.Write([]byte("action should be ALLOW or DENY."))
+			return
+		}
+		d, err := twitch.UpdateAutomod(req.UserId, req.MsgId, req.Action)
+		//if IrcHandler != nil {
+		//	IrcHandler.SendMessage("/ban " + req.User)
+		//}
+		if err != nil {
+			w.WriteHeader(200)
+			w.Write([]byte(fmt.Sprintf("Error %v", err)))
+			return
+		}
+		w.WriteHeader(200)
+		w.Write([]byte(d))
+	})
+
 	// Goroutine para enviar mensagens do backend para todos os clients
 	go func() {
 		for msg := range globals.WsBroadcast {

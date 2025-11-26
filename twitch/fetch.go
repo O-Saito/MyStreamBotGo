@@ -460,3 +460,28 @@ func GetStreamData(id string) (*globals.TwitchStreamData, error) {
 	}
 	return &u.Data[0], nil
 }
+
+func UpdateAutomod(userId, msgId, action string) (string, error) {
+	user := globals.GetState().TwitchUser
+	d := map[string]any{
+		"user_id": globals.GetState().GetTwitchUser().UserID,
+		"msg_id":  msgId,
+		"action":  action,
+	}
+	data, _ := json.Marshal(d)
+	req, _ := http.NewRequest("POST", "https://api.twitch.tv/helix/moderation/automod/message", bytes.NewBuffer(data))
+	req.Header.Set("Authorization", "Bearer "+user.Token)
+	req.Header.Set("Client-ID", globals.GetConfig().TwitchClientID)
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != 204 {
+		body, _ := io.ReadAll(resp.Body)
+		return "", fmt.Errorf("erro ao atualizar automod: %s", body)
+	}
+	body, _ := io.ReadAll(resp.Body)
+	return string(body), nil
+}

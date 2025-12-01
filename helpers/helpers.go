@@ -16,6 +16,16 @@ func Contains(slice []string, target string) bool {
 	return false // Element not found
 }
 
+func Find[T any](slice []T, predicate func(T) bool) (T, bool) {
+	for _, item := range slice {
+		if predicate(item) {
+			return item, true
+		}
+	}
+	var zero T // Return zero value of type T if not found
+	return zero, false
+}
+
 func Ternary[T any](cond bool, a, b T) T {
 	if cond {
 		return a

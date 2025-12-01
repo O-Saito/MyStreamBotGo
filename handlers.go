@@ -35,12 +35,31 @@ func RegisterSocketHandlers() {
 			return
 		}
 
-		helpers.Logf(helpers.Cyan, "YT LIVES: %v", len(lives.Items))
-		for _, v := range lives.Items {
-			helpers.Logf(helpers.Cyan, "YT Listen to: %v", v)
-			youtube.ListenToChat(v.Snippet.LiveChatID)
+		connectedChat := globals.GetState().GetData("youtube-lives")
+		if connectedChat == nil {
+			connectedChat = []youtube.LiveBroadcast{}
 		}
 
+		helpers.Logf(helpers.Cyan, "YT LIVES: %v", len(lives.Items))
+		for _, v := range lives.Items {
+
+			_, finded := helpers.Find(connectedChat.([]youtube.LiveBroadcast), func(l youtube.LiveBroadcast) bool {
+				return l.Snippet.LiveChatID == v.Snippet.LiveChatID
+			})
+			helpers.Logf(helpers.Cyan, "YT Listen to (%v): %v", finded, v)
+			if !finded {
+				go youtube.ListenToChat(v.Snippet.LiveChatID)
+				connectedChat = append(connectedChat.([]youtube.LiveBroadcast), v)
+			}
+		}
+
+		globals.GetState().SetData("youtube-lives", connectedChat)
+
+		globals.WsBroadcast <- globals.SocketMessage{
+			Respond: tag,
+			Type:    "result-connect-chat-youtube",
+			Data:    connectedChat,
+		}
 	}
 
 	goweb.SocketHandlers["send-chat-message"] = func(c *websocket.Conn, data map[string]any, tag int) {

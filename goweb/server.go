@@ -36,10 +36,11 @@ var SocketHandlers = map[string]func(*websocket.Conn, map[string]any, int){
 				"kick": map[string]any{
 					"connected_as": kick.UserLogin,
 				},
-				"twitch_connected_chat": twitch.Channels,
-				"kick_connected_chat":   kick.Channels,
-				"custom_events_modules": mlua.ListDynamicEvents(),
-				"twitch_eventsubs":      globals.GetState().GetData("TwitchSubEventsConnectedEvents"),
+				"twitch_connected_chat":  twitch.Channels,
+				"kick_connected_chat":    kick.Channels,
+				"youtube_connected_chat": globals.GetState().GetData("youtube-lives"),
+				"custom_events_modules":  mlua.ListDynamicEvents(),
+				"twitch_eventsubs":       globals.GetState().GetData("TwitchSubEventsConnectedEvents"),
 			},
 			Respond: mytag,
 		}

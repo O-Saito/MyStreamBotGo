@@ -1,6 +1,7 @@
 package mlua
 
 import (
+	"database/sql"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -9,6 +10,7 @@ import (
 
 	"MyStreamBot/globals"
 	"MyStreamBot/helpers"
+	msql "MyStreamBot/sql"
 
 	lua "github.com/yuin/gopher-lua"
 )
@@ -29,6 +31,7 @@ type DynamicEvent struct {
 	Paused    bool
 	mu        sync.RWMutex
 	stateMu   sync.RWMutex
+	db        *sql.DB
 }
 
 type DynamicEventInfo struct {
@@ -224,6 +227,7 @@ func LoadDyEvents(baseDir string) {
 			NextTick:  time.Now().Add(time.Second),
 			Interval:  time.Second, // padrão
 			Paused:    true,        // padrão
+			db:        nil,
 		}
 
 		setFunctionOnTable(ev, eventTable)
@@ -237,6 +241,7 @@ func LoadDyEvents(baseDir string) {
 			}
 			oldData := ToLValue(ev.LState, d)
 			eventTable.RawSetString("data", oldData)
+			ev.db = oldEvent.db
 		}
 
 		dynamicEventsMutex.Lock()
@@ -305,6 +310,74 @@ func setFunctionOnTable(ev *DynamicEvent, tbl *lua.LTable) {
 
 	ev.LState.SetField(tbl, "isPaused", ev.LState.NewFunction(func(L *lua.LState) int {
 		L.Push(lua.LBool(ev.Paused))
+		return 1
+	}))
+
+	ev.LState.SetField(tbl, "useDB", ev.LState.NewFunction(func(L *lua.LState) int {
+		createdDb := false
+		ev.stateMu.Lock()
+		if ev.db == nil {
+			db, _ := msql.OpenModuleDB(ev.Name)
+			ev.db = db
+			createdDb = true
+		}
+		ev.stateMu.Unlock()
+		L.Push(lua.LBool(createdDb))
+		return 1
+	}))
+
+	ev.LState.SetField(tbl, "db_exec", ev.LState.NewFunction(func(L *lua.LState) int {
+		if L.Get(1) == lua.LNil {
+			return 0
+		}
+		query := L.CheckString(1)
+		ev.stateMu.RLock()
+		if ev.db == nil {
+			ev.stateMu.RUnlock()
+			return 0
+		}
+		_, err := ev.db.Exec(query)
+		ev.stateMu.RUnlock()
+		if err != nil {
+			helpers.Logf("[DYEVENTS DB_EXEC] %s", err.Error())
+		}
+		return 0
+	}))
+
+	ev.LState.SetField(tbl, "db_query", ev.LState.NewFunction(func(L *lua.LState) int {
+		if L.Get(1) == lua.LNil {
+			return 0
+		}
+		query := L.CheckString(1)
+		ev.stateMu.RLock()
+		if ev.db == nil {
+			ev.stateMu.RUnlock()
+			return 0
+		}
+		r, _ := ev.db.Query(query)
+		ev.stateMu.RUnlock()
+		cols, _ := r.Columns()
+		helpers.Logf(helpers.Red, "COLS %v", cols)
+		result := []map[string]any{}
+
+		for r.Next() {
+			d := map[string]any{}
+			items := make([]any, len(cols))
+			for i := range items {
+				// http://go-database-sql.org/varcols.html
+				items[i] = new(sql.RawBytes)
+			}
+			r.Scan(items...)
+
+			for i, v := range cols {
+				if sb, ok := items[i].(*sql.RawBytes); ok {
+					d[v] = string(*sb)
+				}
+			}
+			result = append(result, d)
+		}
+		r.Close()
+		L.Push(ToLValue(ev.LState, result))
 		return 1
 	}))
 

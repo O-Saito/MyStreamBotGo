@@ -511,6 +511,8 @@
             updateYouTubeConnectionDetails(data.youtube);
             updateKickConnectionDetails(data.kick.connected_as);
 
+            updateYouTubeChatConnectiongDetails(data.youtube_connected_chat)
+
             loadDyModules(data.custom_events_modules);
 
             w.send("get-streamer-data", {});
@@ -662,6 +664,8 @@
             console.log(date);
             twitchLastEventsub.innerHTML = `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}:${date.getSeconds().toString().padStart(2, '0')}`;
         });
+        w.on('result-connect-chat-youtube', updateYouTubeChatConnectiongDetails);
+
 
         w.onTwitch('channel.update', (data) => {
             const e = data.payload?.event;
@@ -877,7 +881,7 @@
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ userId: userId, msgId: messageId, action: action })
             }).then(res => {
-                if(!res.bodyUsed) 
+                if (!res.bodyUsed)
                     e.target.closest('.message').remove();
             });
         }
@@ -1022,6 +1026,13 @@
                 const t = prompt('Informe o usuário Kick');
                 if (t == '' || !t) return;
                 connectToKickChat(t);
+            }
+        }
+
+        function updateYouTubeChatConnectiongDetails(data) {
+            const chat = document.getElementById('chat-connection-youtube').querySelector('.list');
+            if (chat && data) {
+                chat.innerHTML = data.map(x => `<li>${x.snippet.title}</li>`);
             }
         }
 

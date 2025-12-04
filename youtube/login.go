@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"time"
 )
 
 const (
@@ -24,6 +25,16 @@ type OAuthResponse struct {
 }
 
 func HandleLogin() {
+
+	scopes := Scopes
+
+	sqlToken, err := globals.GetGlobalDB().GetToken("youtube")
+	if err == nil && sqlToken.RefreshToken != "" {
+		config := globals.GetConfig()
+		config.Lock()
+		config.YouTubeRefresh = sqlToken.RefreshToken
+		config.Unlock()
+	}
 
 	if globals.GetConfig().YouTubeRefresh != "" {
 		helpers.Logf("YOUTUBE!", "")
@@ -49,6 +60,12 @@ func HandleLogin() {
 
 				newUser := globals.GetState().GetYouTubeUser()
 
+				sqlErr := globals.GetGlobalDB().SaveToken("youtube", newUser.Token, newUser.RefreshToken, time.Now().Add(time.Duration(newUser.TokenExpiresIn)*time.Second))
+
+				if sqlErr != nil {
+					helpers.Logf(helpers.Red, "Falha ao salvar token do YT %s", sqlErr.Error())
+				}
+
 				globals.WsBroadcast <- globals.SocketMessage{
 					Type: "youtube-connection",
 					Data: newUser,
@@ -62,24 +79,6 @@ func HandleLogin() {
 	}
 
 	redirectURI := fmt.Sprintf("http://localhost:%s/youtube/callback", globals.GetConfig().HTTPPort)
-
-	scopes := Scopes
-
-	/*if globals.GetConfig().TwitchScopes != "" {
-		scopes = fmt.Sprintf("%s %s", scopes, globals.GetConfig().TwitchScopes)
-	}
-	subTypes := globals.GetConfig().GetTwitchSubTypes()
-	for _, es := range subTypes {
-		if es != nil && es["requires"] != nil {
-			reqs := strings.SplitSeq(es["requires"].(string), " ")
-			for req := range reqs {
-				if strings.Contains(scopes, req) {
-					continue
-				}
-				scopes = fmt.Sprintf("%s %s", scopes, req)
-			}
-		}
-	}*/
 
 	// Endpoint que redireciona para YT
 	http.HandleFunc("/youtube/login", func(w http.ResponseWriter, r *http.Request) {
@@ -118,12 +117,17 @@ func HandleLogin() {
 
 		var tokenResp OAuthResponse
 		json.Unmarshal(body, &tokenResp)
-		//Token := tokenResp.AccessToken
 
 		user := globals.YouTubeUser{
 			Token:          tokenResp.AccessToken,
 			RefreshToken:   tokenResp.RefreshToken,
 			TokenExpiresIn: tokenResp.ExpiresIn,
+		}
+
+		sqlErr := globals.GetGlobalDB().SaveToken("youtube", user.Token, user.RefreshToken, time.Now().Add(time.Duration(user.TokenExpiresIn)*time.Second))
+
+		if sqlErr != nil {
+			helpers.Logf(helpers.Red, "[YT HANDLELOGIN] Falha ao salvar token %s", sqlErr.Error())
 		}
 
 		globals.GetState().SetYouTubeUser(user)

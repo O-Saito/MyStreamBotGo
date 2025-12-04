@@ -447,8 +447,6 @@
         <button type="button">Salvar</button>
     </div>
 
-    <!--<script src="app.js"></script> -->
-
     <script type="module">
         import w from './wrapper.js'
 
@@ -776,8 +774,8 @@
             //if (data.id == '') return;
             if (data == null) return;
             if (!twitchData.stream_details) twitchData.stream_details = {};
-            twitchData.stream_details.viewer_count = data.viewer_count;
-            twitchData.stream_details.started_at = data.started_at;
+            if (data.viewer_count) twitchData.stream_details.viewer_count = data.viewer_count;
+            if (data.started_at) twitchData.stream_details.started_at = data.started_at;
         });
 
         w.connect();
@@ -810,7 +808,7 @@
                         const current = new Date(twitchData.stream_details.started_at);
                         const time = getDateDiff(parseTimeZone(new Date()), parseTimeZone(current));
                         twitchDiv.querySelector('.stream-time').innerText = time.toString();
-
+                        
                         timeToUpdateTwitchData++
                         if (timeToUpdateTwitchData >= 60) {
                             timeToUpdateTwitchData = 0;

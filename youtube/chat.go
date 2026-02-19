@@ -14,6 +14,7 @@ type YouTubeLiveChatMessagesResponse struct {
 	Kind                  string                   `json:"kind"`
 	Etag                  string                   `json:"etag"`
 	NextPageToken         string                   `json:"nextPageToken"`
+	OfflineAt             time.Time                `json:"offlineAt"`
 	PollingIntervalMillis int                      `json:"pollingIntervalMillis"`
 	Items                 []YouTubeLiveChatMessage `json:"items"`
 }
@@ -73,9 +74,7 @@ func FetchLiveChatMessages(liveChatID, pageToken string) (*YouTubeLiveChatMessag
 	}
 	req.URL.RawQuery = q.Encode()
 
-	req.Header.Set("Authorization", "Bearer "+globals.GetState().GetYouTubeUser().Token)
-
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := DoYouTubeRequest(req)
 	if err != nil {
 		return nil, err
 	}
@@ -92,7 +91,7 @@ func FetchLiveChatMessages(liveChatID, pageToken string) (*YouTubeLiveChatMessag
 func ListenToChat(id string) {
 	page := ""
 	for {
-		//helpers.Logf(helpers.Cyan, "READING YT CHAT...")
+		helpers.Logf(helpers.Cyan, "READING YT CHAT...")
 		data, _ := FetchLiveChatMessages(id, page)
 
 		for _, msg := range data.Items {
@@ -125,6 +124,14 @@ func ListenToChat(id string) {
 			globals.WsBroadcast <- globals.SocketMessage{Type: "user-message", Data: socketdata}
 			globals.ChatQueue <- socketdata
 			//fmt.Println(msg.AuthorDetails.DisplayName + ": " + msg.Snippet.DisplayMessage)
+		}
+
+		if !data.OfflineAt.IsZero() && data.OfflineAt.After(time.Now()) {
+			helpers.Logf(helpers.Red, "[YT OFF] Chat offline at %v, now is %v", data.OfflineAt, time.Now())
+			globals.WsBroadcast <- globals.SocketMessage{
+				Type: "youtube-live-offline", Data: map[string]any{"liveId": id, "offlineAt": data.OfflineAt},
+			}
+			break
 		}
 
 		page = data.NextPageToken

@@ -382,7 +382,7 @@ func DeleteEventSubscriptions(id string) error {
 	req.Header.Set("Client-ID", globals.GetConfig().TwitchClientID)
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		helpers.Logf(helpers.Red, "[TWITCH FETCH] Erro ao deletar event subscriptions: %s", err.Error())
+		helpers.Logf(helpers.Red, "[TWITCH FETCH] Erro ao deletar event subscriptions (%s): %s", id, err.Error())
 		return err
 	}
 	defer resp.Body.Close()

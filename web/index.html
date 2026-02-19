@@ -292,6 +292,10 @@
             margin-left: 10px;
         }
 
+        .live-off{
+            color: red;
+        }
+
         .live-on {
             color: green;
         }
@@ -663,7 +667,15 @@
             twitchLastEventsub.innerHTML = `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}:${date.getSeconds().toString().padStart(2, '0')}`;
         });
         w.on('result-connect-chat-youtube', updateYouTubeChatConnectiongDetails);
-
+        w.on('youtube-live-offline', (data)=> {
+            const chat = document.getElementById('chat-connection-youtube').querySelector('.list');
+            if(chat) {
+                const item = chat.querySelector(`[data-live-id="${data.liveId}"]`);
+                if(item) {
+                    item.classList.add('live-off');
+                }
+            }
+        });
 
         w.onTwitch('channel.update', (data) => {
             const e = data.payload?.event;
@@ -1030,7 +1042,7 @@
         function updateYouTubeChatConnectiongDetails(data) {
             const chat = document.getElementById('chat-connection-youtube').querySelector('.list');
             if (chat && data) {
-                chat.innerHTML = data.map(x => `<li>${x.snippet.title}</li>`);
+                chat.innerHTML = data.map(x => `<li data-live-id="${x.id}">${x.snippet.title}</li>`);
             }
         }
 

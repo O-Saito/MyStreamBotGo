@@ -17,6 +17,19 @@
 ---@field UserLogin  string
 ---@field FollowedAt string
 
+---@class StreamData
+---@field BroadcasterId               string  
+---@field BroadcasterLogin            string   
+---@field BroadcasterName             string  
+---@field BroadcasterLanguage         string  
+---@field GameID                      string  
+---@field GameName                    string   
+---@field Title                       string   
+---@field Delay                       int      
+---@field Tags                        []string 
+---@field ContentClassificationLabels []string 
+---@field IsBrandedContent            bool     
+
 ---@meta
 ---@class twitch
 local g = {}
@@ -39,7 +52,13 @@ function g.get_user_data_by_id(userid)end
 ---Get followers data of logged streamer by user ID
 ---@param userid string
 ---@return TwitchViewerData[]|nil
-function g.get_followers_data(userid)end
+function g.get_follower_data(userid)end
+
+---@return TwitchViewerData[]|nil
+function g.get_followers_data()end
+
+---@return StreamData|nil 
+function g.get_channel_stream_data()end
 
 -- declare global
 _G.twitch = g

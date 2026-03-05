@@ -17,7 +17,6 @@ type CoreDB struct {
 
 func NewCoreDB(fileName string) (*CoreDB, error) {
 	dir := filepath.Join("./db")
-
 	corePath := filepath.Join(dir, fmt.Sprintf("%s.db", fileName))
 
 	err := os.MkdirAll(dir, 0755)

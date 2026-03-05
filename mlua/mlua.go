@@ -140,12 +140,12 @@ func loadModule(L *lua.LState, path string, modType string) {
 
 	fn, err := L.LoadFile(path)
 	if err != nil {
-		helpers.Logf(helpers.Red, "[LOAD ERROR] %s: %v", path, err)
+		helpers.Logf(helpers.ERROR, "[LOAD ERROR] %s: %v", path, err)
 		return
 	}
 
 	if err := L.CallByParam(lua.P{Fn: fn, NRet: 0, Protect: true}); err != nil {
-		helpers.Logf(helpers.Red, "[EXECUTE MODULE ERROR] %s: %v", path, err)
+		helpers.Logf(helpers.ERROR, "[EXECUTE MODULE ERROR] %s: %v", path, err)
 		return
 	}
 
@@ -172,7 +172,7 @@ func loadModule(L *lua.LState, path string, modType string) {
 			eventFunctions[eventName+"_"+mod.NameWithoutExt()] = fn
 		}
 	}
-	helpers.Logf(helpers.Green, "[MODULE LOADED] %s (%s)", path, modType)
+	helpers.Printf(helpers.Green, "[MODULE LOADED] %s (%s)", path, modType)
 }
 
 func RegisterGlobalState(L *lua.LState) {
@@ -233,7 +233,7 @@ func RegisterGlobalState(L *lua.LState) {
 		// nada permitido
 		ud := L.CheckUserData(1)
 		key := L.CheckString(2)
-		helpers.Logf(helpers.Yellow, "[LUA STATE WARNING] Tentativa de setar State.%s diretamente", key)
+		helpers.Logf(helpers.WARN, "[LUA STATE WARNING] Tentativa de setar State.%s diretamente", key)
 
 		state := ud.Value.(*globals.State)
 
@@ -270,7 +270,7 @@ func HandleCommand(name string, ev *globals.LuaCommand) {
 	tbl = ToLTableCommand(LCommands, ev, tbl)
 	if fn, ok := commandFunctions[name]; ok {
 		if err := LCommands.CallByParam(lua.P{Fn: fn, NRet: 0, Protect: true}, tbl); err != nil {
-			helpers.Logf(helpers.Red, "[LUA COMMAND ERROR] %s: %v", name, err)
+			helpers.Logf(helpers.ERROR, "[LUA COMMAND ERROR] %s: %v", name, err)
 		}
 	}
 }
@@ -280,7 +280,7 @@ func HandleChat(ev *globals.MessageFromStream) {
 	tbl = ToLTable(LChat, ev, tbl)
 	for name, fn := range chatFunctions {
 		if err := LChat.CallByParam(lua.P{Fn: fn, NRet: 0, Protect: true}, tbl); err != nil {
-			helpers.Logf(helpers.Red, "[LUA CHAT ERROR] %s: %v", name, err)
+			helpers.Logf(helpers.ERROR, "[LUA CHAT ERROR] %s: %v", name, err)
 		}
 	}
 }
@@ -290,7 +290,7 @@ func HandleEvent(eventName string, ev *globals.LuaEvent) {
 	for name, fn := range eventFunctions {
 		if strings.Contains(name, eventName) {
 			if err := LEvents.CallByParam(lua.P{Fn: fn, NRet: 0, Protect: true}, tbl); err != nil {
-				helpers.Logf(helpers.Red, "[LUA EVENT ERROR] %s: %v", name, err)
+				helpers.Logf(helpers.ERROR, "[LUA EVENT ERROR] %s: %v", name, err)
 			}
 		}
 	}
@@ -321,7 +321,7 @@ func StartWatcher() {
 				if !ok {
 					return
 				}
-				helpers.Logf(helpers.Red, "[WATCHER ERROR] %v", err)
+				helpers.Logf(helpers.ERROR, "[WATCHER ERROR] %v", err)
 			}
 		}
 	}()
@@ -368,7 +368,7 @@ func StartEventQueues() {
 	go func() {
 		defer func() {
 			if r := recover(); r != nil {
-				helpers.Logf(helpers.Red, "[LuaRequest] panic: %v", r)
+				helpers.Logf(helpers.ERROR, "[LuaRequest] panic: %v", r)
 			}
 		}()
 		for ev := range globals.LuaRequest {

@@ -84,7 +84,7 @@ func StartHTTPServer() {
 	http.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
 		conn, err := upgrader.Upgrade(w, r, nil)
 		if err != nil {
-			helpers.Logf(helpers.Red, "[WebSocket] Erro: %s", err.Error())
+			helpers.Logf(helpers.ERROR, "[WebSocket] Erro: %s", err.Error())
 			return
 		}
 		defer conn.Close()
@@ -96,7 +96,7 @@ func StartHTTPServer() {
 		for {
 			_, msg, err := conn.ReadMessage()
 			if err != nil {
-				helpers.Logf(helpers.Red, "[Socket] Error: %v", err)
+				helpers.Logf(helpers.ERROR, "[Socket] Error: %v", err)
 				delete(wsClients, conn)
 				break
 			}
@@ -236,18 +236,19 @@ func StartHTTPServer() {
 
 	addrs, err := net.InterfaceAddrs()
 	if err != nil {
+		helpers.Logf(helpers.ERROR, "Failed to get interface address %s", err.Error())
 		panic(err)
 	}
 
 	port := globals.GetConfig().HTTPPort
-	helpers.Log(helpers.Reset, "[MyStreamBot] Possíveis IP's (para os logins TEM que ser pelo localhost):")
+	helpers.Print(helpers.Green, "[MyStreamBot] Possíveis IP's (para os logins TEM que ser pelo localhost):")
 	for _, addr := range addrs {
 		if ipnet, ok := addr.(*net.IPNet); ok && !ipnet.IP.IsLoopback() {
 			if ipnet.IP.To4() != nil {
-				helpers.Logf(helpers.Reset, "http://%s:%s", ipnet.IP.String(), port)
+				helpers.Printf(helpers.Reset, "http://%s:%s", ipnet.IP.String(), port)
 			}
 		}
 	}
-	helpers.Logf(helpers.Reset, "[MyStreamBot] Servidor HTTP iniciado em http://localhost:%s", port)
+	helpers.Printf(helpers.Green, "[MyStreamBot] Servidor HTTP iniciado em http://localhost:%s", port)
 	go http.ListenAndServe(fmt.Sprintf("0.0.0.0:%s", port), nil)
 }

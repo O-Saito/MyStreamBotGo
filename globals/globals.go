@@ -68,7 +68,7 @@ var sectionMap = map[string]any{
 }
 
 func LoadInitFile() {
-	helpers.Logf(helpers.Cyan, "Carregando arquivo de inicialização init.txt")
+	helpers.Logf(helpers.INFO, "Carregando arquivo de inicialização init.txt")
 	filePath := filepath.Join(".", "init.txt")
 	file, err := os.Open(filePath)
 	if err != nil {
@@ -92,7 +92,7 @@ func LoadInitFile() {
 		// Example processing (you can expand this as needed)
 		if line[0] == '[' && line[len(line)-1] == ']' {
 			current = line[1 : len(line)-1]
-			helpers.Logf(helpers.Green, "Seção: %s", current)
+			helpers.Logf(helpers.INFO, "Seção: %s", current)
 			continue
 		}
 		if current == "" {
@@ -127,7 +127,7 @@ func LoadInitFile() {
 	}
 
 	if err := scanner.Err(); err != nil {
-		helpers.Logf(helpers.Red, "Erro ao ler o arquivo: %v", err)
+		helpers.Logf(helpers.ERROR, "Erro ao ler o arquivo: %v", err)
 	}
 }
 
@@ -135,7 +135,7 @@ func LoadTwitchSubTypes() {
 	filePath := filepath.Join(".", "twitchsubtypes.json")
 	contentBytes, err := os.ReadFile(filePath)
 	if err != nil {
-		helpers.Logf(helpers.Red, "Error reading twitchsubtypes.json file: %v\n", err)
+		helpers.Logf(helpers.ERROR, "Error reading twitchsubtypes.json file: %v\n", err)
 		return
 	}
 	data := map[string]map[string]any{}
@@ -148,7 +148,7 @@ func setField(obj any, field, value string) {
 	v := reflect.ValueOf(obj).Elem()
 	f := v.FieldByName(field)
 	if !f.IsValid() || !f.CanSet() {
-		helpers.Logf(helpers.Yellow, "Campo inválido: %s", field)
+		helpers.Logf(helpers.WARN, "Campo inválido: %s", field)
 		return
 	}
 
@@ -163,6 +163,6 @@ func setField(obj any, field, value string) {
 			f.SetInt(int64(i))
 		}
 	default:
-		helpers.Logf(helpers.Yellow, "Tipo de campo não suportado: %s", field)
+		helpers.Logf(helpers.WARN, "Tipo de campo não suportado: %s", field)
 	}
 }

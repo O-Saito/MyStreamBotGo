@@ -37,7 +37,7 @@ func HandleLogin() {
 	}
 
 	if globals.GetConfig().YouTubeRefresh != "" {
-		helpers.Logf("YOUTUBE!", "")
+		helpers.Print(helpers.Reset, "YOUTUBE!")
 		user := globals.YouTubeUser{
 			RefreshToken: globals.GetConfig().YouTubeRefresh,
 		}
@@ -63,7 +63,7 @@ func HandleLogin() {
 				sqlErr := globals.GetGlobalDB().SaveToken("youtube", newUser.Token, newUser.RefreshToken, time.Now().Add(time.Duration(newUser.TokenExpiresIn)*time.Second))
 
 				if sqlErr != nil {
-					helpers.Logf(helpers.Red, "Falha ao salvar token do YT %s", sqlErr.Error())
+					helpers.Logf(helpers.ERROR, "Falha ao salvar token do YT %s", sqlErr.Error())
 				}
 
 				globals.WsBroadcast <- globals.SocketMessage{
@@ -71,10 +71,10 @@ func HandleLogin() {
 					Data: newUser,
 				}
 			} else {
-				helpers.Logf(helpers.Red, "Falha ao buscar canais do YT %s", err.Error())
+				helpers.Logf(helpers.ERROR, "Falha ao buscar canais do YT %s", err.Error())
 			}
 		} else {
-			helpers.Logf(helpers.Red, "Falha ao atualizar token %s", err.Error())
+			helpers.Logf(helpers.ERROR, "Falha ao atualizar token %s", err.Error())
 		}
 	}
 
@@ -88,7 +88,7 @@ func HandleLogin() {
 			url.QueryEscape(redirectURI),
 			url.QueryEscape(scopes),
 		)
-		helpers.Logf(helpers.Reset, "[YT LOGIN] Abrindo URL de login: %s", authURL)
+		helpers.Printf(helpers.Reset, "[YT LOGIN] Abrindo URL de login: %s", authURL)
 		http.Redirect(w, r, authURL, http.StatusFound)
 	})
 
@@ -127,12 +127,12 @@ func HandleLogin() {
 		sqlErr := globals.GetGlobalDB().SaveToken("youtube", user.Token, user.RefreshToken, time.Now().Add(time.Duration(user.TokenExpiresIn)*time.Second))
 
 		if sqlErr != nil {
-			helpers.Logf(helpers.Red, "[YT HANDLELOGIN] Falha ao salvar token %s", sqlErr.Error())
+			helpers.Logf(helpers.ERROR, "[YT HANDLELOGIN] Falha ao salvar token %s", sqlErr.Error())
 		}
 
 		globals.GetState().SetYouTubeUser(user)
 
-		helpers.Logf(helpers.Red, "[YT TOKEN] %s : %s E: %d", string(body), globals.GetConfig().YouTubeClientID, tokenResp.ExpiresIn)
+		helpers.Printf(helpers.Red, "[YT TOKEN] %s : %s E: %d", string(body), globals.GetConfig().YouTubeClientID, tokenResp.ExpiresIn)
 
 		fmt.Fprintf(w, "Login concluído! Pode fechar esta página.")
 

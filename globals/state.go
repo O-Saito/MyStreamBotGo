@@ -126,7 +126,7 @@ func GetState() *State {
 		state = &State{
 			Data: make(map[string]any),
 		}
-		helpers.Log(helpers.Blue, "State iniciado...")
+		helpers.Log(helpers.INFO, "State iniciado...")
 	})
 
 	return state

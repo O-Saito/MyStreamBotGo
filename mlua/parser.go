@@ -93,7 +93,7 @@ func ToLValue(L *lua.LState, val any) lua.LValue {
 		}
 		return lua.LNil
 	default:
-		helpers.Logf(helpers.Red, "[LUA PARSER] Default fallback %T", val)
+		helpers.Logf(helpers.ERROR, "[LUA PARSER] Default fallback %T", val)
 		return lua.LString(fmt.Sprintf("%v", val))
 	}
 }
@@ -147,7 +147,7 @@ func FromLValue(L *lua.LState, lv lua.LValue) any {
 func ToLTable(L *lua.LState, data *globals.MessageFromStream, tbl *lua.LTable) *lua.LTable {
 	defer func() {
 		if r := recover(); r != nil {
-			helpers.Logf(helpers.Red, "Panic em ToLTable: %v", r)
+			helpers.Logf(helpers.ERROR, "Panic em ToLTable: %v", r)
 		}
 	}()
 	tbl.RawSetString("Source", lua.LString(data.Source))
@@ -168,7 +168,7 @@ func ToLTable(L *lua.LState, data *globals.MessageFromStream, tbl *lua.LTable) *
 func ToLTableEvent(L *lua.LState, data *globals.LuaEvent, tbl *lua.LTable) *lua.LTable {
 	defer func() {
 		if r := recover(); r != nil {
-			helpers.Logf(helpers.Red, "Panic em ToLTableEvent: %v", r)
+			helpers.Logf(helpers.ERROR, "Panic em ToLTableEvent: %v", r)
 		}
 	}()
 	tbl.RawSetString("Type", lua.LString(data.Type))
@@ -186,7 +186,7 @@ func ToLTableEvent(L *lua.LState, data *globals.LuaEvent, tbl *lua.LTable) *lua.
 func ToLTableCommand(L *lua.LState, data *globals.LuaCommand, tbl *lua.LTable) *lua.LTable {
 	defer func() {
 		if r := recover(); r != nil {
-			helpers.Logf(helpers.Red, "Panic em ToLTableCommand: %v", r)
+			helpers.Logf(helpers.ERROR, "Panic em ToLTableCommand: %v", r)
 		}
 	}()
 

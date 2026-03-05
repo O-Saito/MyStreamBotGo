@@ -13,7 +13,7 @@ import (
 
 func RegisterSocketHandlers() {
 	goweb.SocketHandlers["connect-chat-kick"] = func(c *websocket.Conn, data map[string]any, tag int) {
-		helpers.Logf(helpers.Reset, "[Socket Handler] connect-chat-kick %s\r\n", data["roomId"].(string))
+		helpers.Printf(helpers.Reset, "[Socket Handler] connect-chat-kick %s\r\n", data["roomId"].(string))
 		kick.Channels = append(kick.Channels, kick.IrcChannel{
 			ID:   data["roomId"].(string),
 			Slug: data["channel"].(string),
@@ -23,15 +23,15 @@ func RegisterSocketHandlers() {
 	}
 
 	goweb.SocketHandlers["connect-chat-twitch"] = func(c *websocket.Conn, data map[string]any, tag int) {
-		helpers.Logf(helpers.Reset, "[Socket Handler] connect-chat-twitch %s\r\n", data["channel"].(string))
+		helpers.Printf(helpers.Reset, "[Socket Handler] connect-chat-twitch %s\r\n", data["channel"].(string))
 		twitch.JoinChannel(data["channel"].(string))
 	}
 
 	goweb.SocketHandlers["connect-chat-youtube"] = func(c *websocket.Conn, data map[string]any, tag int) {
-		helpers.Logf(helpers.Reset, "[Socket Handler] connect-chat-youtube %s\r\n", data["channel"].(string))
+		helpers.Printf(helpers.Reset, "[Socket Handler] connect-chat-youtube %s\r\n", data["channel"].(string))
 		lives, err := youtube.GetCurrentStreamings()
 		if err != nil {
-			helpers.Logf(helpers.Red, "Falha ao buscar YouTubeStreamings %v", err)
+			helpers.Logf(helpers.ERROR, "Falha ao buscar YouTubeStreamings %v", err)
 			return
 		}
 
@@ -40,13 +40,13 @@ func RegisterSocketHandlers() {
 			connectedChat = []youtube.LiveBroadcast{}
 		}
 
-		helpers.Logf(helpers.Cyan, "YT LIVES: %v", len(lives.Items))
+		helpers.Printf(helpers.Cyan, "YT LIVES: %v", len(lives.Items))
 		for _, v := range lives.Items {
 
 			_, finded := helpers.Find(connectedChat.([]youtube.LiveBroadcast), func(l youtube.LiveBroadcast) bool {
 				return l.Snippet.LiveChatID == v.Snippet.LiveChatID
 			})
-			helpers.Logf(helpers.Cyan, "YT Listen to (%v): %v", finded, v)
+			helpers.Printf(helpers.Cyan, "YT Listen to (%v): %v", finded, v)
 			if !finded {
 				go youtube.ListenToChat(v.Snippet.LiveChatID)
 				connectedChat = append(connectedChat.([]youtube.LiveBroadcast), v)

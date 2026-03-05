@@ -91,7 +91,7 @@ func FetchLiveChatMessages(liveChatID, pageToken string) (*YouTubeLiveChatMessag
 func ListenToChat(id string) {
 	page := ""
 	for {
-		helpers.Logf(helpers.Cyan, "READING YT CHAT...")
+		helpers.Logf(helpers.DEBUG, "READING YT CHAT...")
 		data, _ := FetchLiveChatMessages(id, page)
 
 		for _, msg := range data.Items {
@@ -127,7 +127,7 @@ func ListenToChat(id string) {
 		}
 
 		if !data.OfflineAt.IsZero() && data.OfflineAt.After(time.Now()) {
-			helpers.Logf(helpers.Red, "[YT OFF] Chat offline at %v, now is %v", data.OfflineAt, time.Now())
+			helpers.Logf(helpers.WARN, "[YT OFF] Chat offline at %v, now is %v", data.OfflineAt, time.Now())
 			globals.WsBroadcast <- globals.SocketMessage{
 				Type: "youtube-live-offline", Data: map[string]any{"liveId": id, "offlineAt": data.OfflineAt},
 			}
@@ -135,7 +135,7 @@ func ListenToChat(id string) {
 		}
 
 		page = data.NextPageToken
-		helpers.Logf(helpers.Red, "YT POLL %d", data.PollingIntervalMillis)
+		helpers.Logf(helpers.DEBUG, "YT POLL %d", data.PollingIntervalMillis)
 
 		if len(data.Items) == 0 {
 			data.PollingIntervalMillis = 60000
@@ -145,7 +145,7 @@ func ListenToChat(id string) {
 			data.PollingIntervalMillis = 5000
 		}
 
-		helpers.Logf(helpers.Red, "YT POLL NOW %d", data.PollingIntervalMillis)
+		helpers.Logf(helpers.DEBUG, "YT POLL NOW %d", data.PollingIntervalMillis)
 
 		time.Sleep(time.Duration(data.PollingIntervalMillis) * time.Millisecond)
 	}

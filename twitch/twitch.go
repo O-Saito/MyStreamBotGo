@@ -83,13 +83,13 @@ func GetCacheUserChatColor(user string) string {
 var ircHandlers = map[string]func(parts []string, afterMetadataIndex int, metadata ...map[string]any){
 	"RECONNECT": func(parts []string, afterMetadataIndex int, metadata ...map[string]any) {
 		// fazer o reconnect
-		helpers.Logf(helpers.Twitch, "[TWITCH RECONNECT] Server requested reconnect")
+		helpers.Logf(helpers.INFO, "[TWITCH RECONNECT] Server requested reconnect")
 		Disconnect()
 	},
 	"JOIN": func(parts []string, afterMetadataIndex int, metadata ...map[string]any) {
 		user := strings.Split(parts[0], "!")[0][1:]
 		channel := strings.TrimPrefix(parts[2], "#")
-		helpers.Logf(helpers.Twitch, "[TWITCH JOIN] User %s joined channel %s", user, channel)
+		helpers.Printf(helpers.Twitch, "[TWITCH JOIN] User %s joined channel %s", user, channel)
 		if user == channel {
 			globals.WsBroadcast <- globals.SocketMessage{
 				Type: "twitch-chat-connection",
@@ -113,7 +113,7 @@ var ircHandlers = map[string]func(parts []string, afterMetadataIndex int, metada
 	"PART": func(parts []string, afterMetadataIndex int, metadata ...map[string]any) {
 		user := strings.Split(parts[0], "!")[0][1:]
 		channel := strings.TrimPrefix(parts[2], "#")
-		helpers.Logf(helpers.Twitch, "[TWITCH PART] User %s joined channel %s", user, channel)
+		helpers.Printf(helpers.Twitch, "[TWITCH PART] User %s joined channel %s", user, channel)
 		globals.EventQueue <- globals.LuaEvent{
 			Type: "twitch-user-part",
 			Data: map[string]any{
@@ -130,7 +130,7 @@ var ircHandlers = map[string]func(parts []string, afterMetadataIndex int, metada
 		if len(parts) > afterMetadataIndex+3 {
 			reason = strings.Join(parts[(afterMetadataIndex+3):], " ")[1:]
 		}
-		helpers.Logf(helpers.Twitch, "[TWITCH CLEARMSG] Chat %s cleared: %s", channel, reason)
+		helpers.Printf(helpers.Twitch, "[TWITCH CLEARMSG] Chat %s cleared: %s", channel, reason)
 		globals.WsBroadcast <- globals.SocketMessage{
 			Type: "user-message-delete",
 			Data: metadata[0]["target-msg-id"].(string),
@@ -142,7 +142,7 @@ var ircHandlers = map[string]func(parts []string, afterMetadataIndex int, metada
 	},
 	"CLEARCHAT": func(parts []string, afterMetadataIndex int, metadata ...map[string]any) {
 		channel := strings.TrimPrefix(parts[afterMetadataIndex+2], "#")
-		helpers.Logf(helpers.Twitch, "[TWITCH CLEARCHAT] Chat %s cleared", channel)
+		helpers.Printf(helpers.Twitch, "[TWITCH CLEARCHAT] Chat %s cleared", channel)
 		globals.WsBroadcast <- globals.SocketMessage{Type: "clear-chat", Data: map[string]any{
 			"channel":  channel,
 			"metadata": metadata[0],
@@ -151,7 +151,7 @@ var ircHandlers = map[string]func(parts []string, afterMetadataIndex int, metada
 	"NOTICE": func(parts []string, afterMetadataIndex int, metadata ...map[string]any) {
 		channel := strings.TrimPrefix(parts[afterMetadataIndex+2], "#")
 		reason := strings.Join(parts[(afterMetadataIndex+3):], " ")[1:]
-		helpers.Logf(helpers.Twitch, "[TWITCH NOTICE] Notice in %s: %s", channel, reason)
+		helpers.Printf(helpers.Twitch, "[TWITCH NOTICE] Notice in %s: %s", channel, reason)
 
 		/*globals.CommandQueue <- globals.LuaCommand{
 			Source:  "twitch",
@@ -168,7 +168,7 @@ var ircHandlers = map[string]func(parts []string, afterMetadataIndex int, metada
 		user := strings.Split(parts[afterMetadataIndex], "!")[0][1:]
 		channel := strings.TrimPrefix(parts[afterMetadataIndex+2], "#")
 		message := strings.Join(parts[(afterMetadataIndex+3):], " ")[1:]
-		helpers.Logf(helpers.Twitch, "[TWITCH MESSAGE] %s in %s: %s", user, channel, message)
+		helpers.Printf(helpers.Twitch, "[TWITCH MESSAGE] %s in %s: %s", user, channel, message)
 		// enviar para WebSocket
 		socketdata := globals.MessageFromStream{
 			Source:    "twitch",
@@ -262,7 +262,7 @@ var ircHandlers = map[string]func(parts []string, afterMetadataIndex int, metada
 				cmd.Args = strings.Split(parts[1], " ")
 			}
 			globals.CommandQueue <- cmd
-			helpers.Logf(helpers.Purple, "[TWITCH COMMAND] %+v", cmd)
+			helpers.Printf(helpers.Purple, "[TWITCH COMMAND] %+v", cmd)
 		}
 	},
 }
@@ -286,7 +286,7 @@ func Connect() error {
 
 	ircHandlers["RECONNECT"] = func(parts []string, afterMetadataIndex int, metadata ...map[string]any) {
 		// fazer o reconnect
-		helpers.Logf(helpers.Twitch, "[TWITCH RECONNECT] Server requested reconnect")
+		helpers.Logf(helpers.INFO, "[TWITCH RECONNECT] Server requested reconnect")
 		Disconnect()
 		Connect()
 	}
@@ -313,7 +313,7 @@ func JoinChannel(channel string) {
 	if slices.Contains(Channels, channel) {
 		return
 	}
-	helpers.Logf(helpers.Blue, "[TWITCH] Joining channel: %s", channel)
+	helpers.Printf(helpers.Twitch, "[TWITCH] Joining channel: %s", channel)
 	fmt.Fprintf(Conn, "JOIN #%s\r\n", channel)
 	Channels = append(Channels, channel)
 }
@@ -322,7 +322,7 @@ func reader() {
 	scanner := bufio.NewScanner(Conn)
 	for scanner.Scan() {
 		msg := scanner.Text()
-		helpers.Logf(helpers.Blue, "[Twitch] IRC Message: %s", msg)
+		helpers.Printf(helpers.Twitch, "[Twitch] IRC Message: %s", msg)
 		if strings.HasPrefix(msg, "PING") {
 			fmt.Fprintf(Conn, "PONG :tmi.twitch.tv\r\n")
 			continue
@@ -335,7 +335,7 @@ func reader() {
 		afterMetadataIndex := helpers.Ternary(parts[0][0] == '@', 1, 0)
 
 		handlersKey := parts[afterMetadataIndex+1]
-		helpers.Logf(helpers.Twitch, "[Twitch] Handler key: %s", handlersKey)
+		helpers.Printf(helpers.Twitch, "[Twitch] Handler key: %s", handlersKey)
 		if handler, exists := ircHandlers[handlersKey]; exists {
 			handler(parts, afterMetadataIndex, helpers.Ternary(parts[0][0] == '@', partseTags(parts[0]), nil))
 			continue
@@ -343,10 +343,10 @@ func reader() {
 	}
 
 	if err := scanner.Err(); err != nil {
-		helpers.Logf(helpers.Red, "[Twitch ERROR] Erro na leitura: %v", err)
+		helpers.Logf(helpers.ERROR, "[Twitch ERROR] Erro na leitura: %v", err)
 		ircHandlers["RECONNECT"](nil, 0, nil)
 	} else {
-		helpers.Logf(helpers.Red, "[Twitch ERROR] Scanner finalizado")
+		helpers.Logf(helpers.INFO, "[Twitch ERROR] Scanner finalizado")
 		ircHandlers["RECONNECT"](nil, 0, nil)
 	}
 }
@@ -355,7 +355,7 @@ func writer() {
 	for msg := range MsgQueue {
 		if msg.MessageToReply != "" {
 			text := fmt.Sprintf("@reply-parent-msg-id=%s PRIVMSG #%s : %s", msg.MessageToReply, msg.Channel, msg.Text)
-			helpers.Logf(helpers.Yellow, "[TWITCH REPLY] %s", text)
+			helpers.Printf(helpers.Yellow, "[TWITCH REPLY] %s", text)
 			fmt.Fprintf(Conn, "%s\r\n", text)
 			continue
 		}
@@ -372,5 +372,5 @@ func SendMessage(msg, channel string, messageToReply ...string) {
 		return
 	}
 
-	helpers.Logf(helpers.Red, "[TWITCH ERROR] Channel not found! %s", channel)
+	helpers.Logf(helpers.ERROR, "[TWITCH ERROR] Channel not found! %s", channel)
 }

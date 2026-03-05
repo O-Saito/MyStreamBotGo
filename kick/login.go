@@ -63,7 +63,7 @@ func HandleLogin() {
 		defer resp.Body.Close()
 		body, _ := io.ReadAll(resp.Body)
 
-		helpers.Logf(helpers.Reset, "[KICK LOGIN] TOKEN: %s", body)
+		helpers.Printf(helpers.Reset, "[KICK LOGIN] TOKEN: %s", body)
 		var tokenResp struct {
 			AccessToken  string `json:"access_token"`
 			TokenType    string `json:"token_type"`
@@ -73,7 +73,7 @@ func HandleLogin() {
 		}
 		json.Unmarshal(body, &tokenResp)
 
-		helpers.Logf(helpers.Reset, "[KICK LOGIN] Login: access_token: %s; token_type: %s; refresh_token: %s; expires: %d; scope: %s", tokenResp.AccessToken, tokenResp.TokenType, tokenResp.RefreshToken, tokenResp.ExpiresIn, tokenResp.Scope)
+		helpers.Printf(helpers.Reset, "[KICK LOGIN] Login: access_token: %s; token_type: %s; refresh_token: %s; expires: %d; scope: %s", tokenResp.AccessToken, tokenResp.TokenType, tokenResp.RefreshToken, tokenResp.ExpiresIn, tokenResp.Scope)
 		TokenMutex.Lock()
 		Token = tokenResp.AccessToken
 		RefreshToken = tokenResp.RefreshToken
@@ -91,7 +91,7 @@ func HandleLogin() {
 
 		close(LoginDone)
 		fmt.Fprintf(w, "Login Kick concluído! Pode fechar esta página.\r\n")
-		helpers.Logf(helpers.Reset, "[KICK LOGIN] Login concluído: %s (ID: %d)", UserLogin, UserID)
+		helpers.Printf(helpers.Reset, "[KICK LOGIN] Login concluído: %s (ID: %d)", UserLogin, UserID)
 
 		if err := Connect(); err != nil {
 			log.Fatal(err)

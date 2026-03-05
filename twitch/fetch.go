@@ -240,13 +240,13 @@ func GetListOfGames(query string) ([]GameData, error) {
 	req.Header.Set("Client-ID", globals.GetConfig().TwitchClientID)
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		helpers.Logf(helpers.Red, "[TWITCH FETCH] Erro ao buscar lista de jogos: %s", err.Error())
+		helpers.Logf(helpers.ERROR, "[TWITCH FETCH] Erro ao buscar lista de jogos: %s", err.Error())
 		return nil, err
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != 200 {
 		body, _ := io.ReadAll(resp.Body)
-		helpers.Logf(helpers.Red, "[TWITCH FETCH] Erro ao buscar lista de jogos: (%d) %s", resp.StatusCode, body)
+		helpers.Logf(helpers.ERROR, "[TWITCH FETCH] Erro ao buscar lista de jogos: (%d) %s", resp.StatusCode, body)
 		return nil, fmt.Errorf("erro ao buscar lista de jogos: %s", body)
 	}
 	body, _ := io.ReadAll(resp.Body)
@@ -265,7 +265,7 @@ func GetChannelStreamData(id string) (*StreamData, error) {
 	req.Header.Set("Client-ID", globals.GetConfig().TwitchClientID)
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		helpers.Logf(helpers.Red, "[TWITCH] GetStreamData: %s", err.Error())
+		helpers.Logf(helpers.ERROR, "[TWITCH] GetStreamData: %s", err.Error())
 		return nil, err
 	}
 	defer resp.Body.Close()
@@ -276,7 +276,7 @@ func GetChannelStreamData(id string) (*StreamData, error) {
 	body, _ := io.ReadAll(resp.Body)
 	json.Unmarshal(body, &u)
 	if len(u.Data) == 0 {
-		helpers.Logf(helpers.Red, "[TWITCH] No stream data on GetStreamData")
+		helpers.Logf(helpers.ERROR, "[TWITCH] No stream data on GetStreamData")
 		return nil, nil
 	}
 	return &u.Data[0], nil
@@ -317,13 +317,13 @@ func GetBadges(broadcasterId ...string) (*map[string]any, error) {
 	req.Header.Set("Client-ID", globals.GetConfig().TwitchClientID)
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		helpers.Logf(helpers.Red, "[TWITCH FETCH] Erro ao buscar lista de badges: %s", err.Error())
+		helpers.Logf(helpers.ERROR, "[TWITCH FETCH] Erro ao buscar lista de badges: %s", err.Error())
 		return nil, err
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != 200 {
 		body, _ := io.ReadAll(resp.Body)
-		helpers.Logf(helpers.Red, "[TWITCH FETCH] Erro ao buscar lista de badges: (%d) %s", resp.StatusCode, body)
+		helpers.Logf(helpers.ERROR, "[TWITCH FETCH] Erro ao buscar lista de badges: (%d) %s", resp.StatusCode, body)
 		return nil, fmt.Errorf("erro ao buscar lista de badges: %s", body)
 	}
 	body, _ := io.ReadAll(resp.Body)
@@ -359,13 +359,13 @@ func GetEventSubscriptions() (*EventSubData, error) {
 	req.Header.Set("Client-ID", globals.GetConfig().TwitchClientID)
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		helpers.Logf(helpers.Red, "[TWITCH FETCH] Erro ao buscar lista de event subscriptions: %s", err.Error())
+		helpers.Logf(helpers.ERROR, "[TWITCH FETCH] Erro ao buscar lista de event subscriptions: %s", err.Error())
 		return nil, err
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != 200 {
 		body, _ := io.ReadAll(resp.Body)
-		helpers.Logf(helpers.Red, "[TWITCH FETCH] Erro ao buscar lsita de event subscriptions: (%d) %s", resp.StatusCode, body)
+		helpers.Logf(helpers.ERROR, "[TWITCH FETCH] Erro ao buscar lsita de event subscriptions: (%d) %s", resp.StatusCode, body)
 		return nil, fmt.Errorf("erro ao buscar lista de event subscriptions: %s", body)
 	}
 	body, _ := io.ReadAll(resp.Body)
@@ -382,13 +382,13 @@ func DeleteEventSubscriptions(id string) error {
 	req.Header.Set("Client-ID", globals.GetConfig().TwitchClientID)
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		helpers.Logf(helpers.Red, "[TWITCH FETCH] Erro ao deletar event subscriptions (%s): %s", id, err.Error())
+		helpers.Logf(helpers.ERROR, "[TWITCH FETCH] Erro ao deletar event subscriptions (%s): %s", id, err.Error())
 		return err
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != 200 && resp.StatusCode != 204 {
 		body, _ := io.ReadAll(resp.Body)
-		helpers.Logf(helpers.Red, "[TWITCH FETCH] Erro ao deletar event subscriptions: (%d) %s", resp.StatusCode, body)
+		helpers.Logf(helpers.ERROR, "[TWITCH FETCH] Erro ao deletar event subscriptions: (%d) %s", resp.StatusCode, body)
 		return fmt.Errorf("erro ao deletar event subscriptions: %s", body)
 	}
 	body, _ := io.ReadAll(resp.Body)
@@ -410,13 +410,13 @@ func GetUserChatColor(id string) (*struct {
 	req.Header.Set("Client-ID", globals.GetConfig().TwitchClientID)
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		helpers.Logf(helpers.Red, "[TWITCH FETCH] Erro ao buscar cor do usuario: %s", err.Error())
+		helpers.Logf(helpers.ERROR, "[TWITCH FETCH] Erro ao buscar cor do usuario: %s", err.Error())
 		return nil, err
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != 200 {
 		body, _ := io.ReadAll(resp.Body)
-		helpers.Logf(helpers.Red, "[TWITCH FETCH] Erro ao buscar cor do usuario: (%d) %s", resp.StatusCode, body)
+		helpers.Logf(helpers.ERROR, "[TWITCH FETCH] Erro ao buscar cor do usuario: (%d) %s", resp.StatusCode, body)
 		return nil, fmt.Errorf("erro ao buscar cor do usuario: %s", body)
 	}
 	body, _ := io.ReadAll(resp.Body)
@@ -444,7 +444,7 @@ func GetStreamData(id string) (*globals.TwitchStreamData, error) {
 	req.Header.Set("Client-ID", globals.GetConfig().TwitchClientID)
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		helpers.Logf(helpers.Red, "[TWITCH] GetStreamData: %s", err.Error())
+		helpers.Logf(helpers.ERROR, "[TWITCH] GetStreamData: %s", err.Error())
 		return nil, err
 	}
 	defer resp.Body.Close()
@@ -455,7 +455,7 @@ func GetStreamData(id string) (*globals.TwitchStreamData, error) {
 	body, _ := io.ReadAll(resp.Body)
 	json.Unmarshal(body, &u)
 	if len(u.Data) == 0 {
-		helpers.Logf(helpers.Red, "[TWITCH] No stream data on GetStreamData")
+		helpers.Logf(helpers.ERROR, "[TWITCH] No stream data on GetStreamData")
 		return nil, nil
 	}
 	return &u.Data[0], nil

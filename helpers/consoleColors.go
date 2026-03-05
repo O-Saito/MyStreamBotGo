@@ -1,6 +1,14 @@
 package helpers
 
-import "log"
+import (
+	"fmt"
+	"log"
+	"os"
+	"path/filepath"
+	"runtime"
+	"sync"
+	"time"
+)
 
 var (
 	Reset  = "\033[0m"
@@ -16,9 +24,118 @@ var (
 	Lua    = "\033[38;2;0;128;255m"  // Lua blue color
 )
 
-func Log(color string, message string) {
+type Level int
+
+const (
+	DEBUG Level = iota
+	INFO
+	WARN
+	ERROR
+)
+
+var (
+	infoLogger    *log.Logger
+	errorLogger   *log.Logger
+	debugLogger   *log.Logger
+	warningLogger *log.Logger
+	mu            sync.Mutex
+)
+
+func (l Level) String() string {
+	switch l {
+	case DEBUG:
+		return "DEBUG"
+	case INFO:
+		return "INFO"
+	case WARN:
+		return "WARN"
+	case ERROR:
+		return "ERROR"
+	default:
+		return "UNKNOWN"
+	}
+}
+
+func (l Level) Color() string {
+	switch l {
+	case DEBUG:
+		return Cyan
+	case INFO:
+		return Green
+	case WARN:
+		return Yellow
+	case ERROR:
+		return Red
+	default:
+		return Reset
+	}
+}
+
+func Print(color string, message string) {
 	log.Println(color + message + Reset)
 }
-func Logf(color string, format string, a ...any) {
+func Printf(color string, format string, a ...any) {
 	log.Printf(color+format+Reset+"\r\n", a...)
+}
+
+func Log(level Level, message string) {
+	Print(level.Color(), message)
+	SaveLog(level, message)
+}
+func Logf(level Level, format string, a ...any) {
+	Printf(level.Color(), format, a...)
+	SaveLog(level, fmt.Sprintf(format, a...))
+}
+
+func InitLog() error {
+	err := os.MkdirAll("logs", 0755)
+	if err != nil {
+		log.Fatalf("Failed to create logs directory: %v", err)
+	}
+	timestamp := time.Now().Format("2006-01-02_15-04-05")
+	logFile, err := os.OpenFile(
+		filepath.Join("logs", timestamp+".log"),
+		os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+
+	if err != nil {
+		return fmt.Errorf("failed to open log file: %w", err)
+	}
+
+	mu.Lock()
+	defer mu.Unlock()
+	infoLogger = log.New(logFile, "INFO: ", log.Ldate|log.Ltime)
+	errorLogger = log.New(logFile, "ERROR: ", log.Ldate|log.Ltime)
+	debugLogger = log.New(logFile, "DEBUG: ", log.Ldate|log.Ltime)
+	warningLogger = log.New(logFile, "WARNING: ", log.Ldate|log.Ltime)
+
+	return nil
+}
+
+func SaveLog(level Level, message string) {
+	goroutines := runtime.NumGoroutine()
+
+	_, file, line, _ := runtime.Caller(2)
+
+	format := "[goroutines=%d] [%s:%d] %s\n"
+	logLine := fmt.Sprintf(format, goroutines, filepath.Base(file), line, message)
+
+	mu.Lock()
+	defer mu.Unlock()
+
+	if debugLogger == nil || infoLogger == nil || warningLogger == nil || errorLogger == nil {
+		log.Printf("Loggers not initialized: %s", message)
+		return
+	}
+
+	switch level {
+	case DEBUG:
+		debugLogger.Output(2, logLine)
+	case INFO:
+		infoLogger.Output(2, logLine)
+	case WARN:
+		warningLogger.Output(2, logLine)
+	case ERROR:
+		errorLogger.Output(2, logLine)
+	default:
+	}
 }

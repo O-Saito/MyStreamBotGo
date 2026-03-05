@@ -285,6 +285,7 @@ func connectToEventSub() {
 }
 
 func listenToEventSub(conn *websocket.Conn) {
+	helpers.Log(helpers.INFO, "Started eventsub listener!")
 	defer func() {
 		if conn != nil {
 			conn.Close()
@@ -322,7 +323,7 @@ func listenToEventSub(conn *websocket.Conn) {
 		handler(base["payload"].(map[string]any), base["metadata"].(map[string]any))
 	}
 
-	helpers.Logf(helpers.ERROR, "[TWITCH EventSub] Is not in the loop!")
+	helpers.Logf(helpers.INFO, "[TWITCH EventSub] Is not in the loop!")
 }
 
 func subscribeToEvents() {

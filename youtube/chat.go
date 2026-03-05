@@ -89,6 +89,7 @@ func FetchLiveChatMessages(liveChatID, pageToken string) (*YouTubeLiveChatMessag
 }
 
 func ListenToChat(id string) {
+	helpers.Log(helpers.INFO, "Started yt chat listener!")
 	page := ""
 	for {
 		helpers.Logf(helpers.DEBUG, "READING YT CHAT...")

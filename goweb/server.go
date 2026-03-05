@@ -195,6 +195,7 @@ func StartHTTPServer() {
 
 	// Goroutine para enviar mensagens do backend para todos os clients
 	go func() {
+		helpers.Log(helpers.INFO, "Started server broadcast!")
 		for msg := range globals.WsBroadcast {
 
 			if msg.Filter != "" {
@@ -250,5 +251,6 @@ func StartHTTPServer() {
 		}
 	}
 	helpers.Printf(helpers.Green, "[MyStreamBot] Servidor HTTP iniciado em http://localhost:%s", port)
+	helpers.Log(helpers.INFO, "Started listen and serve (http started)!")
 	go http.ListenAndServe(fmt.Sprintf("0.0.0.0:%s", port), nil)
 }

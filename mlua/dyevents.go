@@ -402,7 +402,7 @@ func setFunctionOnTable(ev *DynamicEvent, tbl *lua.LTable) {
 
 // Loop único para todos os eventos
 func globalEventLoop() {
-	helpers.Logf(helpers.DEBUG, "[DYNAMIC] Loop global iniciado")
+	helpers.Log(helpers.INFO, "Started dyevent global event loop!")
 	ticker := time.NewTicker((1 * time.Second) / 60)
 	defer ticker.Stop()
 

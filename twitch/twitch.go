@@ -319,6 +319,7 @@ func JoinChannel(channel string) {
 }
 
 func reader() {
+	helpers.Log(helpers.INFO, "Started twitch reader!")
 	scanner := bufio.NewScanner(Conn)
 	for scanner.Scan() {
 		msg := scanner.Text()
@@ -352,6 +353,7 @@ func reader() {
 }
 
 func writer() {
+	helpers.Log(helpers.INFO, "Started twitch writer!")
 	for msg := range MsgQueue {
 		if msg.MessageToReply != "" {
 			text := fmt.Sprintf("@reply-parent-msg-id=%s PRIVMSG #%s : %s", msg.MessageToReply, msg.Channel, msg.Text)

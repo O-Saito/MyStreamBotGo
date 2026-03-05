@@ -305,6 +305,7 @@ func StartWatcher() {
 	}
 
 	go func() {
+		helpers.Log(helpers.INFO, "Started file watcher!")
 		for {
 			select {
 			case ev, ok := <-watcher.Events:
@@ -336,6 +337,7 @@ func StartWatcher() {
 
 func StartEventQueues() {
 	go func() {
+		helpers.Log(helpers.INFO, "Started chat queue!")
 		for ev := range globals.ChatQueue {
 			DyEventQueue <- DyEventQueueData{
 				Type:              DyEventChat,
@@ -346,6 +348,7 @@ func StartEventQueues() {
 	}()
 
 	go func() {
+		helpers.Log(helpers.INFO, "Started command queue!")
 		for ev := range globals.CommandQueue {
 			DyEventQueue <- DyEventQueueData{
 				Type:       DyEventCommand,
@@ -356,6 +359,7 @@ func StartEventQueues() {
 	}()
 
 	go func() {
+		helpers.Log(helpers.INFO, "Started event queue!")
 		for ev := range globals.EventQueue {
 			DyEventQueue <- DyEventQueueData{
 				Type:     DyEventEvent,
@@ -366,6 +370,7 @@ func StartEventQueues() {
 	}()
 
 	go func() {
+		helpers.Log(helpers.INFO, "Started lua requests queue!")
 		defer func() {
 			if r := recover(); r != nil {
 				helpers.Logf(helpers.ERROR, "[LuaRequest] panic: %v", r)
@@ -380,6 +385,7 @@ func StartEventQueues() {
 	}()
 
 	go func() {
+		helpers.Log(helpers.INFO, "Started dyevents processor!")
 		for deq := range DyEventQueue {
 			dynamicEventsMutex.RLock()
 			events := dynamicEvents

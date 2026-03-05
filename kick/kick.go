@@ -117,6 +117,7 @@ func Connect() error {
 	go reader()
 	go writer()
 	go func() {
+		helpers.Log(helpers.INFO, "Started kick ping!")
 		ticker := time.NewTicker(4 * time.Minute)
 		defer ticker.Stop()
 		for range ticker.C {
@@ -148,6 +149,7 @@ func JoinChannel(channel string) {
 }
 
 func reader() {
+	helpers.Log(helpers.INFO, "Started kick reader!")
 	for {
 		_, msg, err := Conn.ReadMessage()
 		if err != nil {
@@ -173,6 +175,7 @@ func reader() {
 }
 
 func writer() {
+	helpers.Log(helpers.INFO, "Started kick writer!")
 	for msg := range MsgQueue {
 		PostMessage(msg)
 	}

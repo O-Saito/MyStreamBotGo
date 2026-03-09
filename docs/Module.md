@@ -18,7 +18,7 @@ Key loader functions to refer to: [mlua/mlua.go](mlua/mlua.go) (`Init`, `LoadAll
 - Dynamic/custom events (CustomEvents): `modules/customevents/`
 
 See examples in the repository:
-- [modules/commands/first.lua](modules/commands/first.lua)
+- [modules/commands/first.lua](./modules/commands/first.lua)
 - [modules/chat/first.lua](modules/chat/first.lua)
 - [modules/customevents/vote.lua](modules/customevents/vote.lua)
 - [modules/events/channel.follow/example.lua](modules/events/channel.follow/example.lua)

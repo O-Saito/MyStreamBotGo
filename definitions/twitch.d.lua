@@ -7,7 +7,7 @@
 ---@field Description            string
 ---@field ProfileImageURL        string 
 ---@field ProfileOfflineImageURL string 
----@field ViewCount              int    
+---@field ViewCount              number    
 ---@field Email                  string 
 ---@field CreatedAt              string 
 
@@ -25,10 +25,10 @@
 ---@field GameID                      string  
 ---@field GameName                    string   
 ---@field Title                       string   
----@field Delay                       int      
----@field Tags                        []string 
----@field ContentClassificationLabels []string 
----@field IsBrandedContent            bool     
+---@field Delay                       number      
+---@field Tags                        string[] 
+---@field ContentClassificationLabels string[] 
+---@field IsBrandedContent            boolean   
 
 ---@meta
 ---@class twitch
@@ -54,9 +54,11 @@ function g.get_user_data_by_id(userid)end
 ---@return TwitchViewerData[]|nil
 function g.get_follower_data(userid)end
 
+--- Get followers data of logged streamer
 ---@return TwitchViewerData[]|nil
 function g.get_followers_data()end
 
+--- Get stream data of logged streamer
 ---@return StreamData|nil 
 function g.get_channel_stream_data()end
 

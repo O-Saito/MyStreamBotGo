@@ -2,7 +2,7 @@
 ---@class g
 local g = {}
 
----Log text/data into console
+---Log text/data into console and file
 ---@param text string
 ---@param data table|nil
 function g.log(text, data) end

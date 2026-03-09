@@ -1118,7 +1118,7 @@
                 <div class="content-body"></div>
                 `;
 
-                import(`./dyevents/${m.name}.js?t=${new Date().toISOString()}`)
+                import(`./customevents/${m.name}.js?t=${new Date().toISOString()}`)
                     .then(module => {
                         if (module.default) module.default();
                     })

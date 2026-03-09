@@ -1,151 +1,153 @@
-# Module authoring (Lua) and front-end dyevents
+# Module (Lua) and front-end CustomEvents
 
-This document explains how to write and install Lua modules for MyStreamBot and how to provide optional front-end (JS) dyevent wrappers. It references loader and bridge functions so examples use the exact runtime APIs.
+This document explains how to write and install Lua modules for MyStreamBot and how to provide optional front-end (JS) CustomEvents wrappers. It references loader and bridge functions so examples use the exact runtime APIs.
 
 ## Overview
 
-- Supported module types: commands, chat modules, event modules, dynamic custom events (DyEvents).
-- Place modules under `modules/` (preferred) or `build/modules/` for packaged builds.
+- Supported module types: commands, chat modules, event modules, dynamic custom events (CustomEvents).
+- Place modules under `modules/` for a new module and `modules/customevents/modules` for imports.
 - The Go loader (package `mlua`) initializes separate Lua states for commands, chat and dynamic events and hot-reloads modules when files change.
 
 Key loader functions to refer to: [mlua/mlua.go](mlua/mlua.go) (`Init`, `LoadAllModules`, `loadModule`, `StartWatcher`) and [mlua/dyevents.go](mlua/dyevents.go) (`LoadDyEvents`, `setFunctionOnTable`).
 
 ## Where to put modules
 
-- Command modules: `modules/commands/`
 - Chat modules: `modules/chat/`
+- Command modules: `modules/commands/`
 - Static event modules: `modules/events/<eventname>/`
-- Dynamic/custom events (DyEvents): `modules/customevents/`
+- Dynamic/custom events (CustomEvents): `modules/customevents/`
 
 See examples in the repository:
 - [modules/commands/first.lua](modules/commands/first.lua)
 - [modules/chat/first.lua](modules/chat/first.lua)
 - [modules/customevents/vote.lua](modules/customevents/vote.lua)
+- [modules/events/channel.follow/example.lua](modules/events/channel.follow/example.lua)
 
 ## Module types & lifecycle hooks
 
 The loader detects functions exported as globals in a module and registers them according to module type. Common lifecycle hook names the loader recognizes:
 
-- `on_start` — called when a DyEvent module is loaded or (re)started.
-- `on_tick` — called periodically if an interval is set.
+### Chat modules `modules/chat`
+
+Receives any chat message that is not sent by the bot.
+
+It should have an `on_message` function
+
+```lua
+function on_message(ev) end
+```
+
+### Commands modules `modules/commands`
+
+Receives the command `!<command_name>`, the `<command_name>` is the file name without `.lua` 
+
+It should have an `on_command` function
+
+```lua
+function on_command(ev) end
+```
+
+### Static event modules `modules/<event_name>`
+
+Receives events based on event name folder ([modules/events/channel.follow/example.lua](modules/events/channel.follow/example.lua)) 
+
+It should have an `on_event` function
+
+```lua
+function on_event(data) end
+```
+
+### CustomEvent
+
+It can be more complex, receiving all of the above options
+
+It can have:
+- `on_start` — called when a CustomEvent module is loaded or (re)started.
+- `on_tick` — called periodically if an interval is set `ev.setInterval`.
 - `on_event` — called when the server dispatches a named event to this module.
-- `on_message` — receives chat/message payloads (chat modules / dynamic modules).
+- `on_message` — receives chat/message payloads.
 - `on_command` — receives command invocations.
 - `on_request` — receives arbitrary requests from the frontend or other parts.
 
-The loader registers handlers by checking for these globals; see the detection logic in `mlua.loadModule` and `LoadDyEvents` ([mlua/mlua.go](mlua/mlua.go), [mlua/dyevents.go](mlua/dyevents.go)).
+It can also import modules `local string_helper = require("string_helper")` that is placed on `/modules/customevents/modules`
 
-Example detection (for reference):
+```lua
+local string_helper = require("string_helper")
 
-```go
-// pseudocode from repo
-f := L.GetGlobal("on_command")
-if fn, ok := f.(*lua.LFunction); ok {
-    commandFunctions[moduleName] = fn
-}
+function on_request(type, data) end
+
+function on_start() end
+
+function on_tick(data) end
+
+function on_message(msg) end
+
+function on_event(name, data) end
+
+function on_command(name, data) end
 ```
 
-## DyEvent (`ev`) helper API
+## Keeping the data
 
-DyEvents are dynamic modules loaded into their own Lua `LState` and receive an `ev` table with helper functions. The API surface can be found on `definitons`
+### Persistent in memory data (for hot reload)
 
-Minimal DyEvent `on_start` example:
+To keep the data between hot reloads it's needed `g.get/g.set` if is a CustomEvent it can use `ev.data`
+
+### Real Persistent data
+
+For all types it have `g.kv_get(key)/g.kv_set(key, value)` it saves into a SQLite db into a table of key/value 
+For CustomEvents it can create it's own database with `ev.useDB()`
+
+Example:
+```lua
+function on_start() 
+  ev.useDB()
+  ev.db_exec("CREATE TABLE IF NOT EXISTS my_table (id INTEGER PRIMARY KEY, value TEXT)")
+end
+```
+
+## CustomEvent (`ev`) helper API
+
+CustomEvents are dynamic modules loaded into their own Lua `LState` and receive an `ev` table with helper functions. The API surface can be found in `definitons/`
+
+Minimal CustomEvents `on_start` example:
 
 ```lua
 function on_start()
   ev.setInterval(1)        -- run on_tick every second
   ev.setPaused(false)
-  ev.socket_send("config", { votos = ev.data and ev.data.votos or {} })
 end
 ```
 
 Notes:
-- `ev.data` is preserved across reloads for DyEvents; use it to store module state.
+- `ev.data` is preserved across reloads for CustomEvents; use it to store module state.
 - The `Filter` used in websocket messages is the module filename (including extension) — front-end subscribe calls must match it exactly.
 
-## Command modules
-
-Command modules typically export `on_command`. The Go side dispatches commands via `HandleCommand` (see [mlua/mlua.go](mlua/mlua.go)). A minimal command handler:
-
-```lua
-function on_command(name, payload)
-  -- name: command invoked, payload: table with metadata
-  -- respond using available helpers (e.g. g.send_message or via global APIs)
-end
-```
-
-The loader stores command handlers by module filename; see `HandleCommand` and the `commandFunctions` registration in `mlua`.
-
-## Chat modules
-
-Chat modules implement `on_message` to inspect incoming chat messages. Example:
-
-```lua
-function on_message(msg)
-  -- msg is a table representing the incoming message
-  if msg.text == "!hello" then
-    -- send response (via exposed API such as `g.send_message` if available)
-  end
-end
-```
-
-The chat dispatcher uses `HandleChat` in the `mlua` package.
-
-## Front-end dyevent wrappers (JS)
+## Front-end CustomEvents wrappers (JS)
 
 The front-end uses `web/wrapper.js` to open a websocket and receive an `init` payload containing `custom_events_modules`. The wrapper exposes `subscribe(moduleName)` which performs an `upgrade-conn` handshake and returns an object with `on(type, fn)` and `send(type, data)`.
 
-Typical client usage (from `web/dyevents/*.js`):
+Typical client usage (from `web/customevents/*.js`):
 
 ```js
 const vote = w.subscribe("vote.lua");
 if (vote) {
   vote.on("user_vote_update", onVoteUpdate);
-  vote.send("setup", { opcoes: ["Sim","Não"] });
+  vote.send("setup", { options: ["Yes","No"] });
 }
 ```
 
 Notes:
 - `subscribe` expects the module filename that matches the server `Filter` (usually `vote.lua`).
-- The frontend and DyEvent communicate using messages of the shape `{ type: string, filter: string, data: any }`.
+- The frontend and CustomEvent communicate using messages of the shape `{ type: string, filter: string, data: any }`.
 
-See `web/wrapper.js` for the exact client API and `web/dyevents/vote.lua.js` for real examples.
-
-## Exposed services and helpers
-
-The Go code exposes common services to Lua modules via `ExposeServiceToLua` and `luaFunctions.go`. Commonly exposed namespaces include:
-
-- `g` — general helpers and globals (see `luaFunctions.go` or `definitions/g.d.lua`).
-- `twitch` — helpers to query Twitch data (`twitch.get_channel_stream_data`, `twitch.get_user_data`, etc.).
-
-Check `luaFunctions.go` for the full list of helper functions exported to Lua.
+See `web/wrapper.js` for the exact client API and `web/customevents/vote.lua.js` for real examples.
 
 ## Hot-reload behavior
 
 - The loader starts a filesystem watcher (`StartWatcher`) and will reload modified modules. The watcher uses a debounce; rapid file changes can race.
-- DyEvents preserve `ev.data` across reloads; other state is reinitialized.
-- When reloading, module `on_start` will be called again for DyEvents.
-
-## Testing & verification
-
-Quick manual checks:
-
-1. Start the bot:
-
-```bash
-go run .
-```
-
-2. Check stdout/logs for module load messages emitted by the loader (`Init`, `LoadAllModules`).
-3. Trigger a command or chat message and verify the module responded (watch logs or chat output).
-4. For DyEvents + frontend: open `web/index.html` in a browser, ensure the `init` payload contains `custom_events_modules`, call `w.subscribe("<module.lua>")` in the console and observe messages.
-
-## Caveats & recommendations
-
-- Module identity: DyEvent `Filter` is the module filename (including `.lua`). Match it exactly from the frontend.
-- `package.path` is adjusted for DyEvents; place helper modules under `modules/.../modules/` if they will be `require()`d by dynamic events.
-- Use `ev.setInterval` and `ev.setPaused` for periodic work instead of external goroutines.
-- Check `luaFunctions.go` for available `twitch.*` helpers before duplicating functionality.
+- CustomEvents preserve `ev.data` across reloads; other state is reinitialized.
+- When reloading, module `on_start` will be called again for CustomEvents.
 
 ## Editor definitions (IntelliSense)
 
@@ -153,7 +155,7 @@ The repository includes a `definitions/` folder with Lua declaration (stub) file
 
 Files present in `definitions/` (examples):
 
-- `ev.d.lua` — declarations for the `ev` table used by DyEvents (e.g. `ev.socket_send(type, table)`, `ev.setInterval(number)`, `ev.setPaused(bool)`, `ev.db_query(sql)` and `ev.data`).
+- `ev.d.lua` — declarations for the `ev` table used by CustomEvents (e.g. `ev.socket_send(type, table)`, `ev.setInterval(number)`, `ev.setPaused(bool)`, `ev.db_query(sql)` and `ev.data`).
 - `g.d.lua` — declarations for the `g` helpers/globals exposed to modules.
 - `twitch.d.lua` — declarations for `twitch.*` helpers (e.g. `twitch.get_channel_stream_data`, `twitch.get_user_data`).
 
@@ -172,14 +174,14 @@ How to use them:
 
 - Remember these files are documentation stubs — they are not executed by the runtime. Use them to check "what is called with what and the return" while writing modules.
 
-Recommendation: consult the matching `.d.lua` before calling an API (especially `ev.*` and `twitch.*`) to avoid mismatches. Do not treat any single example module as the definitive API; prefer the `.d.lua` declarations and the actual Go bindings (`luaFunctions.go`, `mlua/dyevents.go`) when in doubt.
+Recommendation: consult the matching `.d.lua` before calling an API (especially `ev.*` and `twitch.*`) to avoid mismatches.
 
 ## References (source files)
 
 - `mlua/mlua.go` — loader and module registration
-- `mlua/dyevents.go` — DyEvent loader and `ev` helper bindings
+- `mlua/dyevents.go` — CustomEvent loader and `ev` helper bindings
 - `luaFunctions.go` — functions exposed to Lua (`twitch` helpers, etc.)
 - `globals/globals.go` — `SocketMessage` and `WsBroadcast` channel
 - `web/wrapper.js` — client websocket wrapper and `subscribe` API
-- `web/dyevents/vote.lua.js` — example UI wrappers
+- `web/customevents/vote.lua.js` — example UI wrappers
 - `modules/customevents/*.lua`, `modules/commands/*.lua`, `modules/chat/*.lua` — example modules

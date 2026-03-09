@@ -8,7 +8,7 @@ This document explains how to write and install Lua modules for MyStreamBot and 
 - Place modules under `modules/` for a new module and `modules/customevents/modules` for imports.
 - The Go loader (package `mlua`) initializes separate Lua states for commands, chat and dynamic events and hot-reloads modules when files change.
 
-Key loader functions to refer to: [mlua/mlua.go](mlua/mlua.go) (`Init`, `LoadAllModules`, `loadModule`, `StartWatcher`) and [mlua/dyevents.go](mlua/dyevents.go) (`LoadDyEvents`, `setFunctionOnTable`).
+Key loader functions to refer to: [mlua/mlua.go](./../mlua/mlua.go) (`Init`, `LoadAllModules`, `loadModule`, `StartWatcher`) and [mlua/dyevents.go](./../mlua/dyevents.go) (`LoadDyEvents`, `setFunctionOnTable`).
 
 ## Where to put modules
 
@@ -19,9 +19,9 @@ Key loader functions to refer to: [mlua/mlua.go](mlua/mlua.go) (`Init`, `LoadAll
 
 See examples in the repository:
 - [modules/commands/first.lua](./../modules/commands/first.lua)
-- [modules/chat/first.lua](modules/chat/first.lua)
-- [modules/customevents/vote.lua](modules/customevents/vote.lua)
-- [modules/events/channel.follow/example.lua](modules/events/channel.follow/example.lua)
+- [modules/chat/first.lua](./../modules/chat/first.lua)
+- [modules/customevents/vote.lua](./../modules/customevents/vote.lua)
+- [modules/events/channel.follow/example.lua](./../modules/events/channel.follow/example.lua)
 
 ## Module types & lifecycle hooks
 
@@ -49,7 +49,7 @@ function on_command(ev) end
 
 ### Static event modules `modules/<event_name>`
 
-Receives events based on event name folder ([modules/events/channel.follow/example.lua](modules/events/channel.follow/example.lua)) 
+Receives events based on event name folder ([modules/events/channel.follow/example.luamodules/events/channel.follow/example.lua)) 
 
 It should have an `on_event` function
 

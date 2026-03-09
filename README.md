@@ -25,4 +25,4 @@ This address can also be accessed through your browser smartphone as long as it 
 
 ## Modules
 
-[Detailed module creation](docs/module.md)
+[Detailed module creation](docs/Module.md)

@@ -7,11 +7,12 @@ modules/customevents/*
 modules/customevents/modules
 !modules/customevents/vote.lua
 !modules/customevents/modules/string_helper.lua
+!modules/events/channel.follow/example.lua
 web/*
-web/dyevents/*
+web/customevents/*
 !web/wrapper.js
 !web/index.html
 !web/fontawesome
-!web/dyevents/vote.lua.js
+!web/customevents/vote.lua.js
 db/
 logs/

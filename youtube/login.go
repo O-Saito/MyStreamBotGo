@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"time"
 )
 
 const (
@@ -25,8 +26,18 @@ type OAuthResponse struct {
 
 func HandleLogin() {
 
+	scopes := Scopes
+
+	sqlToken, err := globals.GetGlobalDB().GetToken("youtube")
+	if err == nil && sqlToken.RefreshToken != "" {
+		config := globals.GetConfig()
+		config.Lock()
+		config.YouTubeRefresh = sqlToken.RefreshToken
+		config.Unlock()
+	}
+
 	if globals.GetConfig().YouTubeRefresh != "" {
-		helpers.Logf("YOUTUBE!", "")
+		helpers.Print(helpers.Reset, "YOUTUBE!")
 		user := globals.YouTubeUser{
 			RefreshToken: globals.GetConfig().YouTubeRefresh,
 		}
@@ -49,37 +60,25 @@ func HandleLogin() {
 
 				newUser := globals.GetState().GetYouTubeUser()
 
+				sqlErr := globals.GetGlobalDB().SaveToken("youtube", newUser.Token, newUser.RefreshToken, time.Now().Add(time.Duration(newUser.TokenExpiresIn)*time.Second))
+
+				if sqlErr != nil {
+					helpers.Logf(helpers.ERROR, "Falha ao salvar token do YT %s", sqlErr.Error())
+				}
+
 				globals.WsBroadcast <- globals.SocketMessage{
 					Type: "youtube-connection",
 					Data: newUser,
 				}
 			} else {
-				helpers.Logf(helpers.Red, "Falha ao buscar canais do YT %s", err.Error())
+				helpers.Logf(helpers.ERROR, "Falha ao buscar canais do YT %s", err.Error())
 			}
 		} else {
-			helpers.Logf(helpers.Red, "Falha ao atualizar token %s", err.Error())
+			helpers.Logf(helpers.ERROR, "Falha ao atualizar token %s", err.Error())
 		}
 	}
 
 	redirectURI := fmt.Sprintf("http://localhost:%s/youtube/callback", globals.GetConfig().HTTPPort)
-
-	scopes := Scopes
-
-	/*if globals.GetConfig().TwitchScopes != "" {
-		scopes = fmt.Sprintf("%s %s", scopes, globals.GetConfig().TwitchScopes)
-	}
-	subTypes := globals.GetConfig().GetTwitchSubTypes()
-	for _, es := range subTypes {
-		if es != nil && es["requires"] != nil {
-			reqs := strings.SplitSeq(es["requires"].(string), " ")
-			for req := range reqs {
-				if strings.Contains(scopes, req) {
-					continue
-				}
-				scopes = fmt.Sprintf("%s %s", scopes, req)
-			}
-		}
-	}*/
 
 	// Endpoint que redireciona para YT
 	http.HandleFunc("/youtube/login", func(w http.ResponseWriter, r *http.Request) {
@@ -89,7 +88,7 @@ func HandleLogin() {
 			url.QueryEscape(redirectURI),
 			url.QueryEscape(scopes),
 		)
-		helpers.Logf(helpers.Reset, "[YT LOGIN] Abrindo URL de login: %s", authURL)
+		helpers.Printf(helpers.Reset, "[YT LOGIN] Abrindo URL de login: %s", authURL)
 		http.Redirect(w, r, authURL, http.StatusFound)
 	})
 
@@ -118,7 +117,6 @@ func HandleLogin() {
 
 		var tokenResp OAuthResponse
 		json.Unmarshal(body, &tokenResp)
-		//Token := tokenResp.AccessToken
 
 		user := globals.YouTubeUser{
 			Token:          tokenResp.AccessToken,
@@ -126,9 +124,15 @@ func HandleLogin() {
 			TokenExpiresIn: tokenResp.ExpiresIn,
 		}
 
+		sqlErr := globals.GetGlobalDB().SaveToken("youtube", user.Token, user.RefreshToken, time.Now().Add(time.Duration(user.TokenExpiresIn)*time.Second))
+
+		if sqlErr != nil {
+			helpers.Logf(helpers.ERROR, "[YT HANDLELOGIN] Falha ao salvar token %s", sqlErr.Error())
+		}
+
 		globals.GetState().SetYouTubeUser(user)
 
-		helpers.Logf(helpers.Red, "[YT TOKEN] %s : %s E: %d", string(body), globals.GetConfig().YouTubeClientID, tokenResp.ExpiresIn)
+		helpers.Printf(helpers.Red, "[YT TOKEN] %s : %s E: %d", string(body), globals.GetConfig().YouTubeClientID, tokenResp.ExpiresIn)
 
 		fmt.Fprintf(w, "Login concluído! Pode fechar esta página.")
 

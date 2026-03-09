@@ -60,7 +60,7 @@ var ircHandlers = map[string]func(km KickMessage, data map[string]any){
 	},
 	"pusher_internal:subscription_succeeded": func(km KickMessage, data map[string]any) {
 		channel := strings.Trim(strings.Split(km.Channel, ".")[1], " ")
-		helpers.Logf(helpers.Kick, "[Kick IRC Handler] Subscribed to channel: %s", channel)
+		helpers.Logf(helpers.DEBUG, "[Kick IRC Handler] Subscribed to channel: %s", channel)
 		for _, value := range Channels {
 			if value.ID == channel {
 				value.Connected = true
@@ -117,6 +117,7 @@ func Connect() error {
 	go reader()
 	go writer()
 	go func() {
+		helpers.Log(helpers.INFO, "Started kick ping!")
 		ticker := time.NewTicker(4 * time.Minute)
 		defer ticker.Stop()
 		for range ticker.C {
@@ -127,10 +128,10 @@ func Connect() error {
 }
 
 func JoinChannel(channel string) {
-	helpers.Logf(helpers.Kick, "[Kick IRC] Conectando ao canal: %s", channel)
+	helpers.Logf(helpers.DEBUG, "[Kick IRC] Conectando ao canal: %s", channel)
 	token := GetKickToken()
 	if token == "" {
-		helpers.Logf(helpers.Red, "[Kick IRC] Token não encontrado")
+		helpers.Logf(helpers.ERROR, "[Kick IRC] Token não encontrado")
 		return
 	}
 	// Inscrição no chat autenticado
@@ -148,18 +149,19 @@ func JoinChannel(channel string) {
 }
 
 func reader() {
+	helpers.Log(helpers.INFO, "Started kick reader!")
 	for {
 		_, msg, err := Conn.ReadMessage()
 		if err != nil {
-			helpers.Logf(helpers.Red, "[Kick IRC] ReadMessage erro: %s", err.Error())
+			helpers.Logf(helpers.ERROR, "[Kick IRC] ReadMessage erro: %s", err.Error())
 			return
 		}
-		helpers.Logf(helpers.Kick, "[Kick IRC] Message: %s", msg)
+		helpers.Printf(helpers.Kick, "[Kick IRC] Message: %s", msg)
 
 		// Parse da mensagem JSON
 		var km KickMessage
 		if err := json.Unmarshal(msg, &km); err != nil {
-			helpers.Logf(helpers.Red, "[Kick IRC] Erro ao parsear JSON: %v", err)
+			helpers.Logf(helpers.ERROR, "[Kick IRC] Erro ao parsear JSON: %v", err)
 			continue
 		}
 
@@ -173,6 +175,7 @@ func reader() {
 }
 
 func writer() {
+	helpers.Log(helpers.INFO, "Started kick writer!")
 	for msg := range MsgQueue {
 		PostMessage(msg)
 	}
@@ -181,7 +184,7 @@ func writer() {
 func SendMessageIfChannelExist(msg string, channel string) {
 	c := FindChannelByID(channel)
 	if c == nil {
-		helpers.Logf(helpers.Red, "[Kick] Canal não encontrado: %s", channel)
+		helpers.Logf(helpers.ERROR, "[Kick] Canal não encontrado: %s", channel)
 		return
 	}
 	SendMessage(msg, *c)

@@ -108,32 +108,30 @@ func RefreshToken() error {
 	return fmt.Errorf("falha ao executar refresh token! %s: %s", u.Error, u.ErrorDesc)
 }
 
-func GetCurrentStreamings() (LiveBroadcastListResponse, error) {
+func GetCurrentStreamings() (*LiveBroadcastListResponse, error) {
 	req, _ := http.NewRequest("GET", "https://www.googleapis.com/youtube/v3/liveBroadcasts?broadcastStatus=active&part=snippet", nil)
-	req.Header.Set("Authorization", "Bearer "+globals.GetState().GetYouTubeUser().Token)
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := DoYouTubeRequest(req)
 	if err != nil {
-		return LiveBroadcastListResponse{}, err
+		return nil, err
 	}
 	defer resp.Body.Close()
 
 	body, _ := io.ReadAll(resp.Body)
 	var r LiveBroadcastListResponse
 	json.Unmarshal(body, &r)
-	return r, nil
+	return &r, nil
 }
 
-func GetCurrentYouTubeChannel() (YouTubeChannelListResponse, error) {
+func GetCurrentYouTubeChannel() (*YouTubeChannelListResponse, error) {
 	req, _ := http.NewRequest("GET", "https://www.googleapis.com/youtube/v3/channels?part=id,snippet&mine=true", nil)
-	req.Header.Set("Authorization", "Bearer "+globals.GetState().GetYouTubeUser().Token)
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := DoYouTubeRequest(req)
 	if err != nil {
-		return YouTubeChannelListResponse{}, err
+		return nil, err
 	}
 	defer resp.Body.Close()
 
 	body, _ := io.ReadAll(resp.Body)
 	var r YouTubeChannelListResponse
 	json.Unmarshal(body, &r)
-	return r, nil
+	return &r, nil
 }

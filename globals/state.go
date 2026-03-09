@@ -2,22 +2,42 @@ package globals
 
 import (
 	"MyStreamBot/helpers"
+	"MyStreamBot/sql"
 	"sync"
+	"sync/atomic"
 )
+
+type TwitchStreamData struct {
+	ID           string   `json:"id"`
+	UserId       string   `json:"user_id"`
+	UserLogin    string   `json:"user_login"`
+	UserName     string   `json:"user_name"`
+	GameId       string   `json:"game_id"`
+	GameName     string   `json:"game_name"`
+	Type         string   `json:"type"`
+	Title        string   `json:"title"`
+	Tags         []string `json:"tags"`
+	ViewerCount  int32    `json:"viewer_count"`
+	StartedAt    string   `json:"started_at"`
+	Language     string   `json:"language"`
+	ThumbnailURL string   `json:"thumbnail_url"`
+	IsMature     bool     `json:"is_mature"`
+}
 
 type TwitchUser struct {
 	Token                  string
-	UserID                 string `json:"userId"`
-	UserLogin              string `json:"userLogin"`
-	Connected              bool   `json:"connected"`
-	DisplayName            string `json:"display_name"`
-	Type                   string `json:"type"`
-	BroadcasterType        string `json:"broadcaster_type"`
-	Description            string `json:"description"`
-	ProfileImageURL        string `json:"profile_image_url"`
-	ProfileOfflineImageURL string `json:"offline_image_url"`
-	ViewCount              int    `json:"view_count"`
-	Email                  string `json:"email"`
+	UserID                 string            `json:"userId"`
+	UserLogin              string            `json:"userLogin"`
+	Connected              bool              `json:"connected"`
+	DisplayName            string            `json:"display_name"`
+	Type                   string            `json:"type"`
+	BroadcasterType        string            `json:"broadcaster_type"`
+	Description            string            `json:"description"`
+	ProfileImageURL        string            `json:"profile_image_url"`
+	ProfileOfflineImageURL string            `json:"offline_image_url"`
+	ViewCount              int               `json:"view_count"`
+	Email                  string            `json:"email"`
+	StreamDetails          *TwitchStreamData `json:"stream_details"`
 }
 
 type YouTubeChannel struct {
@@ -55,6 +75,7 @@ type Config struct {
 	BotPrefix           string
 	TwitchScopes        string
 	HTTPPort            string
+	DBName              string
 	TwitchSubTypes      map[string]map[string]any
 
 	YouTubeRefresh string
@@ -65,6 +86,7 @@ var (
 	config    *Config
 	once      sync.Once
 	onceState sync.Once
+	db        atomic.Pointer[sql.CoreDB]
 )
 
 func GetConfig() *Config {
@@ -73,9 +95,18 @@ func GetConfig() *Config {
 			BotPrefix:    "!",
 			HTTPPort:     "1699",
 			TwitchScopes: "",
+			DBName:       "main",
 		}
 	})
 	return config
+}
+
+func GetGlobalDB() *sql.CoreDB {
+	return db.Load()
+}
+
+func SetGlobalDB(ndb *sql.CoreDB) {
+	db.Store(ndb)
 }
 
 func (c *Config) GetTwitchSubTypes() map[string]map[string]any {
@@ -95,7 +126,7 @@ func GetState() *State {
 		state = &State{
 			Data: make(map[string]any),
 		}
-		helpers.Log(helpers.Blue, "State iniciado...")
+		helpers.Log(helpers.INFO, "State iniciado...")
 	})
 
 	return state

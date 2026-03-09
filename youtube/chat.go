@@ -14,6 +14,7 @@ type YouTubeLiveChatMessagesResponse struct {
 	Kind                  string                   `json:"kind"`
 	Etag                  string                   `json:"etag"`
 	NextPageToken         string                   `json:"nextPageToken"`
+	OfflineAt             time.Time                `json:"offlineAt"`
 	PollingIntervalMillis int                      `json:"pollingIntervalMillis"`
 	Items                 []YouTubeLiveChatMessage `json:"items"`
 }
@@ -73,9 +74,7 @@ func FetchLiveChatMessages(liveChatID, pageToken string) (*YouTubeLiveChatMessag
 	}
 	req.URL.RawQuery = q.Encode()
 
-	req.Header.Set("Authorization", "Bearer "+globals.GetState().GetYouTubeUser().Token)
-
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := DoYouTubeRequest(req)
 	if err != nil {
 		return nil, err
 	}
@@ -90,9 +89,10 @@ func FetchLiveChatMessages(liveChatID, pageToken string) (*YouTubeLiveChatMessag
 }
 
 func ListenToChat(id string) {
+	helpers.Log(helpers.INFO, "Started yt chat listener!")
 	page := ""
 	for {
-		//helpers.Logf(helpers.Cyan, "READING YT CHAT...")
+		helpers.Logf(helpers.DEBUG, "READING YT CHAT...")
 		data, _ := FetchLiveChatMessages(id, page)
 
 		for _, msg := range data.Items {
@@ -127,8 +127,16 @@ func ListenToChat(id string) {
 			//fmt.Println(msg.AuthorDetails.DisplayName + ": " + msg.Snippet.DisplayMessage)
 		}
 
+		if !data.OfflineAt.IsZero() && data.OfflineAt.After(time.Now()) {
+			helpers.Logf(helpers.WARN, "[YT OFF] Chat offline at %v, now is %v", data.OfflineAt, time.Now())
+			globals.WsBroadcast <- globals.SocketMessage{
+				Type: "youtube-live-offline", Data: map[string]any{"liveId": id, "offlineAt": data.OfflineAt},
+			}
+			break
+		}
+
 		page = data.NextPageToken
-		helpers.Logf(helpers.Red, "YT POLL %d", data.PollingIntervalMillis)
+		helpers.Logf(helpers.DEBUG, "YT POLL %d", data.PollingIntervalMillis)
 
 		if len(data.Items) == 0 {
 			data.PollingIntervalMillis = 60000
@@ -138,7 +146,7 @@ func ListenToChat(id string) {
 			data.PollingIntervalMillis = 5000
 		}
 
-		helpers.Logf(helpers.Red, "YT POLL NOW %d", data.PollingIntervalMillis)
+		helpers.Logf(helpers.DEBUG, "YT POLL NOW %d", data.PollingIntervalMillis)
 
 		time.Sleep(time.Duration(data.PollingIntervalMillis) * time.Millisecond)
 	}

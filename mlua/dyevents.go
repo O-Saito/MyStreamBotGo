@@ -1,6 +1,7 @@
 package mlua
 
 import (
+	"database/sql"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -9,6 +10,7 @@ import (
 
 	"MyStreamBot/globals"
 	"MyStreamBot/helpers"
+	msql "MyStreamBot/sql"
 
 	lua "github.com/yuin/gopher-lua"
 )
@@ -29,6 +31,7 @@ type DynamicEvent struct {
 	Paused    bool
 	mu        sync.RWMutex
 	stateMu   sync.RWMutex
+	db        *sql.DB
 }
 
 type DynamicEventInfo struct {
@@ -66,7 +69,7 @@ func (dev *DynamicEvent) ProcessChat(evm *globals.MessageFromStream) {
 
 	dev.mu.RLock()
 	if err := LState.CallByParam(lua.P{Fn: f, NRet: 0, Protect: true}, tbl); err != nil {
-		helpers.Logf(helpers.Red, "[LUA CHAT ERROR] %s: %v", dev.Name, err)
+		helpers.Logf(helpers.ERROR, "[LUA CHAT ERROR] %s: %v", dev.Name, err)
 	}
 	dev.mu.RUnlock()
 }
@@ -91,7 +94,7 @@ func (dev *DynamicEvent) ProcessCommand(evm *globals.LuaCommand) {
 
 	dev.mu.RLock()
 	if err := LState.CallByParam(lua.P{Fn: f, NRet: 0, Protect: true}, lname, tbl); err != nil {
-		helpers.Logf(helpers.Red, "[LUA COMMAND ERROR] %s: %v", dev.Name, err)
+		helpers.Logf(helpers.ERROR, "[LUA COMMAND ERROR] %s: %v", dev.Name, err)
 	}
 	dev.mu.RUnlock()
 }
@@ -114,7 +117,7 @@ func (dev *DynamicEvent) ProcessEvent(evm *globals.LuaEvent) {
 	ntbl := ToLValue(LState, evm.Data)
 
 	if err := LState.CallByParam(lua.P{Fn: f, NRet: 0, Protect: true}, evName, ntbl); err != nil {
-		helpers.Logf(helpers.Red, "[LUA EVENT ERROR] %s: %v", dev.Name, err)
+		helpers.Logf(helpers.ERROR, "[LUA EVENT ERROR] %s: %v", dev.Name, err)
 	}
 }
 
@@ -131,7 +134,7 @@ func (dev *DynamicEvent) ProcessRequest(evm *globals.SocketMessage) {
 	tbl := ToLValue(LState, evm.Data)
 	dev.mu.RLock()
 	if err := LState.CallByParam(lua.P{Fn: f, NRet: 0, Protect: true}, lua.LString(evm.Type), tbl); err != nil {
-		helpers.Logf(helpers.Red, "[LUA EVENT ERROR] %s: %v", dev.Name, err)
+		helpers.Logf(helpers.ERROR, "[LUA EVENT ERROR] %s: %v", dev.Name, err)
 	}
 	dev.mu.RUnlock()
 }
@@ -172,11 +175,11 @@ func UpdateDynamicEvent(event DynamicEventInfo) error {
 
 // Chamado de loadAllModules
 func LoadDyEvents(baseDir string) {
-	helpers.Logf(helpers.Lua, "[DYNAMIC] Carregando eventos dinâmicos de %s", baseDir)
+	helpers.Logf(helpers.DEBUG, "[DYNAMIC] Carregando eventos dinâmicos de %s", baseDir)
 
 	files, err := os.ReadDir(baseDir)
 	if err != nil {
-		helpers.Logf(helpers.Red, "[DYNAMIC] Erro ao ler diretório: %v", err)
+		helpers.Logf(helpers.ERROR, "[DYNAMIC] Erro ao ler diretório: %v", err)
 		return
 	}
 
@@ -202,12 +205,12 @@ func LoadDyEvents(baseDir string) {
 
 		fn, err := L.LoadFile(fullPath)
 		if err != nil {
-			helpers.Logf(helpers.Red, "[DYNAMIC] Erro ao carregar %s: %v", name, err)
+			helpers.Logf(helpers.ERROR, "[DYNAMIC] Erro ao carregar %s: %v", name, err)
 			continue
 		}
 
 		if err := L.CallByParam(lua.P{Fn: fn, NRet: 0, Protect: true}); err != nil {
-			helpers.Logf(helpers.Red, "[DYNAMIC] Erro executando %s: %v", name, err)
+			helpers.Logf(helpers.ERROR, "[DYNAMIC] Erro executando %s: %v", name, err)
 			continue
 		}
 
@@ -224,12 +227,17 @@ func LoadDyEvents(baseDir string) {
 			NextTick:  time.Now().Add(time.Second),
 			Interval:  time.Second, // padrão
 			Paused:    true,        // padrão
+			db:        nil,
 		}
 
 		setFunctionOnTable(ev, eventTable)
 
 		oldEvent := dynamicEvents[name]
 		if oldEvent != nil {
+			oldEvent.mu.Lock()
+			oldEvent.stateMu.Lock()
+			ev.mu.Lock()
+			ev.stateMu.Lock()
 			data := FromLValue(oldEvent.LState, oldEvent.LState.GetGlobal("ev")).(map[string]any)
 			d := map[string]any{}
 			if data["data"] != nil {
@@ -237,18 +245,23 @@ func LoadDyEvents(baseDir string) {
 			}
 			oldData := ToLValue(ev.LState, d)
 			eventTable.RawSetString("data", oldData)
+			ev.db = oldEvent.db
+			oldEvent.mu.Unlock()
+			oldEvent.stateMu.Unlock()
+			ev.mu.Unlock()
+			ev.stateMu.Unlock()
 		}
 
 		dynamicEventsMutex.Lock()
 		dynamicEvents[name] = ev
 		dynamicEventsMutex.Unlock()
 
-		helpers.Logf(helpers.Green, "[DYNAMIC] Evento carregado: %s", name)
+		helpers.Logf(helpers.DEBUG, "[DYNAMIC] Evento carregado: %s", name)
 
 		// Executa on_start
 		if ev.OnStart != nil {
 			if err := L.CallByParam(lua.P{Fn: ev.OnStart, NRet: 0, Protect: true}); err != nil {
-				helpers.Logf(helpers.Red, "[DYNAMIC] Erro no on_start de %s: %v", name, err)
+				helpers.Logf(helpers.ERROR, "[DYNAMIC] Erro no on_start de %s: %v", name, err)
 			}
 		}
 	}
@@ -308,18 +321,95 @@ func setFunctionOnTable(ev *DynamicEvent, tbl *lua.LTable) {
 		return 1
 	}))
 
+	ev.LState.SetField(tbl, "useDB", ev.LState.NewFunction(func(L *lua.LState) int {
+		createdDb := false
+		ev.stateMu.Lock()
+		if ev.db == nil {
+			db, _ := msql.OpenModuleDB(ev.Name)
+			ev.db = db
+			createdDb = true
+		}
+		ev.stateMu.Unlock()
+		L.Push(lua.LBool(createdDb))
+		return 1
+	}))
+
+	ev.LState.SetField(tbl, "db_exec", ev.LState.NewFunction(func(L *lua.LState) int {
+		if L.Get(1) == lua.LNil {
+			return 0
+		}
+		query := L.CheckString(1)
+		ev.stateMu.RLock()
+		if ev.db == nil {
+			ev.stateMu.RUnlock()
+			return 0
+		}
+		_, err := ev.db.Exec(query)
+		ev.stateMu.RUnlock()
+		if err != nil {
+			helpers.Logf(helpers.ERROR, "[DYEVENTS DB_EXEC] %s", err.Error())
+		}
+		return 0
+	}))
+
+	ev.LState.SetField(tbl, "db_query", ev.LState.NewFunction(func(L *lua.LState) int {
+		if L.Get(1) == lua.LNil {
+			helpers.Logf(helpers.ERROR, "[QUERY] QUERY IS NIL")
+			return 0
+		}
+		query := L.CheckString(1)
+		ev.stateMu.RLock()
+		if ev.db == nil {
+			helpers.Logf(helpers.ERROR, "[QUERY] DB IS NIL")
+			ev.stateMu.RUnlock()
+			return 0
+		}
+		helpers.Logf(helpers.DEBUG, "[QUERY] %s", query)
+		r, err := ev.db.Query(query)
+		ev.stateMu.RUnlock()
+
+		if err != nil {
+			helpers.Logf(helpers.ERROR, "[QUERY] ERROR: %s", err.Error())
+			return 0
+		}
+
+		cols, _ := r.Columns()
+		helpers.Logf(helpers.DEBUG, "COLS %v", cols)
+		result := []map[string]any{}
+
+		for r.Next() {
+			d := map[string]any{}
+			items := make([]any, len(cols))
+			for i := range items {
+				// http://go-database-sql.org/varcols.html
+				items[i] = new(sql.RawBytes)
+			}
+			r.Scan(items...)
+
+			for i, v := range cols {
+				if sb, ok := items[i].(*sql.RawBytes); ok {
+					d[v] = string(*sb)
+				}
+			}
+			result = append(result, d)
+		}
+		r.Close()
+		L.Push(ToLValue(ev.LState, result))
+		return 1
+	}))
+
 }
 
 // Loop único para todos os eventos
 func globalEventLoop() {
-	helpers.Logf(helpers.Lua, "[DYNAMIC] Loop global iniciado")
+	helpers.Log(helpers.INFO, "Started dyevent global event loop!")
 	ticker := time.NewTicker((1 * time.Second) / 60)
 	defer ticker.Stop()
 
 	for {
 		select {
 		case <-stopGlobalLoop:
-			helpers.Logf(helpers.Lua, "[DYNAMIC] Loop global parado")
+			helpers.Logf(helpers.DEBUG, "[DYNAMIC] Loop global parado")
 			return
 
 		case now := <-ticker.C:
@@ -327,6 +417,7 @@ func globalEventLoop() {
 			for _, ev := range dynamicEvents {
 				ev.mu.RLock()
 				if ev.Paused || ev.OnTick == nil {
+					ev.mu.RUnlock()
 					//helpers.Logf(helpers.Yellow, "[DYNAMIC] Evento %s está pausado ou sem on_tick", ev.Name)
 					continue
 				}
@@ -348,7 +439,7 @@ func globalEventLoop() {
 						Protect: true,
 					})
 					if err != nil {
-						helpers.Logf(helpers.Red, "[DYNAMIC] Erro no on_tick de %s: %v", ev.Name, err)
+						helpers.Logf(helpers.ERROR, "[DYNAMIC] Erro no on_tick de %s: %v", ev.Name, err)
 					}
 				}
 				ev.stateMu.Lock()
@@ -379,7 +470,7 @@ func HandleDyEventWebsocket(msg any) {
 			NRet:    0,
 			Protect: true,
 		}, tbl); err != nil {
-			helpers.Logf(helpers.Red, "[DYNAMIC] Erro no on_event de %s: %v", ev.Name, err)
+			helpers.Logf(helpers.ERROR, "[DYNAMIC] Erro no on_event de %s: %v", ev.Name, err)
 		}
 		ev.mu.RUnlock()
 	}

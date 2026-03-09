@@ -13,3 +13,5 @@ web/dyevents/*
 !web/index.html
 !web/fontawesome
 !web/dyevents/vote.lua.js
+db/
+logs/

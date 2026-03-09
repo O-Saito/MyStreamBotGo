@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"sync"
 	"time"
 )
@@ -114,10 +115,26 @@ func InitLog() error {
 func SaveLog(level Level, message string) {
 	goroutines := runtime.NumGoroutine()
 
-	_, file, line, _ := runtime.Caller(2)
+	pc, file, line, _ := runtime.Caller(2)
 
-	format := "[goroutines=%d] [%s:%d] %s\n"
-	logLine := fmt.Sprintf(format, goroutines, filepath.Base(file), line, message)
+	function := ""
+
+	fn := runtime.FuncForPC(pc)
+	if fn == nil {
+		function = "unknown"
+	} else {
+		function = fn.Name()
+	}
+
+	// The function name is typically in the format "packagepath.FunctionName"
+	// Find the last dot to separate the package path from the function name
+	lastDotIndex := strings.LastIndex(function, ".")
+	if lastDotIndex != -1 {
+		function = function[:lastDotIndex]
+	}
+
+	format := "[goroutines=%d] [%s/%s:%d] %s\n"
+	logLine := fmt.Sprintf(format, goroutines, function, filepath.Base(file), line, message)
 
 	mu.Lock()
 	defer mu.Unlock()

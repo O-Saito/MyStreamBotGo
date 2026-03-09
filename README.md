@@ -25,4 +25,6 @@ This address can also be accessed through your browser smartphone as long as it 
 
 ## Modules
 
-[Detailed module creation](docs/Module.md)
+The modules is written in `.lua` and is how you add more functionalities to the bot
+
+[Detailed module creation](docs/MODULE.md)

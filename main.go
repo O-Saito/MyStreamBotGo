@@ -4,11 +4,11 @@ import (
 	"MyStreamBot/globals"
 	"MyStreamBot/goweb"
 	"MyStreamBot/helpers"
-	"MyStreamBot/kick"
 	"MyStreamBot/mlua"
+	"MyStreamBot/services/kick"
+	"MyStreamBot/services/twitch"
+	"MyStreamBot/services/youtube"
 	"MyStreamBot/sql"
-	"MyStreamBot/twitch"
-	"MyStreamBot/youtube"
 )
 
 var (

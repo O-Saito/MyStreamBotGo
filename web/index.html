@@ -292,7 +292,7 @@
             margin-left: 10px;
         }
 
-        .live-off{
+        .live-off {
             color: red;
         }
 
@@ -533,120 +533,10 @@
             li.innerHTML = `(${data.id}) ${data.name}`;
             kickConnections.querySelector('.list').append(li);
         });
-        w.on("user-message", function (msg) {
-            console.log("Nova mensagem de usuário:", msg);
-            let div = document.createElement("div");
-            div.className = "message";
-            div.dataset.userId = msg.userId;
-            div.dataset.channel = msg.channel;
-            div.dataset.messageId = msg.messageId;
-            div.dataset.user = msg.user;
-            div.dataset.source = msg.source;
-
-            let span = document.createElement("span");
-
-            let source = document.createElement("span");
-            let channel = document.createElement("span");
-            let badges = document.createElement('span');
-            let user = document.createElement('span');
-            let message = document.createElement('span');
-
-            source.className = "chat-source";
-            channel.className = "chat-channel";
-            badges.className = "chat-badges";
-            user.className = "chat-user";
-            message.className = "chat-message";
-
-            span.append(source, channel, badges, user, message);
-
-            source.textContent = msg.source;
-            channel.textContent = msg.channel;
-            user.textContent = msg.user;
-
-            if (msg.source == "twitch") {
-                message.innerHTML = checkuserReference(parseText(msg));
-            } else {
-                message.innerHTML = parseText(msg);
-            }
-
-            if (msg.source == "twitch") {
-                source.innerHTML = `<img src="https://assets.twitch.tv/assets/favicon-32-e29e246c157142c94346.png" alt="twitch" title="twitch" />`;
-            } else if (msg.source == "kick") {
-                source.innerHTML = `<img src="https://kick.com/favicon.ico" alt="kick" title="kick" />`;
-            } else if (msg.source == "youtube") {
-                source.innerHTML = `<img src="https://www.youtube.com/s/desktop/d0c6b06b/img/favicon.ico" alt="YouTube" title="YouTube" />`;
-            }
-
-            if (msg.metadata) {
-                user.style.color = msg.metadata.color;
-
-                if (msg.metadata['first-msg'] && msg.metadata['first-msg'] == '1') {
-                    div.classList.add('first-message');
-                }
-
-                if (msg.metadata['display-name'] && isValidLatinString(msg.metadata['display_name']))
-                    user.textContent = msg.metadata['display-name']
-                if (msg.metadata['authorDetails'])
-                    user.innerHTML = `<img src="${msg.metadata['authorDetails']['profileImageUrl']}" /> ${msg.user}`;
-                if (msg.metadata['badges-info'])
-                    badges.innerHTML = Object.getOwnPropertyNames(msg.metadata['badges-info']).map(x =>
-                        msg.metadata['badges-info'][x] && msg.metadata['badges-info'][x][0] != null && msg.metadata['badges-info'][x][0] != '' ?
-                            `<img src="${msg.metadata['badges-info'][x][0].image_url_1x}" alt="${msg.metadata['badges-info'][x][0].title}" title="${msg.metadata['badges-info'][x][0].title}" />` :
-                            '').join('');
-
-                if (msg.metadata['room']) {
-                    channel.innerHTML = `<img src="${msg.metadata['room'].profile_image_url}" alt="${msg.metadata['room'].display_name}" title="${msg.metadata['room'].display_name}" />`;
-                }
-                if (msg.metadata['source-room']) {
-                    channel.innerHTML = `<img src="${msg.metadata['source-room'].profile_image_url}" alt="${msg.metadata['source-room'].display_name}" title="${msg.metadata['source-room'].display_name}" />`;
-                }
-
-                if (msg.metadata["source-room-id"])
-                    div.dataset.sourceRoom = msg.metadata["source-room-id"];
-
-                if (msg.metadata['reply-parent-msg-body']) {
-                    let userref = `@${msg.metadata['reply-parent-display-name']}`;
-                    let text = parseMessageWithEmotes(msg.metadata['reply-parent-msg-body']);
-                    message.innerHTML = message.innerHTML.replace(userref, "");
-                    const replyDiv = document.createElement('div');
-                    replyDiv.className = 'reply-message';
-                    replyDiv.innerHTML = checkuserReference(`Respondendo a <span>${userref}</span>: ${text}`).replaceAll('\\s', '&nbsp;').replaceAll('\n', '');
-                    div.prepend(replyDiv);
-                }
-            }
-            // criar botões de ação
-            if (msg.source === "twitch") {
-                let delBtn = document.createElement("button");
-                delBtn.title = "Deletar mensagem";
-                delBtn.innerHTML = `<i class="fa fa-trash" aria-hidden="true"></i>`;
-                delBtn.onclick = deleteTwitchMessage;
-                let banBtn = document.createElement("button");
-                banBtn.title = "Timeout de 1h";
-                banBtn.innerHTML = `<i class="fa fa-ban" aria-hidden="true"></i>`;
-                banBtn.onclick = banTwitchUser;
-
-                div.appendChild(delBtn);
-                div.appendChild(banBtn);
-            }
-
-            if (msg.source == "kick") {
-                let delBtn = document.createElement("button");
-                delBtn.textContent = "Excluir";
-                delBtn.onclick = deleteKickMessage;
-                //div.appendChild(delBtn);
-            }
-
-            div.appendChild(span);
-            chatDiv.appendChild(div);
-            if (chatAcompanhar.checked)
-                chatDiv.scrollTop = chatDiv.scrollHeight;
-        });
-        w.on('user-message-update', function (data) {
-            updateMessageDelete(data?.metadata['target-msg-id']);
-        });
-        w.on('user-message-delete', function (data) {
-            updateMessageDelete(data);
-        });
+        w.on("user-message", userMessage);
+        w.on('self-message', userMessage);
+        w.on('user-message-update', (data) => { updateMessageDelete(data?.metadata['target-msg-id']); });
+        w.on('user-message-delete', (data) => { updateMessageDelete(data.messageId) });
         w.on('clear-chat', function (data) {
             if (data.metadata && data.metadata['target-user-id']) {
                 const msgs = chatDiv.querySelectorAll(`[data-source="twitch"][data-user-id="${data.metadata['target-user-id']}"]`);
@@ -667,11 +557,11 @@
             twitchLastEventsub.innerHTML = `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}:${date.getSeconds().toString().padStart(2, '0')}`;
         });
         w.on('result-connect-chat-youtube', updateYouTubeChatConnectiongDetails);
-        w.on('youtube-live-offline', (data)=> {
+        w.on('youtube-live-offline', (data) => {
             const chat = document.getElementById('chat-connection-youtube').querySelector('.list');
-            if(chat) {
+            if (chat) {
                 const item = chat.querySelector(`[data-live-id="${data.liveId}"]`);
-                if(item) {
+                if (item) {
                     item.classList.add('live-off');
                 }
             }
@@ -820,7 +710,7 @@
                         const current = new Date(twitchData.stream_details.started_at);
                         const time = getDateDiff(parseTimeZone(new Date()), parseTimeZone(current));
                         twitchDiv.querySelector('.stream-time').innerText = time.toString();
-                        
+
                         timeToUpdateTwitchData++
                         if (timeToUpdateTwitchData >= 60) {
                             timeToUpdateTwitchData = 0;
@@ -951,8 +841,7 @@
             w.send('send-chat-message', { text: t });
         }
 
-        function updateMessageDelete(data) {
-            const messageId = data.messageId;
+        function updateMessageDelete(messageId) {
             const msg = document.querySelector(`div[data-message-id="${messageId}"]`);
             if (msg) {
                 msg.classList.add('message-deleted');
@@ -1097,6 +986,115 @@
                     return word;
                 })
                 .join(" ");
+        }
+
+        function userMessage(msg) {
+            console.log("Nova mensagem de usuário:", msg);
+            let div = document.createElement("div");
+            div.className = "message";
+            div.dataset.userId = msg.userId;
+            div.dataset.channel = msg.channel;
+            div.dataset.messageId = msg.messageId;
+            div.dataset.user = msg.user;
+            div.dataset.source = msg.source;
+
+            let span = document.createElement("span");
+
+            let source = document.createElement("span");
+            let channel = document.createElement("span");
+            let badges = document.createElement('span');
+            let user = document.createElement('span');
+            let message = document.createElement('span');
+
+            source.className = "chat-source";
+            channel.className = "chat-channel";
+            badges.className = "chat-badges";
+            user.className = "chat-user";
+            message.className = "chat-message";
+
+            span.append(source, channel, badges, user, message);
+
+            source.textContent = msg.source;
+            channel.textContent = msg.channel;
+            user.textContent = msg.user;
+
+            if (msg.source == "twitch") {
+                message.innerHTML = checkuserReference(parseText(msg));
+            } else {
+                message.innerHTML = parseText(msg);
+            }
+
+            if (msg.source == "twitch") {
+                source.innerHTML = `<img src="https://assets.twitch.tv/assets/favicon-32-e29e246c157142c94346.png" alt="twitch" title="twitch" />`;
+            } else if (msg.source == "kick") {
+                source.innerHTML = `<img src="https://kick.com/favicon.ico" alt="kick" title="kick" />`;
+            } else if (msg.source == "youtube") {
+                source.innerHTML = `<img src="https://www.youtube.com/s/desktop/d0c6b06b/img/favicon.ico" alt="YouTube" title="YouTube" />`;
+            }
+
+            if (msg.metadata) {
+                user.style.color = msg.metadata.color;
+
+                if (msg.metadata['first-msg'] && msg.metadata['first-msg'] == '1') {
+                    div.classList.add('first-message');
+                }
+
+                if (msg.metadata['display-name'] && isValidLatinString(msg.metadata['display_name']))
+                    user.textContent = msg.metadata['display-name']
+                if (msg.metadata['authorDetails'])
+                    user.innerHTML = `<img src="${msg.metadata['authorDetails']['profileImageUrl']}" /> ${msg.user}`;
+                if (msg.metadata['badges-info'])
+                    badges.innerHTML = Object.getOwnPropertyNames(msg.metadata['badges-info']).map(x =>
+                        msg.metadata['badges-info'][x] && msg.metadata['badges-info'][x][0] != null && msg.metadata['badges-info'][x][0] != '' ?
+                            `<img src="${msg.metadata['badges-info'][x][0].image_url_1x}" alt="${msg.metadata['badges-info'][x][0].title}" title="${msg.metadata['badges-info'][x][0].title}" />` :
+                            '').join('');
+
+                if (msg.metadata['room']) {
+                    channel.innerHTML = `<img src="${msg.metadata['room'].profile_image_url}" alt="${msg.metadata['room'].display_name}" title="${msg.metadata['room'].display_name}" />`;
+                }
+                if (msg.metadata['source-room']) {
+                    channel.innerHTML = `<img src="${msg.metadata['source-room'].profile_image_url}" alt="${msg.metadata['source-room'].display_name}" title="${msg.metadata['source-room'].display_name}" />`;
+                }
+
+                if (msg.metadata["source-room-id"])
+                    div.dataset.sourceRoom = msg.metadata["source-room-id"];
+
+                if (msg.metadata['reply-parent-msg-body']) {
+                    let userref = `@${msg.metadata['reply-parent-display-name']}`;
+                    let text = parseMessageWithEmotes(msg.metadata['reply-parent-msg-body']);
+                    message.innerHTML = message.innerHTML.replace(userref, "");
+                    const replyDiv = document.createElement('div');
+                    replyDiv.className = 'reply-message';
+                    replyDiv.innerHTML = checkuserReference(`Respondendo a <span>${userref}</span>: ${text}`).replaceAll('\\s', '&nbsp;').replaceAll('\n', '');
+                    div.prepend(replyDiv);
+                }
+            }
+            // criar botões de ação
+            if (msg.source === "twitch") {
+                let delBtn = document.createElement("button");
+                delBtn.title = "Deletar mensagem";
+                delBtn.innerHTML = `<i class="fa fa-trash" aria-hidden="true"></i>`;
+                delBtn.onclick = deleteTwitchMessage;
+                let banBtn = document.createElement("button");
+                banBtn.title = "Timeout de 1h";
+                banBtn.innerHTML = `<i class="fa fa-ban" aria-hidden="true"></i>`;
+                banBtn.onclick = banTwitchUser;
+
+                div.appendChild(delBtn);
+                div.appendChild(banBtn);
+            }
+
+            if (msg.source == "kick") {
+                let delBtn = document.createElement("button");
+                delBtn.textContent = "Excluir";
+                delBtn.onclick = deleteKickMessage;
+                //div.appendChild(delBtn);
+            }
+
+            div.appendChild(span);
+            chatDiv.appendChild(div);
+            if (chatAcompanhar.checked)
+                chatDiv.scrollTop = chatDiv.scrollHeight;
         }
 
         function loadDyModules(modules) {

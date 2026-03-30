@@ -1,4 +1,7 @@
 # Project
+This project is made in go because you can tell "go build", "go run" and the goroutines is "go DoThisThing".
+The second reasons is because is good for API consumption.
+
 
 ## Repository Structure
 
@@ -99,11 +102,13 @@ Create a `twitchsubtypes.json` file with for example:
 Any Stream API
 	  ↓
 	IF CHAT → `ChatQueue`→ 		├ `WsBroadcast`
-	  │							├ IF COMMAND → `CommandQueue` → LuaFunctions
-	  │							└ LuaFunctions				
+	  │							├ IF COMMAND → `CommandQueue` 	→	├ DyEvent Queue
+	  │							├ DyEvent Queue						└ Lua Handler
+	  │							└ Lua Handler				
 	  ↓
 	IF Event → `EventQueue`→	├ `WsBroadcast`
-	  							└ LuaFunctions	
+								├ DyEvent Queue
+	  							└ Lua Handler	
 
 ## SQLite
 There are two types of sqlite:

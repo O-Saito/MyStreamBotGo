@@ -3,9 +3,9 @@ package goweb
 import (
 	"MyStreamBot/globals"
 	"MyStreamBot/helpers"
-	"MyStreamBot/kick"
 	"MyStreamBot/mlua"
-	"MyStreamBot/twitch"
+	"MyStreamBot/services/kick"
+	"MyStreamBot/services/twitch"
 	"encoding/json"
 	"fmt"
 	"net"

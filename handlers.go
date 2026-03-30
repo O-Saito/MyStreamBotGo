@@ -4,9 +4,9 @@ import (
 	"MyStreamBot/globals"
 	"MyStreamBot/goweb"
 	"MyStreamBot/helpers"
-	"MyStreamBot/kick"
-	"MyStreamBot/twitch"
-	"MyStreamBot/youtube"
+	"MyStreamBot/services/kick"
+	"MyStreamBot/services/twitch"
+	"MyStreamBot/services/youtube"
 
 	"github.com/gorilla/websocket"
 )

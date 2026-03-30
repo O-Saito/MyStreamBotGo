@@ -135,6 +135,7 @@ func ListDynamicEvents() []DynamicEventInfo {
 	defer dynamicEventsMutex.RUnlock()
 	events := make([]DynamicEventInfo, 0, len(dynamicEvents))
 	for name, val := range dynamicEvents {
+		val.stateMu.RLock()
 		data := FromLValue(val.LState, val.LState.GetGlobal("ev")).(map[string]any)
 		d := map[string]any{}
 		if data["data"] != nil {
@@ -146,6 +147,7 @@ func ListDynamicEvents() []DynamicEventInfo {
 			Interval:   val.Interval,
 			ModuleData: d,
 		})
+		val.stateMu.RUnlock()
 	}
 
 	return events

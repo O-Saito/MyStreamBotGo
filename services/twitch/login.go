@@ -55,11 +55,9 @@ func HandleLogin() {
 		reconnect := true
 		if data != nil && data.Status != 401 { // status 401 = invalid
 			scopesValid := true
-			//missingScopes := []string{}
 			for v := range strings.SplitSeq(scopes, " ") {
 				if !slices.Contains(data.Scopes, v) {
 					scopesValid = false
-					//missingScopes = append(missingScopes, v)
 					break
 				}
 			}
@@ -74,17 +72,11 @@ func HandleLogin() {
 		}
 
 		if reconnect {
-			d, err := refreshToken(currentAccess.RefreshToken)
+			d, err := RefreshToken(currentAccess.RefreshToken)
 			if err != nil {
 				helpers.Logf(helpers.ERROR, "[TWITCH HANDLELOGIN] Falha ao buscar token %s", err.Error())
 			}
-			if d != nil {
-				sqlErr := globals.GetGlobalDB().SaveToken("twitch", d.AccessToken, d.RefreshToken, time.Now().Add(time.Duration(d.Expires)*time.Second))
-				if sqlErr != nil {
-					helpers.Logf(helpers.ERROR, "[TWITCH HANDLELOGIN] Falha ao salvar token %s", sqlErr.Error())
-				}
-				initTwitchUser(d.AccessToken)
-			}
+			initTwitchUser(d.AccessToken)
 		}
 	}
 
@@ -148,7 +140,7 @@ func HandleLogin() {
 	})
 }
 
-func refreshToken(refreshToken string) (*struct {
+func RefreshToken(refreshToken string) (*struct {
 	AccessToken  string `json:"access_token"`
 	Expires      int    `json:"expires_in"`
 	RefreshToken string `json:"refresh_token"`
@@ -173,6 +165,20 @@ func refreshToken(refreshToken string) (*struct {
 	}
 
 	json.Unmarshal(body, &tokenResp)
+
+	if tokenResp.AccessToken == "" {
+		return nil, fmt.Errorf("[TWITCH] token de acesso vazio")
+	}
+
+	sqlErr := globals.GetGlobalDB().SaveToken("twitch", tokenResp.AccessToken, tokenResp.RefreshToken, time.Now().Add(time.Duration(tokenResp.Expires)*time.Second))
+	if sqlErr != nil {
+		helpers.Logf(helpers.ERROR, "[TWITCH] Falha ao salvar token %s", sqlErr.Error())
+	}
+
+	user := globals.GetState().GetTwitchUser()
+	user.Token = tokenResp.AccessToken
+	globals.GetState().SetTwitchUser(user)
+
 	return &tokenResp, nil
 }
 

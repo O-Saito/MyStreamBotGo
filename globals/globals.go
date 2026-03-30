@@ -28,12 +28,12 @@ type MessageFromStream struct {
 	Metadata  map[string]any `json:"metadata"`
 }
 
-type LuaEvent struct {
+type Event struct {
 	Type string
 	Data map[string]interface{}
 }
 
-type LuaCommand struct {
+type Command struct {
 	Source  string
 	Channel string
 	Name    string
@@ -58,8 +58,8 @@ type LuaChat struct {
 var (
 	WsBroadcast  = make(chan SocketMessage, 100)
 	ChatQueue    = make(chan MessageFromStream, 200)
-	CommandQueue = make(chan LuaCommand, 50)
-	EventQueue   = make(chan LuaEvent, 100)
+	CommandQueue = make(chan Command, 50)
+	EventQueue   = make(chan Event, 100)
 	LuaRequest   = make(chan SocketMessage, 100)
 )
 var sectionMap = map[string]any{

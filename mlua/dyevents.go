@@ -71,7 +71,7 @@ func (dev *DynamicEvent) ProcessChat(evm *globals.MessageFromStream) {
 	dev.stateMu.Unlock()
 }
 
-func (dev *DynamicEvent) ProcessCommand(evm *globals.LuaCommand) {
+func (dev *DynamicEvent) ProcessCommand(evm *globals.Command) {
 	dev.stateMu.RLock()
 	paused := dev.Paused
 	dev.stateMu.RUnlock()
@@ -93,7 +93,7 @@ func (dev *DynamicEvent) ProcessCommand(evm *globals.LuaCommand) {
 	dev.stateMu.Unlock()
 }
 
-func (dev *DynamicEvent) ProcessEvent(evm *globals.LuaEvent) {
+func (dev *DynamicEvent) ProcessEvent(evm *globals.Event) {
 	dev.stateMu.RLock()
 	paused := dev.Paused
 	dev.stateMu.RUnlock()

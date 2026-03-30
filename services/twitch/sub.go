@@ -185,7 +185,7 @@ var messageHandlers = map[string]func(map[string]any, map[string]any){
 				"metadata": metadata,
 			},
 		}
-		globals.EventQueue <- globals.LuaEvent{
+		globals.EventQueue <- globals.Event{
 			Type: eventType,
 			Data: map[string]any{
 				"payload":  payload,

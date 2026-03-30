@@ -384,7 +384,7 @@ func subscribeToEvents() {
 			events = append(events, cd["type"].(string))
 
 			if cd["max_total_cost"] != nil && cd["total_cost"] != nil && cd["max_total_cost"].(float64) < cd["total_cost"].(float64) {
-				helpers.Logf(helpers.ERROR, "FODEU MANÉ LOTO OS COST TUDO!")
+				helpers.Logf(helpers.ERROR, "Twitch max cost reached!")
 			}
 			//helpers.Logf(helpers.INFO, "TWITCH COST FOR %s: (Total Cost: %d / Max Total Cost: %d)", name, int(cd["total_cost"].(float64)), int(cd["max_total_cost"].(float64)))
 

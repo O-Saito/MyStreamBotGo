@@ -951,7 +951,8 @@
             w.send('send-chat-message', { text: t });
         }
 
-        function updateMessageDelete(messageId) {
+        function updateMessageDelete(data) {
+            const messageId = data.messageId;
             const msg = document.querySelector(`div[data-message-id="${messageId}"]`);
             if (msg) {
                 msg.classList.add('message-deleted');

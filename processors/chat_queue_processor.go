@@ -12,6 +12,12 @@ func ProcessChatQueue() {
 	for ev := range globals.ChatQueue {
 		config := globals.GetConfig()
 
+		// Ignore messages sent by the bot itself to prevent loops
+		if ev.MessageId == "self" {
+			globals.WsBroadcast <- globals.SocketMessage{Type: "self-message", Data: ev}
+			continue
+		}
+
 		globals.WsBroadcast <- globals.SocketMessage{Type: "user-message", Data: ev}
 
 		if strings.HasPrefix(ev.Message, config.BotPrefix) {

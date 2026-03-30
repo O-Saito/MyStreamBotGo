@@ -44,7 +44,6 @@ var SocketHandlers = map[string]func(*websocket.Conn, map[string]any, int){
 			},
 			Respond: mytag,
 		}
-		//c.WriteMessage(websocket.TextMessage, []byte(d))
 	},
 	"upgrade-conn": func(c *websocket.Conn, m map[string]any, mytag int) {
 		data := globals.SocketMessage{
@@ -72,7 +71,6 @@ var SocketHandlers = map[string]func(*websocket.Conn, map[string]any, int){
 		}
 
 		globals.WsBroadcast <- data
-		//c.WriteMessage(websocket.TextMessage, []byte(d))
 	},
 }
 

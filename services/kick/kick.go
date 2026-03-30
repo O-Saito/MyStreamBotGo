@@ -66,7 +66,7 @@ var ircHandlers = map[string]func(km KickMessage, data map[string]any){
 				value.Connected = true
 				globals.WsBroadcast <- globals.SocketMessage{
 					Type: "kick-chat-connection",
-					Data: map[string]any{"name": value.Slug, "id": value.ID}, //fmt.Sprintf("{\"name\":\"%s\",\"id\":\"%s\"}", value.Slug, value.ID),
+					Data: map[string]any{"name": value.Slug, "id": value.ID},
 				}
 				break
 			}
@@ -83,10 +83,10 @@ var ircHandlers = map[string]func(km KickMessage, data map[string]any){
 			Message:   data["content"].(string),
 			Metadata:  sender["identity"].(map[string]any),
 		}
-		globals.WsBroadcast <- globals.SocketMessage{Type: "user-message", Data: socketdata}
+		globals.ChatQueue <- socketdata
 	},
 	"App\\Events\\MessageDeletedEvent": func(km KickMessage, data map[string]any) {
-		globals.WsBroadcast <- globals.SocketMessage{Type: "user-message-delete", Data: data["message"].(map[string]any)["id"]}
+		globals.EventQueue <- globals.Event{Type: "user-message-delete", Data: map[string]any{"messageId": data["message"].(map[string]any)["id"]}}
 	},
 }
 

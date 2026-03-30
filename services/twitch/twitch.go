@@ -91,7 +91,7 @@ var ircHandlers = map[string]func(parts []string, afterMetadataIndex int, metada
 		channel := strings.TrimPrefix(parts[2], "#")
 		helpers.Printf(helpers.Twitch, "[TWITCH JOIN] User %s joined channel %s", user, channel)
 		if user == channel {
-			globals.WsBroadcast <- globals.SocketMessage{
+			globals.EventQueue <- globals.Event{
 				Type: "twitch-chat-connection",
 				Data: map[string]any{
 					"name": channel,
@@ -100,7 +100,7 @@ var ircHandlers = map[string]func(parts []string, afterMetadataIndex int, metada
 			}
 		}
 
-		globals.EventQueue <- globals.LuaEvent{
+		globals.EventQueue <- globals.Event{
 			Type: "twitch-user-join",
 			Data: map[string]any{
 				"user":     user,
@@ -114,7 +114,7 @@ var ircHandlers = map[string]func(parts []string, afterMetadataIndex int, metada
 		user := strings.Split(parts[0], "!")[0][1:]
 		channel := strings.TrimPrefix(parts[2], "#")
 		helpers.Printf(helpers.Twitch, "[TWITCH PART] User %s joined channel %s", user, channel)
-		globals.EventQueue <- globals.LuaEvent{
+		globals.EventQueue <- globals.Event{
 			Type: "twitch-user-part",
 			Data: map[string]any{
 				"user":     user,
@@ -131,22 +131,24 @@ var ircHandlers = map[string]func(parts []string, afterMetadataIndex int, metada
 			reason = strings.Join(parts[(afterMetadataIndex+3):], " ")[1:]
 		}
 		helpers.Printf(helpers.Twitch, "[TWITCH CLEARMSG] Chat %s cleared: %s", channel, reason)
-		globals.WsBroadcast <- globals.SocketMessage{
+		globals.EventQueue <- globals.Event{
 			Type: "user-message-delete",
-			Data: metadata[0]["target-msg-id"].(string),
-		}
-		globals.EventQueue <- globals.LuaEvent{
-			Type: "user-message-delete",
-			Data: metadata[0],
+			Data: map[string]any{
+				"messageId": metadata[0]["target-msg-id"].(string),
+				"metadata":  metadata[0],
+			},
 		}
 	},
 	"CLEARCHAT": func(parts []string, afterMetadataIndex int, metadata ...map[string]any) {
 		channel := strings.TrimPrefix(parts[afterMetadataIndex+2], "#")
 		helpers.Printf(helpers.Twitch, "[TWITCH CLEARCHAT] Chat %s cleared", channel)
-		globals.WsBroadcast <- globals.SocketMessage{Type: "clear-chat", Data: map[string]any{
-			"channel":  channel,
-			"metadata": metadata[0],
-		}}
+		globals.EventQueue <- globals.Event{
+			Type: "clear-chat",
+			Data: map[string]any{
+				"channel":  channel,
+				"metadata": metadata[0],
+			},
+		}
 	},
 	"NOTICE": func(parts []string, afterMetadataIndex int, metadata ...map[string]any) {
 		channel := strings.TrimPrefix(parts[afterMetadataIndex+2], "#")
@@ -169,8 +171,8 @@ var ircHandlers = map[string]func(parts []string, afterMetadataIndex int, metada
 		channel := strings.TrimPrefix(parts[afterMetadataIndex+2], "#")
 		message := strings.Join(parts[(afterMetadataIndex+3):], " ")[1:]
 		helpers.Printf(helpers.Twitch, "[TWITCH MESSAGE] %s in %s: %s", user, channel, message)
-		// enviar para WebSocket
-		socketdata := globals.MessageFromStream{
+
+		messagedata := globals.MessageFromStream{
 			Source:    "twitch",
 			Channel:   channel,
 			User:      user,
@@ -182,7 +184,7 @@ var ircHandlers = map[string]func(parts []string, afterMetadataIndex int, metada
 
 		// adding tag to facilitate user-type validation
 		if user == channel {
-			socketdata.Metadata["user-type"] = "mod"
+			messagedata.Metadata["user-type"] = "mod"
 		}
 
 		state := globals.GetState()
@@ -196,14 +198,14 @@ var ircHandlers = map[string]func(parts []string, afterMetadataIndex int, metada
 			state.SetData("twitch-badges-info", info)
 		}
 
-		roomId := socketdata.Metadata["room-id"]
-		if socketdata.Metadata["source-room-id"] != nil {
-			roomId = socketdata.Metadata["source-room-id"]
+		roomId := messagedata.Metadata["room-id"]
+		if messagedata.Metadata["source-room-id"] != nil {
+			roomId = messagedata.Metadata["source-room-id"]
 		}
 
 		if roomId != nil {
 			current := globals.GetState().GetTwitchUser()
-			socketdata.Metadata["room"] = current
+			messagedata.Metadata["room"] = current
 			if current.UserID != roomId {
 				streamerInfo := state.GetData("twitch-streamer-info")
 				if streamerInfo == nil {
@@ -217,11 +219,11 @@ var ircHandlers = map[string]func(parts []string, afterMetadataIndex int, metada
 
 				state.SetData("twitch-streamer-info", streamerInfo)
 
-				socketdata.Metadata["room"] = streamerInfo.(map[string]any)[id]
+				messagedata.Metadata["room"] = streamerInfo.(map[string]any)[id]
 			}
 		}
 
-		if socketdata.Metadata["color"] == nil || socketdata.Metadata["color"] == "" {
+		if messagedata.Metadata["color"] == nil || messagedata.Metadata["color"] == "" {
 			userColor := state.GetData("twitch-user-color")
 			if userColor == nil {
 				userColor = make(map[string]any)
@@ -230,40 +232,18 @@ var ircHandlers = map[string]func(parts []string, afterMetadataIndex int, metada
 				userColor.(map[string]any)[user] = defaultTwitchColor(user)
 				state.SetData("twitch-user-color", userColor)
 			}
-			socketdata.Metadata["color"] = userColor.(map[string]any)[user]
+			messagedata.Metadata["color"] = userColor.(map[string]any)[user]
 		}
 
 		bi := make(map[string]any)
-		for _, v := range strings.Split(socketdata.Metadata["badges"].(string), ",") {
+		for _, v := range strings.Split(messagedata.Metadata["badges"].(string), ",") {
 			n := strings.Split(v, "/")[0]
 			bi[n] = info.(map[string]any)[n]
 		}
 
-		socketdata.Metadata["badges-info"] = bi
+		messagedata.Metadata["badges-info"] = bi
 
-		globals.WsBroadcast <- globals.SocketMessage{Type: "user-message", Data: socketdata}
-		globals.ChatQueue <- socketdata
-
-		config := globals.GetConfig()
-
-		if strings.HasPrefix(message, config.BotPrefix) {
-			parts := strings.SplitN(message[1:], " ", 2)
-			cmd := globals.LuaCommand{
-				Source:  "twitch",
-				Name:    strings.TrimPrefix(parts[0], "#"),
-				Channel: channel,
-				Args:    parts[1:],
-				User:    user,
-				Text:    message,
-				Message: socketdata,
-				Data:    map[string]any{},
-			}
-			if len(parts) > 1 {
-				cmd.Args = strings.Split(parts[1], " ")
-			}
-			globals.CommandQueue <- cmd
-			helpers.Printf(helpers.Purple, "[TWITCH COMMAND] %+v", cmd)
-		}
+		globals.ChatQueue <- messagedata
 	},
 }
 

@@ -110,6 +110,17 @@ Any Stream API
 								├ DyEvent Queue
 	  							└ Lua Handler	
 
+## EventQueue
+The queue receives the follow struct
+
+```go
+type Event struct {
+	Type   string 					// Event name/identifyer
+	Source string					// Origin of event, can be "System" or streaming plataform name (twitch, youtube ...)
+	Data   map[string]interface{}
+}
+```
+
 ## SQLite
 There are two types of sqlite:
 

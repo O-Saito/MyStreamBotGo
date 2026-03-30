@@ -21,12 +21,7 @@ See examples in the repository:
 - [modules/commands/first.lua](./../modules/commands/first.lua)
 - [modules/chat/first.lua](./../modules/chat/first.lua)
 - [modules/customevents/vote.lua](./../modules/customevents/vote.lua)
-- [modules/events/twitch.channel.follow/example.lua](./../modules/events/twitch.channel.follow/example.lua)
-
-### Static event modules
-There are exceptions for this:
-When is a twitch eventsub the folder structure is `/events/twitch.<eventsub name>/`
-
+- [modules/events/channel.follow/example.lua](./../modules/events/channel.follow/example.lua)
 
 ## Module types & lifecycle hooks
 
@@ -53,8 +48,7 @@ function on_command(ev) end
 ```
 
 ### Static event modules `modules/<event_name>`
-
-Receives events based on event name folder ([modules/events/twitch.channel.follow/example.luamodules/events/twitch.channel.follow/example.lua)) 
+Receives events based on event name folder ([modules/events/channel.follow/example.luamodules/events/channel.follow/example.lua)) 
 
 It should have an `on_event` function
 

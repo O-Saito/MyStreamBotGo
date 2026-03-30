@@ -10,6 +10,6 @@ logs/
 !web/customevents/vote.lua.js
 !modules/commands/first.lua
 !modules/chat/first.lua
-!modules/events/twitch.channel.follow/example.lua
+!modules/events/channel.follow/example.lua
 !modules/customevents/vote.lua
 !modules/customevents/modules/string_helper.lua

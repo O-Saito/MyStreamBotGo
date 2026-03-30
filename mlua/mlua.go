@@ -287,9 +287,7 @@ func HandleChat(ev *globals.MessageFromStream) {
 
 func HandleEvent(eventName string, ev *globals.Event) {
 	tbl := ToLValue(LEvents, ev.Data)
-	if eventName == "twitch-eventsub-notification" {
-		eventName = "twitch." + ev.Data["payload"].(map[string]any)["subscription"].(map[string]any)["type"].(string)
-	}
+
 	for name, fn := range eventFunctions {
 		if strings.Contains(name, eventName) {
 			if err := LEvents.CallByParam(lua.P{Fn: fn, NRet: 0, Protect: true}, tbl); err != nil {

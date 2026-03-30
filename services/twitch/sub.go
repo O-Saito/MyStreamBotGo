@@ -178,15 +178,8 @@ var messageHandlers = map[string]func(map[string]any, map[string]any){
 
 		eventType := payload["subscription"].(map[string]any)["type"].(string)
 		//ts.execute(metadata.subscription_type, payload.event, payload.subscription);
-		globals.WsBroadcast <- globals.SocketMessage{
-			Type: "twitch-eventsub-notification",
-			Data: map[string]any{
-				"payload":  payload,
-				"metadata": metadata,
-			},
-		}
 		globals.EventQueue <- globals.Event{
-			Type: eventType,
+			Type: "twitch-eventsub-notification",
 			Data: map[string]any{
 				"payload":  payload,
 				"metadata": metadata,

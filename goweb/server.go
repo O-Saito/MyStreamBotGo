@@ -41,6 +41,7 @@ var SocketHandlers = map[string]func(*websocket.Conn, map[string]any, int){
 				"youtube_connected_chat": globals.GetState().GetData("youtube-lives"),
 				"custom_events_modules":  mlua.ListDynamicEvents(),
 				"twitch_eventsubs":       globals.GetState().GetData("TwitchSubEventsConnectedEvents"),
+				"interface_config":       globals.GetState().GetData("htmlinterface"),
 			},
 			Respond: mytag,
 		}

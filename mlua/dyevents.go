@@ -50,6 +50,44 @@ var (
 	stopGlobalLoop chan struct{}
 )
 
+func (dev *DynamicEvent) Transfer(new *DynamicEvent) {
+	dev.mu.Lock()
+	dev.stateMu.Lock()
+	defer dev.mu.Unlock()
+	defer dev.stateMu.Unlock()
+	new.mu.Lock()
+	new.stateMu.Lock()
+	defer new.mu.Unlock()
+	defer new.stateMu.Unlock()
+	data := FromLValue(dev.LState, dev.LState.GetGlobal("ev")).(map[string]any)
+	d := map[string]any{}
+	if data["data"] != nil {
+		d = data["data"].(map[string]any)
+	}
+	oldData := ToLValue(new.LState, d)
+	evTable := new.LState.GetGlobal("ev").(*lua.LTable)
+	evTable.RawSetString("data", oldData)
+	new.db = dev.db
+	dev.db = nil
+}
+
+func (dev *DynamicEvent) Close() {
+	dev.mu.Lock()
+	dev.stateMu.Lock()
+	defer dev.mu.Unlock()
+	defer dev.stateMu.Unlock()
+
+	if dev.db != nil {
+		dev.db.Close()
+		dev.db = nil
+	}
+
+	if dev.LState != nil {
+		dev.LState.Close()
+		dev.LState = nil
+	}
+}
+
 func (dev *DynamicEvent) ProcessChat(evm *globals.MessageFromStream) {
 	dev.stateMu.RLock()
 	paused := dev.Paused
@@ -231,22 +269,8 @@ func LoadDyEvents(baseDir string) {
 
 		oldEvent := dynamicEvents[name]
 		if oldEvent != nil {
-			oldEvent.mu.Lock()
-			oldEvent.stateMu.Lock()
-			ev.mu.Lock()
-			ev.stateMu.Lock()
-			data := FromLValue(oldEvent.LState, oldEvent.LState.GetGlobal("ev")).(map[string]any)
-			d := map[string]any{}
-			if data["data"] != nil {
-				d = data["data"].(map[string]any)
-			}
-			oldData := ToLValue(ev.LState, d)
-			eventTable.RawSetString("data", oldData)
-			ev.db = oldEvent.db
-			oldEvent.mu.Unlock()
-			oldEvent.stateMu.Unlock()
-			ev.mu.Unlock()
-			ev.stateMu.Unlock()
+			oldEvent.Transfer(ev)
+			oldEvent.Close()
 		}
 
 		dynamicEventsMutex.Lock()
@@ -264,10 +288,14 @@ func LoadDyEvents(baseDir string) {
 	}
 
 	// Inicia o loop global apenas uma vez
-	globalLoopOnce.Do(func() {
-		stopGlobalLoop = make(chan struct{})
-		go globalEventLoop()
-	})
+	dynamicEventsMutex.RLock()
+	defer dynamicEventsMutex.RUnlock()
+	if len(dynamicEvents) > 0 {
+		globalLoopOnce.Do(func() {
+			stopGlobalLoop = make(chan struct{})
+			go globalEventLoop()
+		})
+	}
 }
 
 func setFunctionOnTable(ev *DynamicEvent, tbl *lua.LTable) {
@@ -295,25 +323,29 @@ func setFunctionOnTable(ev *DynamicEvent, tbl *lua.LTable) {
 	ev.LState.SetField(tbl, "set_interval", ev.LState.NewFunction(func(L *lua.LState) int {
 		val := L.CheckNumber(1)
 		ev.stateMu.Lock()
+		defer ev.stateMu.Unlock()
 		ev.Interval = time.Duration(float64(val) * float64(time.Second))
-		ev.stateMu.Unlock()
 		return 0
 	}))
 
 	ev.LState.SetField(tbl, "set_paused", ev.LState.NewFunction(func(L *lua.LState) int {
 		val := L.CheckBool(1)
 		ev.stateMu.Lock()
+		defer ev.stateMu.Unlock()
 		ev.Paused = val
-		ev.stateMu.Unlock()
 		return 0
 	}))
 
 	ev.LState.SetField(tbl, "get_interval", ev.LState.NewFunction(func(L *lua.LState) int {
+		ev.stateMu.RLock()
+		defer ev.stateMu.RUnlock()
 		L.Push(lua.LNumber(ev.Interval.Seconds()))
 		return 1
 	}))
 
 	ev.LState.SetField(tbl, "is_paused", ev.LState.NewFunction(func(L *lua.LState) int {
+		ev.stateMu.RLock()
+		defer ev.stateMu.RUnlock()
 		L.Push(lua.LBool(ev.Paused))
 		return 1
 	}))
@@ -321,12 +353,16 @@ func setFunctionOnTable(ev *DynamicEvent, tbl *lua.LTable) {
 	ev.LState.SetField(tbl, "use_db", ev.LState.NewFunction(func(L *lua.LState) int {
 		createdDb := false
 		ev.stateMu.Lock()
+		defer ev.stateMu.Unlock()
 		if ev.db == nil {
-			db, _ := msql.OpenModuleDB(ev.Name)
+			db, err := msql.OpenModuleDB(ev.Name)
+			if err != nil {
+				helpers.Logf(helpers.ERROR, "[DYEVENTS USE_DB] %s", err.Error())
+				return 0
+			}
 			ev.db = db
 			createdDb = true
 		}
-		ev.stateMu.Unlock()
 		L.Push(lua.LBool(createdDb))
 		return 1
 	}))
@@ -341,12 +377,18 @@ func setFunctionOnTable(ev *DynamicEvent, tbl *lua.LTable) {
 		if ev.db == nil {
 			return 0
 		}
-		_, err := ev.db.Exec(query)
+		r, err := ev.db.Exec(query)
 		if err != nil {
 			helpers.Logf(helpers.ERROR, "[DYEVENTS DB_EXEC] %s", err.Error())
 			return 0
 		}
-		return 0
+		rows, err := r.RowsAffected()
+		if err != nil {
+			helpers.Logf(helpers.ERROR, "[DYEVENTS DB_EXEC] %s", err.Error())
+			return 0
+		}
+		L.Push(lua.LNumber(rows))
+		return 1
 	}))
 
 	ev.LState.SetField(tbl, "db_query", ev.LState.NewFunction(func(L *lua.LState) int {
@@ -364,6 +406,7 @@ func setFunctionOnTable(ev *DynamicEvent, tbl *lua.LTable) {
 		helpers.Logf(helpers.DEBUG, "[QUERY] %s", query)
 		r, err := ev.db.Query(query)
 		ev.stateMu.RUnlock()
+		defer r.Close()
 
 		if err != nil {
 			helpers.Logf(helpers.ERROR, "[QUERY] ERROR: %s", err.Error())
@@ -390,7 +433,6 @@ func setFunctionOnTable(ev *DynamicEvent, tbl *lua.LTable) {
 			}
 			result = append(result, d)
 		}
-		r.Close()
 		L.Push(ToLValue(ev.LState, result))
 		return 1
 	}))

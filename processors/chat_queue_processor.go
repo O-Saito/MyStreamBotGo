@@ -24,7 +24,7 @@ func ProcessChatQueue() {
 			parts := strings.SplitN(ev.Message[1:], " ", 2)
 			cmd := globals.Command{
 				Source:  ev.Source,
-				Name:    strings.TrimPrefix(parts[0], config.BotPrefix),
+				Name:    parts[0],
 				Channel: ev.Channel,
 				Args:    parts[1:],
 				User:    ev.User,

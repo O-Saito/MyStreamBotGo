@@ -9,7 +9,7 @@ The second reasons is because is good for API consumption.
 mystreambot/
 ├── main.go                     # Initializer
 ├── handlers.go                 # General socket/request state configuration (for missing a better place)
-├── lua_funcions.go              # General lua state configuration (for missing a better place)
+├── lua_functions.go            # General lua state configuration (for missing a better place)
 ├── globals/                    # general config and state
 ├── goweb/                      # for webapi access
 ├── helpers/                    # shared utility functions
@@ -17,7 +17,6 @@ mystreambot/
 │   ├── kick/                   # Implementation of kick API
 │   ├── twitch/                 # Implementation of twitch API
 │   └── youtube/                # Implementation of youtube API
-├── modules/                    # lua modules folder
 ├── mlua/                    	# lua package handler
 │   ├── dyevents.go             # DyEvent implementation
 │   ├── parser.go               # Parser lua table to struct and vice-versa
@@ -25,7 +24,7 @@ mystreambot/
 ├── sql/                        # SQLite manager
 │   ├── core.go                 # Main db usage
 │   └── modules.go              # Modules focus db
-├── mlua/                       # lua modules manager
+├── modules/                    # lua modules folder
 └── web/                        # web related folder
 ```
 

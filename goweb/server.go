@@ -95,7 +95,9 @@ func StartHTTPServer() {
 			_, msg, err := conn.ReadMessage()
 			if err != nil {
 				helpers.Logf(helpers.ERROR, "[Socket] Error: %v", err)
+				mu.Lock()
 				delete(wsClients, conn)
+				mu.Unlock()
 				break
 			}
 
@@ -106,7 +108,12 @@ func StartHTTPServer() {
 				continue
 			}
 			var data globals.SocketMessage
-			json.Unmarshal([]byte(m), &data)
+			err = json.Unmarshal([]byte(m), &data)
+
+			if err != nil {
+				helpers.Logf(helpers.ERROR, "[Socket] Invalid message format: %s", err.Error())
+				continue
+			}
 
 			if data.Filter != "" {
 				globals.LuaRequest <- data

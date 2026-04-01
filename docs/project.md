@@ -9,7 +9,7 @@ The second reasons is because is good for API consumption.
 mystreambot/
 ├── main.go                     # Initializer
 ├── handlers.go                 # General socket/request state configuration (for missing a better place)
-├── luaFuncions.go              # General lua state configuration (for missing a better place)
+├── lua_funcions.go              # General lua state configuration (for missing a better place)
 ├── globals/                    # general config and state
 ├── goweb/                      # for webapi access
 ├── helpers/                    # shared utility functions
@@ -18,6 +18,7 @@ mystreambot/
 │   ├── twitch/                 # Implementation of twitch API
 │   └── youtube/                # Implementation of youtube API
 ├── modules/                    # lua modules folder
+├── mlua/                    	# lua package handler
 │   ├── dyevents.go             # DyEvent implementation
 │   ├── parser.go               # Parser lua table to struct and vice-versa
 │   └── mlua.go                 # Implementation
@@ -83,7 +84,7 @@ State.Data.Something
 ```
 
 ### Twitch Subtypes 
-Create a `twitchsubtypes.json` file with for example:
+Create a `twitchsubtypes.json` file with all used twitch sub; for example:
 ```json
 {
     "channel.follow": {"version": 2, "requires": "moderator:read:followers"},
@@ -102,21 +103,24 @@ Create a `twitchsubtypes.json` file with for example:
 Any Stream API
 	  ↓
 	IF CHAT → `ChatQueue`→ 		├ `WsBroadcast`
-	  │							├ IF COMMAND → `CommandQueue` 	→	├ DyEvent Queue
-	  │							├ DyEvent Queue						└ Lua Handler
+	  │							├ IF COMMAND → `CommandQueue` 	→	├ Send to DyEvent Queue
+	  │							├ Send to DyEvent Queue				└ Lua Handler
 	  │							└ Lua Handler				
 	  ↓
 	IF Event → `EventQueue`→	├ `WsBroadcast`
-								├ DyEvent Queue
+								├ Send to DyEvent Queue
 	  							└ Lua Handler	
 
-## EventQueue
+#### ChatQueu
+
+#### CommandQueue
+
+#### EventQueue
 The queue receives the follow struct
 
 ```go
 type Event struct {
 	Type   string 					// Event name/identifyer
-	Source string					// Origin of event, can be "System" or streaming plataform name (twitch, youtube ...)
 	Data   map[string]interface{}
 }
 ```

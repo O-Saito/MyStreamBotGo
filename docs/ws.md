@@ -110,7 +110,7 @@ Upgrades connection to receive filtered broadcasts for specific CustomEvents:
 
 The server uses a global channel `globals.WsBroadcast` to send messages from backend to all connected clients.
 
-### Broadcast Logic (`goweb/server.go:195-233`)
+### Broadcast Logic (`goweb/server.go:195-233` and `handlers.go`)
 
 1. **Filtered Broadcasts:** If `msg.Filter` is set, only send to clients subscribed to that filter
 2. **Direct Response:** If `msg.Respond` is set (non-zero, non-negative), send only to specific client

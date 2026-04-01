@@ -176,8 +176,8 @@ func (s *State) GetTwitchUser() TwitchUser {
 
 func (s *State) SetTwitchUser(user TwitchUser) {
 	s.Lock()
+	defer s.Unlock()
 	s.TwitchUser = user
-	s.Unlock()
 }
 
 func (s *State) GetYouTubeUser() YouTubeUser {
@@ -188,12 +188,12 @@ func (s *State) GetYouTubeUser() YouTubeUser {
 
 func (s *State) SetYouTubeUser(user YouTubeUser) {
 	s.Lock()
+	defer s.Unlock()
 	s.YouTubeUser = user
-	s.Unlock()
 }
 
 func (s *State) AddYouTubeChannel(channel YouTubeChannel) {
 	s.Lock()
+	defer s.Unlock()
 	s.YouTubeUser.Channels = append(s.YouTubeUser.Channels, channel)
-	s.Unlock()
 }

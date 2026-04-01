@@ -136,7 +136,11 @@ func ListDynamicEvents() []DynamicEventInfo {
 	events := make([]DynamicEventInfo, 0, len(dynamicEvents))
 	for name, val := range dynamicEvents {
 		val.stateMu.RLock()
-		data := FromLValue(val.LState, val.LState.GetGlobal("ev")).(map[string]any)
+		ldata := FromLValue(val.LState, val.LState.GetGlobal("ev"))
+		data := map[string]any{}
+		if ldata != nil {
+			data = ldata.(map[string]any)
+		}
 		d := map[string]any{}
 		if data["data"] != nil {
 			d = data["data"].(map[string]any)
@@ -288,7 +292,7 @@ func setFunctionOnTable(ev *DynamicEvent, tbl *lua.LTable) {
 		return 0
 	}))
 
-	ev.LState.SetField(tbl, "setInterval", ev.LState.NewFunction(func(L *lua.LState) int {
+	ev.LState.SetField(tbl, "set_interval", ev.LState.NewFunction(func(L *lua.LState) int {
 		val := L.CheckNumber(1)
 		ev.stateMu.Lock()
 		ev.Interval = time.Duration(float64(val) * float64(time.Second))
@@ -296,7 +300,7 @@ func setFunctionOnTable(ev *DynamicEvent, tbl *lua.LTable) {
 		return 0
 	}))
 
-	ev.LState.SetField(tbl, "setPaused", ev.LState.NewFunction(func(L *lua.LState) int {
+	ev.LState.SetField(tbl, "set_paused", ev.LState.NewFunction(func(L *lua.LState) int {
 		val := L.CheckBool(1)
 		ev.stateMu.Lock()
 		ev.Paused = val
@@ -304,17 +308,17 @@ func setFunctionOnTable(ev *DynamicEvent, tbl *lua.LTable) {
 		return 0
 	}))
 
-	ev.LState.SetField(tbl, "getInterval", ev.LState.NewFunction(func(L *lua.LState) int {
+	ev.LState.SetField(tbl, "get_interval", ev.LState.NewFunction(func(L *lua.LState) int {
 		L.Push(lua.LNumber(ev.Interval.Seconds()))
 		return 1
 	}))
 
-	ev.LState.SetField(tbl, "isPaused", ev.LState.NewFunction(func(L *lua.LState) int {
+	ev.LState.SetField(tbl, "is_paused", ev.LState.NewFunction(func(L *lua.LState) int {
 		L.Push(lua.LBool(ev.Paused))
 		return 1
 	}))
 
-	ev.LState.SetField(tbl, "useDB", ev.LState.NewFunction(func(L *lua.LState) int {
+	ev.LState.SetField(tbl, "use_db", ev.LState.NewFunction(func(L *lua.LState) int {
 		createdDb := false
 		ev.stateMu.Lock()
 		if ev.db == nil {
@@ -333,14 +337,14 @@ func setFunctionOnTable(ev *DynamicEvent, tbl *lua.LTable) {
 		}
 		query := L.CheckString(1)
 		ev.stateMu.RLock()
+		defer ev.stateMu.RUnlock()
 		if ev.db == nil {
-			ev.stateMu.RUnlock()
 			return 0
 		}
 		_, err := ev.db.Exec(query)
-		ev.stateMu.RUnlock()
 		if err != nil {
 			helpers.Logf(helpers.ERROR, "[DYEVENTS DB_EXEC] %s", err.Error())
+			return 0
 		}
 		return 0
 	}))

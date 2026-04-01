@@ -665,10 +665,16 @@
 
         });
         w.onTwitch("channel.follow", (data) => {
-            eventDiv.innerHTML += `<div class="event"><span><span class="user">${data.payload.event.user_name}</span> seguiu ${twitchData == null || twitchData.userId == data.payload.event.broadcaster_user_id ? data.payload.event.broadcaster_user_name : 'você'}!</span></div>`;
+            const eventEl = document.createElement('div');
+            eventEl.className = 'event';
+            eventEl.innerHTML = `<span><span class="user">${data.payload.event.user_name}</span> seguiu ${twitchData == null || twitchData.userId == data.payload.event.broadcaster_user_id ? data.payload.event.broadcaster_user_name : 'você'}!</span></div>`;
+            eventDiv.appendChild(eventEl);
         });
         w.onTwitch("channel.raid", (data) => {
-            eventDiv.innerHTML += `<div class="event"><span><span class="user">${data.payload.event.from_broadcaster_user_name}</span> está raidando ${twitchData == null || twitchData.userId == data.payload.event.to_broadcaster_user_id ? data.payload.event.to_broadcaster_user_name : 'você'} com ${data.payload.event.viewers} viewers!</span></div>`;
+            const eventEl = document.createElement('div');
+            eventEl.className = 'event';
+            eventEl.innerHTML = `<span><span class="user">${data.payload.event.from_broadcaster_user_name}</span> está raidando ${twitchData == null || twitchData.userId == data.payload.event.to_broadcaster_user_id ? data.payload.event.to_broadcaster_user_name : 'você'} com ${data.payload.event.viewers} viewers!</span></div>`;
+            eventDiv.appendChild(eventEl);
         });
 
         w.on('result-get-streamer-data', function (data) {

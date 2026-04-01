@@ -62,7 +62,7 @@ It can be more complex, receiving all of the above options
 
 It can have:
 - `on_start` — called when a CustomEvent module is loaded or (re)started.
-- `on_tick` — called periodically if an interval is set `ev.setInterval`.
+- `on_tick` — called periodically if an interval is set `ev.set_interval`.
 - `on_event` — called when the server dispatches a named event to this module.
 - `on_message` — receives chat/message payloads.
 - `on_command` — receives command invocations.
@@ -95,12 +95,12 @@ To keep the data between hot reloads it's needed `g.get/g.set` if is a CustomEve
 ### Real Persistent data
 
 For all types it have `g.kv_get(key)/g.kv_set(key, value)` it saves into a SQLite db into a table of key/value 
-For CustomEvents it can create it's own database with `ev.useDB()`
+For CustomEvents it can create it's own database with `ev.use_db()`
 
 Example:
 ```lua
 function on_start() 
-  ev.useDB()
+  ev.use_db()
   ev.db_exec("CREATE TABLE IF NOT EXISTS my_table (id INTEGER PRIMARY KEY, value TEXT)")
 end
 ```
@@ -113,8 +113,8 @@ Minimal CustomEvents `on_start` example:
 
 ```lua
 function on_start()
-  ev.setInterval(1)        -- run on_tick every second
-  ev.setPaused(false)
+  ev.set_interval(1)        -- run on_tick every second
+  ev.set_paused(false)
 end
 ```
 
@@ -154,7 +154,7 @@ The repository includes a `definitions/` folder with Lua declaration (stub) file
 
 Files present in `definitions/` (examples):
 
-- `ev.d.lua` — declarations for the `ev` table used by CustomEvents (e.g. `ev.socket_send(type, table)`, `ev.setInterval(number)`, `ev.setPaused(bool)`, `ev.db_query(sql)` and `ev.data`).
+- `ev.d.lua` — declarations for the `ev` table used by CustomEvents (e.g. `ev.socket_send(type, table)`, `ev.set_interval(number)`, `ev.set_paused(bool)`, `ev.db_query(sql)` and `ev.data`).
 - `g.d.lua` — declarations for the `g` helpers/globals exposed to modules.
 - `twitch.d.lua` — declarations for `twitch.*` helpers (e.g. `twitch.get_channel_stream_data`, `twitch.get_user_data`).
 
@@ -179,7 +179,7 @@ Recommendation: consult the matching `.d.lua` before calling an API (especially 
 
 - `mlua/mlua.go` — loader and module registration
 - `mlua/dyevents.go` — CustomEvent loader and `ev` helper bindings
-- `luaFunctions.go` — functions exposed to Lua (`twitch` helpers, etc.)
+- `lua_functions.go` — functions exposed to Lua (`twitch` helpers, etc.)
 - `globals/globals.go` — `SocketMessage` and `WsBroadcast` channel
 - `web/wrapper.js` — client websocket wrapper and `subscribe` API
 - `web/customevents/vote.lua.js` — example UI wrappers

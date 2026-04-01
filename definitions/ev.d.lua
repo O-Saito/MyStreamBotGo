@@ -27,8 +27,9 @@ function ev.set_paused(paused) end
 ---Tell the module to use the database connection
 function ev.use_db() end
 
----Execute a raw SQL query on the database connection
+---Execute a raw SQL query on the database connection, returning the number of affected rows
 ---@param query string
+---@return number
 function ev.db_exec(query) end
 
 ---Query the database

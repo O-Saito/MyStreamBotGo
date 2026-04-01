@@ -15,7 +15,7 @@ type SocketMessage struct {
 	Filter  string `json:"filter"`
 	Type    string `json:"type"`
 	Data    any    `json:"data"`
-	Respond int
+	Respond int    `json:"respond"`
 }
 
 type MessageFromStream struct {

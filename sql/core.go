@@ -111,9 +111,9 @@ func (c *CoreDB) KVGet(key string) (any, error) {
 		return nil, err
 	}
 	var nvalue any
-	nerr := json.Unmarshal([]byte(value), &nvalue)
-	if nerr != nil {
-		return nil, fmt.Errorf("kvget failed to parse")
+	err = json.Unmarshal([]byte(value), &nvalue)
+	if err != nil {
+		return nil, err
 	}
 
 	return nvalue, nil

@@ -4,11 +4,13 @@ import (
 	"MyStreamBot/globals"
 	"MyStreamBot/helpers"
 	"bufio"
+	"context"
 	"fmt"
 	"hash/fnv"
 	"net"
 	"slices"
 	"strings"
+	"sync"
 )
 
 type Message struct {
@@ -23,6 +25,11 @@ var (
 	Conn      net.Conn
 	Channels  []string
 	MsgQueue  = make(chan Message, 100)
+
+	readerCancel context.CancelFunc
+	readerMutex  sync.Mutex
+	writerCancel context.CancelFunc
+	writerMutex  sync.Mutex
 )
 
 func partseTags(tagsStr string) map[string]any {
@@ -261,8 +268,24 @@ func Connect() error {
 	fmt.Fprintf(Conn, "CAP REQ :twitch.tv/tags\r\n")
 	fmt.Fprintf(Conn, "CAP REQ :twitch.tv/commands\r\n")
 
-	go reader()
-	go writer()
+	readerMutex.Lock()
+	defer readerMutex.Unlock()
+	if readerCancel != nil {
+		readerCancel()
+	}
+	writerMutex.Lock()
+	defer writerMutex.Unlock()
+	if writerCancel != nil {
+		writerCancel()
+	}
+
+	ctxReader, cancelReader := context.WithCancel(context.Background())
+	readerCancel = cancelReader
+	ctxWriter, cancelWriter := context.WithCancel(context.Background())
+	writerCancel = cancelWriter
+
+	go reader(ctxReader)
+	go writer(ctxWriter)
 
 	ircHandlers["RECONNECT"] = func(parts []string, afterMetadataIndex int, metadata ...map[string]any) {
 		// fazer o reconnect
@@ -298,55 +321,81 @@ func JoinChannel(channel string) {
 	Channels = append(Channels, channel)
 }
 
-func reader() {
+func reader(ctx context.Context) {
 	helpers.Log(helpers.INFO, "Started twitch reader!")
 	scanner := bufio.NewScanner(Conn)
-	for scanner.Scan() {
-		msg := scanner.Text()
-		helpers.Printf(helpers.Twitch, "[Twitch] IRC Message: %s", msg)
-		if strings.HasPrefix(msg, "PING") {
-			fmt.Fprintf(Conn, "PONG :tmi.twitch.tv\r\n")
-			continue
-		}
-		parts := strings.Split(msg, " ")
-		if len(parts) < 2 {
-			continue
-		}
 
-		afterMetadataIndex := helpers.Ternary(parts[0][0] == '@', 1, 0)
+	for {
+		select {
+		case <-ctx.Done():
+			helpers.Logf(helpers.INFO, "[TWITCH] Reader stopped by context")
+			return
+		default:
+			if !scanner.Scan() {
+				if err := scanner.Err(); err != nil {
+					helpers.Logf(helpers.ERROR, "[Twitch ERROR] Erro na leitura: %v", err)
+					ircHandlers["RECONNECT"](nil, 0, nil)
+					return
+				}
 
-		handlersKey := parts[afterMetadataIndex+1]
-		helpers.Printf(helpers.Twitch, "[Twitch] Handler key: %s", handlersKey)
-		if handler, exists := ircHandlers[handlersKey]; exists {
-			handler(parts, afterMetadataIndex, helpers.Ternary(parts[0][0] == '@', partseTags(parts[0]), nil))
-			continue
+				helpers.Logf(helpers.INFO, "[Twitch ERROR] Scanner finalizado")
+				ircHandlers["RECONNECT"](nil, 0, nil)
+			}
+			msg := scanner.Text()
+			helpers.Printf(helpers.Twitch, "[Twitch] IRC Message: %s", msg)
+			if strings.HasPrefix(msg, "PING") {
+				fmt.Fprintf(Conn, "PONG :tmi.twitch.tv\r\n")
+				continue
+			}
+			parts := strings.Split(msg, " ")
+			if len(parts) < 2 {
+				continue
+			}
+
+			afterMetadataIndex := helpers.Ternary(parts[0][0] == '@', 1, 0)
+
+			handlersKey := parts[afterMetadataIndex+1]
+			helpers.Printf(helpers.Twitch, "[Twitch] Handler key: %s", handlersKey)
+			if handler, exists := ircHandlers[handlersKey]; exists {
+				handler(parts, afterMetadataIndex, helpers.Ternary(parts[0][0] == '@', partseTags(parts[0]), nil))
+				continue
+			}
 		}
-	}
-
-	if err := scanner.Err(); err != nil {
-		helpers.Logf(helpers.ERROR, "[Twitch ERROR] Erro na leitura: %v", err)
-		ircHandlers["RECONNECT"](nil, 0, nil)
-	} else {
-		helpers.Logf(helpers.INFO, "[Twitch ERROR] Scanner finalizado")
-		ircHandlers["RECONNECT"](nil, 0, nil)
 	}
 }
 
-func writer() {
+func writer(ctx context.Context) {
 	helpers.Log(helpers.INFO, "Started twitch writer!")
-	for msg := range MsgQueue {
-		if msg.MessageToReply != "" {
-			text := fmt.Sprintf("@reply-parent-msg-id=%s PRIVMSG #%s : %s", msg.MessageToReply, msg.Channel, msg.Text)
-			helpers.Printf(helpers.Yellow, "[TWITCH REPLY] %s", text)
-			fmt.Fprintf(Conn, "%s\r\n", text)
-			continue
+
+	for {
+		select {
+		case <-ctx.Done():
+			helpers.Logf(helpers.INFO, "[TWITCH] Reader stopped by context")
+			return
+		case msg := <-MsgQueue:
+			if msg.MessageToReply != "" {
+				text := fmt.Sprintf("@reply-parent-msg-id=%s PRIVMSG #%s : %s", msg.MessageToReply, msg.Channel, msg.Text)
+				helpers.Printf(helpers.Yellow, "[TWITCH REPLY] %s", text)
+				fmt.Fprintf(Conn, "%s\r\n", text)
+				continue
+			}
+			fmt.Fprintf(Conn, "PRIVMSG #%s :%s\r\n", msg.Channel, msg.Text)
 		}
-		fmt.Fprintf(Conn, "PRIVMSG #%s :%s\r\n", msg.Channel, msg.Text)
 	}
 }
 
 func SendMessage(msg, channel string, messageToReply ...string) {
 	if helpers.Contains(Channels, channel) {
+		user := globals.GetState().GetTwitchUser()
+		globals.ChatQueue <- globals.MessageFromStream{
+			Source:    "twitch",
+			Channel:   channel,
+			User:      user.UserLogin,
+			UserId:    user.UserID,
+			MessageId: "self",
+			Message:   msg,
+			Metadata:  nil,
+		}
 		if messageToReply == nil {
 			messageToReply = []string{""}
 		}

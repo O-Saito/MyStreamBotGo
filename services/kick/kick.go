@@ -111,6 +111,9 @@ func Connect() error {
 		return err
 	}
 	//defer conn.Close()
+	if Conn != nil {
+		Conn.Close()
+	}
 	Conn = conn
 	log.Printf("[Kick IRC] Connectado ao IRC")
 

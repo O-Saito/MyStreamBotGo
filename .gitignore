@@ -5,6 +5,8 @@ web/*
 db/
 logs/
 !web/index.html
+!web/index2.html
+!web/index.css
 !web/wrapper.js
 !web/fontawesome
 !web/customevents/vote.lua.js

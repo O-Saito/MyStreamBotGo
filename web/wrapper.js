@@ -42,7 +42,7 @@ const handlers = {
                 twitchNotificationHandlers[data.metadata.subscription_type].forEach(f => { f(data); });
                 return;
             }
-            console.log('twitch-eventsub-notification não tratado!', data);
+            console.error('twitch-eventsub-notification não tratado!', data);
         },
     ],
 }
@@ -138,7 +138,7 @@ function webSocketConnect() {
     ws = new WebSocket(`ws://${location.host}/ws`);
     /** @param {MessageEvent<any>} e  */
     ws.onmessage = function (e) {
-        console.log("WS Message:", e.data);
+        //console.log("WS Message:", e.data);
         /** @type {SocketMessage} */
         const data = JSON.parse(e.data);
         if (data.filter && data.filter != "" && eventsHandlers[data.filter] && eventsHandlers[data.filter][data.type]) {
@@ -148,14 +148,14 @@ function webSocketConnect() {
             return;
         }
         if (!handlers[data.type]) {
-            console.log("Handler not found:", data.type);
+            console.warn("Handler not found:", data.type);
             return;
         }
         handlers[data.type].forEach(f => { f(data.data); });
     };
 
     ws.onclose = () => {
-        console.log('WebSocket disconnected. Attempting to reconnect...');
+        console.warn('WebSocket disconnected. Attempting to reconnect...');
         reconnectAttempts++;
         const delay = Math.min(reconnectInterval * Math.pow(2, reconnectAttempts - 1), maxReconnectInterval);
         setTimeout(webSocketConnect, delay);
@@ -243,7 +243,7 @@ export default {
      */
     exec: (eventType, data) => {
         if (!handlers[eventType]) {
-            console.log("(Exec) Handler não encontrado para o tipo:", eventType);
+            console.warn("(Exec) Handler não encontrado para o tipo:", eventType);
             return;
         }
 

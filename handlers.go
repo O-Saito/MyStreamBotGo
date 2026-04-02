@@ -64,13 +64,13 @@ func RegisterSocketHandlers() {
 
 	goweb.SocketHandlers["send-chat-message"] = func(c *websocket.Conn, data map[string]any, tag int) {
 		if len(twitch.Channels) > 0 {
-			for _, c := range twitch.Channels {
-				twitch.SendMessage(data["text"].(string), c)
+			for _, channel := range twitch.Channels {
+				twitch.SendMessage(data["text"].(string), channel)
 			}
 		}
 		if len(kick.Channels) > 0 {
-			for _, c := range kick.Channels {
-				kick.SendMessage(data["text"].(string), c)
+			for _, channel := range kick.Channels {
+				kick.SendMessage(data["text"].(string), channel)
 			}
 		}
 	}

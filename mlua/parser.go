@@ -165,7 +165,7 @@ func ToLTable(L *lua.LState, data *globals.MessageFromStream, tbl *lua.LTable) *
 	return tbl
 }
 
-func ToLTableEvent(L *lua.LState, data *globals.LuaEvent, tbl *lua.LTable) *lua.LTable {
+func ToLTableEvent(L *lua.LState, data *globals.Event, tbl *lua.LTable) *lua.LTable {
 	defer func() {
 		if r := recover(); r != nil {
 			helpers.Logf(helpers.ERROR, "Panic em ToLTableEvent: %v", r)
@@ -183,7 +183,7 @@ func ToLTableEvent(L *lua.LState, data *globals.LuaEvent, tbl *lua.LTable) *lua.
 	return tbl
 }
 
-func ToLTableCommand(L *lua.LState, data *globals.LuaCommand, tbl *lua.LTable) *lua.LTable {
+func ToLTableCommand(L *lua.LState, data *globals.Command, tbl *lua.LTable) *lua.LTable {
 	defer func() {
 		if r := recover(); r != nil {
 			helpers.Logf(helpers.ERROR, "Panic em ToLTableCommand: %v", r)

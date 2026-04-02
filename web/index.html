@@ -4,845 +4,448 @@
 <head>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Chat Live</title>
-    <style>
-        * {
-            box-sizing: border-box;
-        }
-
-        :root {
-            --bg-color: #18181b;
-            --form-width: 55px;
-        }
-
-        body {
-            font-family: sans-serif;
-            /*font-size: 50px;*/
-        }
-
-        .dark {
-            color: white;
-            background-color: var(--bg-color);
-        }
-
-        h1:has(+.box-content) {
-            margin-bottom: 0px;
-        }
-
-        h1:has(+.box-options+.box-content) {
-            margin-bottom: 0px;
-        }
-
-        h1:has(+.box-options) {
-            display: inline-block;
-        }
-
-        .box-content {
-            border: 1px solid white;
-        }
-
-        #logins .areas {
-            border: 1px solid white;
-            padding: 5px;
-            margin-bottom: 5px;
-            vertical-align: middle;
-        }
-
-        .areas>.header {
-            border-bottom: 1px solid white;
-            margin-bottom: 5px;
-        }
-
-        .areas .body .chat-list .list::before {
-            content: "Conectado aos Chats:";
-        }
-
-        .areas .body .chat-list .list {
-            margin: 0px;
-            margin-top: 2px;
-            margin-bottom: 2px;
-            padding: 0px;
-        }
-
-        .areas .body .chat-list .list li {
-            margin-left: 25px;
-        }
-
-        #logins .areas label,
-        #logins .areas span {
-            vertical-align: middle;
-        }
-
-        #logins .areas img {
-            width: 25px;
-            border: 1px solid black;
-            border-radius: 15px;
-            vertical-align: middle;
-        }
-
-        #events {
-            border: 1px solid #ccc;
-            padding: 10px;
-            height: 100px;
-            overflow-y: scroll;
-            resize: vertical;
-        }
-
-        #events .event {
-            vertical-align: middle;
-            line-height: 27px;
-        }
-
-        #events .event .user {
-            text-decoration: underline;
-        }
-
-        #chat {
-            /*  border: 1px solid #ccc;
-            height: 400px;
-            overflow-y: scroll;
-            resize: vertical;*/
-            margin-bottom: 10px;
-        }
-
-        #chat .content {
-            padding: 10px;
-            border: 1px solid #ccc;
-            height: 400px;
-            overflow-y: scroll;
-            resize: vertical;
-        }
-
-        #chat .sender {
-            border: 1px solid white;
-        }
-
-        #chat .sender input {
-            display: inline-block;
-            width: 90%;
-        }
-
-        #chat .sender button {
-            display: inline-block;
-            /*width: 8%;*/
-        }
-
-        #chat .message {
-            vertical-align: middle;
-            line-height: 27px;
-        }
-
-        #chat .message .chat-user>img {
-            width: 20px;
-            vertical-align: middle;
-            margin-left: 5px;
-        }
-
-        #chat .message.first-message:not(.message-deleted) {
-            border: 2px solid #8400c7;
-            border-radius: 5px;
-            padding-top: 9px;
-            margin-top: 8px;
-            position: relative;
-        }
-
-        #chat .message.first-message:not(.message-deleted)::after {
-            content: "Primeira Mensagem!";
-            background-color: var(--bg-color);
-            padding: 0 10px;
-            position: absolute;
-            top: -15px;
-            left: 20px;
-            font-size: 15px;
-            font-weight: bold;
-        }
-
-        #chat .message:has(.streamer-ref) {
-            font-weight: bold;
-            background-color: #430000;
-            border-radius: 5px;
-            padding: 2px;
-        }
-
-        #chat .message .reply-message {
-            margin-top: 5px;
-            margin-bottom: 2px;
-            padding-left: 5px;
-            font-size: 13px;
-            line-height: 13px;
-            color: rgb(204, 204, 204);
-            text-overflow: ellipsis;
-            white-space: nowrap;
-            width: 100%;
-            overflow: hidden;
-            height: 14px;
-        }
-
-        #chat .message:has(button) .reply-message {
-            padding-left: 65px;
-        }
-
-        #chat .message.message-deleted {
-            text-decoration: line-through;
-            color: #99999a;
-        }
-
-        #chat .message .chat-badges {
-            vertical-align: middle;
-            line-height: 27px;
-        }
-
-        #chat .message .chat-badges>img {
-            vertical-align: middle;
-        }
-
-        #chat .message .chat-source>img {
-            width: 20px;
-            vertical-align: middle;
-        }
-
-        #chat .message:not([data-source-room]) .chat-channel {
-            display: none;
-        }
-
-        #chat .message .chat-message>img {
-            vertical-align: middle;
-            max-width: 25px;
-        }
-
-        #chat .message .chat-channel>img {
-            vertical-align: middle;
-            max-width: 25px;
-            border: 1px solid black;
-            border-radius: 15px;
-        }
-
-        #chat .message .chat-source:not(:empty):not(:has(>img)):before {
-            content: "["
-        }
-
-        #chat .message .chat-source:not(:empty):not(:has(>img)):after {
-            content: "] "
-        }
-
-        #chat .message .chat-channel:not(:empty):not(:has(>img)):before {
-            content: "("
-        }
-
-        #chat .message .chat-channel:not(:empty):not(:has(>img)):after {
-            content: ") "
-        }
-
-        #chat .message .chat-message:not(:empty):before {
-            content: ': ';
-        }
-
-        .message {
-            margin: 2px 0;
-        }
-
-        .meta {
-            font-size: 0.8em;
-            color: #666;
-        }
-
-        button {
-            margin-left: 5px;
-        }
-
-        #dyevents .event {
-            border: 1px solid white;
-            margin: 5px;
-        }
-
-        #dyevents .event>h3 {
-            margin-bottom: 2px;
-            margin-top: 0px;
-            border-bottom: 1px solid white;
-            display: inline-block;
-        }
-
-        #dyevents .event>div:not(.content-body) {
-            display: inline-block;
-        }
-
-        #dyevents .content-body {
-            padding: 5px;
-        }
-
-        .collapse-area {
-            display: grid;
-            grid-template-rows: 1fr;
-            transition: grid-template-rows 0.5s ease-out;
-        }
-
-        .collapse-area>* {
-            overflow: hidden;
-        }
-
-        .collapse-area.closed {
-            grid-template-rows: 0fr;
-        }
-
-        .stream-status {
-            float: right;
-        }
-
-        .stream-time {
-            float: right;
-            margin-left: 10px;
-        }
-
-        .live-off{
-            color: red;
-        }
-
-        .live-on {
-            color: green;
-        }
-
-        .inline-list {
-            display: inline-block;
-            margin: 0;
-            padding: 0;
-            list-style: none;
-            margin-bottom: 10px;
-            margin-top: 10px;
-        }
-
-        .inline-list li {
-            display: inline;
-            margin-left: 10px;
-            border: 1px solid;
-        }
-
-        .inline-list.removeable li::before {
-            content: "x";
-            text-align: center;
-            vertical-align: middle;
-            margin-right: 5px;
-        }
-
-        .form label {
-            display: inline-block;
-            width: var(--form-width);
-            left: 0px;
-            text-align: end;
-            margin-bottom: 5px;
-        }
-
-        .form input {
-            display: inline-block;
-            width: 50%;
-            left: 0px;
-        }
-    </style>
     <link rel="stylesheet" href="/fontawesome/css/font-awesome.min.css">
+    <link rel="stylesheet" href="/index.css">
 </head>
 
-<body class="dark">
+<body>
     <div id="logins">
-        <div class="areas collapse">
+        <div class="areas">
             <div class="header">
                 <label><input type="checkbox" class="display-collapse" checked /></label>
-                Nerd
+                <span>System</span>
             </div>
             <div class="body collapse-area">
-                <div>
+                <div class="nerd-section">
+                    <div><strong>Nerd:</strong></div>
                     <div>Twitch Ultimo Keepalive: <label id="twitch-last-eventsub"></label></div>
                     <div>Twitch GameID: <label id="twitch-game-id"></label></div>
                 </div>
+                <div class="ui-errors-section">
+                    <div><strong>UI Errors:</strong></div>
+                    <div id="ui-errors-list"></div>
+                </div>
             </div>
         </div>
-        <div id="twitch" class="areas collapse">
+        <div id="twitch" class="areas">
             <div class="header">
                 <label><input type="checkbox" class="display-collapse" /></label>
-                <label id="login-twitch"></label>
-                <label class="stream-time"></label>
-                <label class="stream-status"></label>
+                <span id="login-twitch"></span>
+                <span class="stream-time"></span>
+                <span class="stream-status"></span>
             </div>
             <div class="body collapse-area">
-                <div
-                    style="display: grid; justify-items: start; align-items: baseline; align-content: stretch; justify-content: center; grid-template-columns: 2fr 1fr;">
-                    <div class="form" style="width: 100%;">
-                        <label>Title: </label>
-                        <input type="text" id="twitch-title" /><br />
-                        <label>Game: </label>
-                        <input type="text" id="twitch-game" list="twitch-game-list" /><br />
-                        <datalist id="twitch-game-list"></datalist>
-                        <label>Idioma: </label>
-                        <input type="text" id="twitch-lang" /><br />
-                        Tags:
-                        <ul id="twitch-tags" class="inline-list"></ul>
+                <div class="platform-grid">
+                    <div class="form">
+                        <div class="form-row">
+                            <label for="twitch-title">Title:</label>
+                            <input type="text" id="twitch-title" />
+                        </div>
+                        <div class="form-row">
+                            <label for="twitch-game">Game:</label>
+                            <input type="text" id="twitch-game" list="twitch-game-list" />
+                            <datalist id="twitch-game-list"></datalist>
+                        </div>
+                        <div class="form-row">
+                            <label for="twitch-lang">Idioma:</label>
+                            <input type="text" id="twitch-lang" />
+                        </div>
+                        <div class="form-row">
+                            <span class="form-label">Tags:</span>
+                            <ul id="twitch-tags" class="inline-list"></ul>
+                        </div>
                     </div>
                     <div id="chat-connection-twitch" class="chat-list" style="display: inline-block;">
-                        <button type="button" class="btn-novo-chat" style="display: none;">Conectar a um chat
-                            Twitch</button>
+                        <button type="button" class="btn-secondary btn-novo-chat" style="display: none;">Conectar a um chat Twitch</button>
                         <ul class="list"></ul>
                     </div>
                 </div>
             </div>
         </div>
-        <div id="kick" class="areas collapse">
+        <div id="kick" class="areas">
             <div class="header">
                 <label><input type="checkbox" class="display-collapse" /></label>
-                <label id="login-kick"></label>
+                <span id="login-kick"></span>
             </div>
             <div class="body collapse-area">
                 <div id="chat-connection-kick" class="chat-list">
                     <div class="form">
-                        <button type="button" class="btn-novo-chat">Conectar a um chat Kick</button>
+                        <button type="button" class="btn-secondary btn-novo-chat">Conectar a um chat Kick</button>
                     </div>
                     <ul class="list"></ul>
                 </div>
             </div>
         </div>
-        <div id="youtube" class="areas collapse">
+        <div id="youtube" class="areas">
             <div class="header">
                 <label><input type="checkbox" class="display-collapse" /></label>
-                <label id="login-youtube"><a href="/youtube/login" target="_blank">Logar Youtube</a></label>
+                <span id="login-youtube"><a href="/youtube/login" target="_blank">Logar Youtube</a></span>
             </div>
             <div class="body collapse-area">
                 <div id="chat-connection-youtube" class="chat-list">
-                    <div class="form">
-                    </div>
                     <ul class="list"></ul>
                 </div>
             </div>
         </div>
     </div>
-    <h1 style="display: inline-block;">Chat Live</h1>
-    <span class="box-options" style=" width: calc(100% - 152px); display: inline-block;">
-        <label>
-            <input type="checkbox" id="chk-acompanhar-chat" checked />Acompanhar chat
-        </label>
-        <label>
-            <input type="checkbox" id="chk-show-view-count" checked />Contador de View
-        </label>
-        <span class="view-count-area" style="float: right; vertical-align: middle;">
-            <span>
-                <img src="https://assets.twitch.tv/assets/favicon-32-e29e246c157142c94346.png" style="height: 20px;" />
-                <span id="twitch-view-count"></span>
+
+    <section id="chat-section">
+        <h1 style="display: inline-block;">Chat Live</h1>
+        <span class="box-options" style="width: calc(100% - 152px); display: inline-block;">
+            <label>
+                <input type="checkbox" id="chk-acompanhar-chat" checked />Acompanhar chat
+            </label>
+            <label>
+                <input type="checkbox" id="chk-show-view-count" checked />Contador de View
+            </label>
+            <span class="view-count-area" style="float: right; vertical-align: middle;">
+                <span>
+                    <img src="https://assets.twitch.tv/assets/favicon-32-e29e246c157142c94346.png" style="height: 20px;" />
+                    <span id="twitch-view-count">0</span>
+                </span>
             </span>
         </span>
-    </span>
-    <div id="chat" class="box-content">
-        <div class="content"></div>
-        <div class="sender">
-            <button type="button" id="btn-mandar-msg">Mandar Mensagem</button>
+        <div id="chat">
+            <div class="content"></div>
+            <div class="sender">
+                <input type="text" id="msg-input" placeholder="Digite uma mensagem..." />
+                <button type="button" id="btn-mandar-msg" class="btn-primary">Enviar</button>
+            </div>
+        </div>
+    </section>
+
+    <div id="events-panel" class="areas panel">
+        <div class="header">
+            <label><input type="checkbox" id="collapse-events" /></label>
+            <span>Eventos</span>
+        </div>
+        <div class="body collapse-area">
+            <div id="events-list"></div>
         </div>
     </div>
-    <h1 id="events-title">Eventos <input id="collapse-events" type="checkbox" /> </h1>
-    <div id="events" class="box-content"></div>
 
-    <h1 id="dyeventstitle">DyEvents <input id="toggle-dyevents" type="checkbox" /></h1>
-    <div id="dyevents" class="box-content"></div>
-
-    <div style="display: none;">
-        <h3>Stream Info</h3>
-        <label>Título: </label>
-        <input type="text" id="stream-title" />
-        <br />
-        <br />
-        <label>Jogo: </label>
-        <input type="text" id="stream-game" list="stream-games" />
-        <datalist id="stream-games"></datalist>
-        <br />
-        <br />
-        <button type="button">Salvar</button>
+    <div id="dyevents-panel" class="areas panel">
+        <div class="header">
+            <label><input type="checkbox" id="toggle-dyevents" /></label>
+            <span>Custom Events</span>
+        </div>
+        <div class="body collapse-area">
+            <div id="dyevents-sidebar"></div>
+            <div id="dyevents-list"></div>
+        </div>
     </div>
 
     <script type="module">
+        const uiErrorsList = document.getElementById('ui-errors-list');
+        const errorBuffer = [];
+
+        window.onerror = (msg, url, line, col, error) => {
+            errorBuffer.push(`${new Date().toLocaleTimeString()} - ${msg} (${url}:${line})`);
+            flushErrors();
+            return false;
+        };
+
+        window.addEventListener('unhandledrejection', (event) => {
+            errorBuffer.push(`${new Date().toLocaleTimeString()} - Unhandled Promise: ${event.reason}`);
+            flushErrors();
+        });
+
+        function flushErrors() {
+            if (uiErrorsList) {
+                errorBuffer.forEach(err => {
+                    const div = document.createElement('div');
+                    div.className = 'error-entry';
+                    div.textContent = err;
+                    uiErrorsList.appendChild(div);
+                });
+                errorBuffer.length = 0;
+            }
+        }
+
         import w from './wrapper.js'
 
         const twitchDiv = document.getElementById('twitch');
-
         const logins = document.getElementById('logins');
         const kickConnections = document.querySelector('#chat-connection-kick');
         const twitchConnections = document.querySelector('#chat-connection-twitch');
         const youtubeConnections = document.querySelector('#chat-connection-youtube');
-
         const twitchLastEventsub = document.getElementById('twitch-last-eventsub');
-
-        const txtStreamGame = document.getElementById('stream-game')
-        const streamGameList = document.getElementById('stream-games')
-
         const chatDiv = document.querySelector("#chat .content");
         const chatAcompanhar = document.getElementById('chk-acompanhar-chat');
-        const eventDiv = document.getElementById('events');
-
-        const dyEventsDiv = document.getElementById('dyevents');
+        const eventDiv = document.getElementById('events-list');
+        const dyEventsDiv = document.getElementById('dyevents-list');
         const lblTwitchViewCount = document.getElementById("twitch-view-count");
         const chkShowViewCount = document.getElementById('chk-show-view-count');
-
         const twitchGameIdLabel = document.getElementById('twitch-game-id');
+        const txtStreamGame = document.getElementById('stream-game') || document.getElementById('twitch-game');
+        const streamGameList = document.getElementById('stream-games') || document.getElementById('twitch-game-list');
 
-        const displayChks = document.getElementsByClassName('display-collapse')
+        // Collapse handlers
+        document.querySelectorAll('.display-collapse').forEach(chk => {
+            chk.addEventListener('change', function () {
+                const area = this.closest('.areas').querySelector('.collapse-area');
+                const body = this.closest('.areas').querySelector('.body');
+                if (this.checked) {
+                    area.classList.remove('closed');
+                    body.classList.remove('collapsed');
+                } else {
+                    area.classList.add('closed');
+                    body.classList.add('collapsed');
+                }
+            });
+            chk.dispatchEvent(new Event('change'));
+        });
 
-        for (let i = 0; i < displayChks.length; i++) {
-            displayChks[i].onchange = function () {
-                const area = this.closest('.collapse').querySelector('.collapse-area');
-                if (this.checked) area.classList.add('closed')
-                else area.classList.remove('closed');
+        document.getElementById('toggle-dyevents').addEventListener('change', function () {
+            const panel = this.closest('.panel');
+            const collapseArea = panel.querySelector('.collapse-area');
+            const body = panel.querySelector('.body');
+            if (this.checked) {
+                collapseArea.classList.remove('closed');
+                body.classList.remove('collapsed');
+            } else {
+                collapseArea.classList.add('closed');
+                body.classList.add('collapsed');
             }
-            displayChks[i].onchange(new Event('change'));
-        }
+        });
+        document.getElementById('toggle-dyevents').dispatchEvent(new Event('change'));
 
-        const toggledyevents = document.getElementById('toggle-dyevents');
-        toggledyevents.onchange = function () {
-            dyEventsDiv.style.display = this.checked ? 'none' : 'block';
-            document.getElementById('dyeventstitle').style.fontSize = this.checked ? '14px' : '';
-        }
+        document.getElementById('collapse-events').addEventListener('change', function () {
+            const panel = this.closest('.panel');
+            const collapseArea = panel.querySelector('.collapse-area');
+            const body = panel.querySelector('.body');
+            if (this.checked) {
+                collapseArea.classList.remove('closed');
+                body.classList.remove('collapsed');
+            } else {
+                collapseArea.classList.add('closed');
+                body.classList.add('collapsed');
+            }
+        });
+        document.getElementById('collapse-events').dispatchEvent(new Event('change'));
 
         let twitchData = null, youtubeData = null;
 
         w.on('init', (data) => {
-            console.log(data);
-            if (data.twitch_connected_chat && data.twitch_connected_chat.length > 0) {
-                for (let i = 0; i < data.twitch_connected_chat.length; i++) {
-                    const c = data.twitch_connected_chat[i];
-                    w.exec('twitch-chat-connection', { id: c, name: c });
-                }
+            if (data.twitch_connected_chat?.length > 0) {
+                data.twitch_connected_chat.forEach(c => w.exec('twitch-chat-connection', { id: c, name: c }));
             }
-            if (data.kick_connected_chat && data.kick_connected_chat.length > 0) {
-                for (let i = 0; i < data.kick_connected_chat.length; i++) {
-                    const c = data.kick_connected_chat[i];
-                    w.exec('kick-chat-connection', { id: c.ID, name: c.Slug });
-                }
+            if (data.kick_connected_chat?.length > 0) {
+                data.kick_connected_chat.forEach(c => w.exec('kick-chat-connection', { id: c.ID, name: c.Slug }));
             }
             updateTwitchConnectionDetails(data.twitch);
             updateYouTubeConnectionDetails(data.youtube);
-            updateKickConnectionDetails(data.kick.connected_as);
-
-            updateYouTubeChatConnectiongDetails(data.youtube_connected_chat)
-
+            updateKickConnectionDetails(data.kick?.connected_as);
+            updateYouTubeChatConnectiongDetails(data.youtube_connected_chat);
             loadDyModules(data.custom_events_modules);
-
+            if (data.interface_config) {
+                try {
+                    const config = JSON.parse(data.interface_config);
+                    if (config.ignoreKick) {
+                        document.getElementById('kick').style.display = 'none';
+                    }
+                    if (config.ignoreYoutube) {
+                        document.getElementById('youtube').style.display = 'none';
+                    }
+                    if (config.ignoreTwitch) {
+                        document.getElementById('twitch').style.display = 'none';
+                    }
+                } catch (e) {
+                    console.error('Failed to parse interface_config:', e);
+                    throw e;
+                }
+            }
             w.send("get-streamer-data", {});
         });
 
         w.on('twitch-connection', updateTwitchConnectionDetails);
         w.on('youtube-connection', updateYouTubeConnectionDetails);
         w.on('kick-connection', updateKickConnectionDetails);
-        w.on('twitch-chat-connection', function (data) {
+        w.on('twitch-chat-connection', (data) => {
             const li = document.createElement('li');
-            li.innerHTML = `(${data.id}) ${data.name}`;
-            twitchConnections.querySelector('.list').append(li);
+            li.textContent = `(${data.id}) ${data.name}`;
+            twitchConnections.querySelector('.list').appendChild(li);
         });
-        w.on('kick-chat-connection', function (data) {
+        w.on('kick-chat-connection', (data) => {
             const li = document.createElement('li');
-            li.innerHTML = `(${data.id}) ${data.name}`;
-            kickConnections.querySelector('.list').append(li);
+            li.textContent = `(${data.id}) ${data.name}`;
+            kickConnections.querySelector('.list').appendChild(li);
         });
-        w.on("user-message", function (msg) {
-            console.log("Nova mensagem de usuário:", msg);
-            let div = document.createElement("div");
-            div.className = "message";
-            div.dataset.userId = msg.userId;
-            div.dataset.channel = msg.channel;
-            div.dataset.messageId = msg.messageId;
-            div.dataset.user = msg.user;
-            div.dataset.source = msg.source;
-
-            let span = document.createElement("span");
-
-            let source = document.createElement("span");
-            let channel = document.createElement("span");
-            let badges = document.createElement('span');
-            let user = document.createElement('span');
-            let message = document.createElement('span');
-
-            source.className = "chat-source";
-            channel.className = "chat-channel";
-            badges.className = "chat-badges";
-            user.className = "chat-user";
-            message.className = "chat-message";
-
-            span.append(source, channel, badges, user, message);
-
-            source.textContent = msg.source;
-            channel.textContent = msg.channel;
-            user.textContent = msg.user;
-
-            if (msg.source == "twitch") {
-                message.innerHTML = checkuserReference(parseText(msg));
-            } else {
-                message.innerHTML = parseText(msg);
-            }
-
-            if (msg.source == "twitch") {
-                source.innerHTML = `<img src="https://assets.twitch.tv/assets/favicon-32-e29e246c157142c94346.png" alt="twitch" title="twitch" />`;
-            } else if (msg.source == "kick") {
-                source.innerHTML = `<img src="https://kick.com/favicon.ico" alt="kick" title="kick" />`;
-            } else if (msg.source == "youtube") {
-                source.innerHTML = `<img src="https://www.youtube.com/s/desktop/d0c6b06b/img/favicon.ico" alt="YouTube" title="YouTube" />`;
-            }
-
-            if (msg.metadata) {
-                user.style.color = msg.metadata.color;
-
-                if (msg.metadata['first-msg'] && msg.metadata['first-msg'] == '1') {
-                    div.classList.add('first-message');
-                }
-
-                if (msg.metadata['display-name'] && isValidLatinString(msg.metadata['display_name']))
-                    user.textContent = msg.metadata['display-name']
-                if (msg.metadata['authorDetails'])
-                    user.innerHTML = `<img src="${msg.metadata['authorDetails']['profileImageUrl']}" /> ${msg.user}`;
-                if (msg.metadata['badges-info'])
-                    badges.innerHTML = Object.getOwnPropertyNames(msg.metadata['badges-info']).map(x =>
-                        msg.metadata['badges-info'][x] && msg.metadata['badges-info'][x][0] != null && msg.metadata['badges-info'][x][0] != '' ?
-                            `<img src="${msg.metadata['badges-info'][x][0].image_url_1x}" alt="${msg.metadata['badges-info'][x][0].title}" title="${msg.metadata['badges-info'][x][0].title}" />` :
-                            '').join('');
-
-                if (msg.metadata['room']) {
-                    channel.innerHTML = `<img src="${msg.metadata['room'].profile_image_url}" alt="${msg.metadata['room'].display_name}" title="${msg.metadata['room'].display_name}" />`;
-                }
-                if (msg.metadata['source-room']) {
-                    channel.innerHTML = `<img src="${msg.metadata['source-room'].profile_image_url}" alt="${msg.metadata['source-room'].display_name}" title="${msg.metadata['source-room'].display_name}" />`;
-                }
-
-                if (msg.metadata["source-room-id"])
-                    div.dataset.sourceRoom = msg.metadata["source-room-id"];
-
-                if (msg.metadata['reply-parent-msg-body']) {
-                    let userref = `@${msg.metadata['reply-parent-display-name']}`;
-                    let text = parseMessageWithEmotes(msg.metadata['reply-parent-msg-body']);
-                    message.innerHTML = message.innerHTML.replace(userref, "");
-                    const replyDiv = document.createElement('div');
-                    replyDiv.className = 'reply-message';
-                    replyDiv.innerHTML = checkuserReference(`Respondendo a <span>${userref}</span>: ${text}`).replaceAll('\\s', '&nbsp;').replaceAll('\n', '');
-                    div.prepend(replyDiv);
-                }
-            }
-            // criar botões de ação
-            if (msg.source === "twitch") {
-                let delBtn = document.createElement("button");
-                delBtn.title = "Deletar mensagem";
-                delBtn.innerHTML = `<i class="fa fa-trash" aria-hidden="true"></i>`;
-                delBtn.onclick = deleteTwitchMessage;
-                let banBtn = document.createElement("button");
-                banBtn.title = "Timeout de 1h";
-                banBtn.innerHTML = `<i class="fa fa-ban" aria-hidden="true"></i>`;
-                banBtn.onclick = banTwitchUser;
-
-                div.appendChild(delBtn);
-                div.appendChild(banBtn);
-            }
-
-            if (msg.source == "kick") {
-                let delBtn = document.createElement("button");
-                delBtn.textContent = "Excluir";
-                delBtn.onclick = deleteKickMessage;
-                //div.appendChild(delBtn);
-            }
-
-            div.appendChild(span);
-            chatDiv.appendChild(div);
-            if (chatAcompanhar.checked)
-                chatDiv.scrollTop = chatDiv.scrollHeight;
-        });
-        w.on('user-message-update', function (data) {
-            updateMessageDelete(data?.metadata['target-msg-id']);
-        });
-        w.on('user-message-delete', function (data) {
-            updateMessageDelete(data);
-        });
-        w.on('clear-chat', function (data) {
-            if (data.metadata && data.metadata['target-user-id']) {
-                const msgs = chatDiv.querySelectorAll(`[data-source="twitch"][data-user-id="${data.metadata['target-user-id']}"]`);
-                for (let i = 0; i < msgs.length; i++) {
-                    const msg = msgs[i];
+        w.on("user-message", userMessage);
+        w.on('self-message', userMessage);
+        w.on('user-message-update', (data) => updateMessageDelete(data?.metadata?.['target-msg-id']));
+        w.on('user-message-delete', (data) => updateMessageDelete(data?.messageId));
+        w.on('clear-chat', (data) => {
+            if (data?.metadata?.['target-user-id']) {
+                chatDiv.querySelectorAll(`[data-source="twitch"][data-user-id="${data.metadata['target-user-id']}"]`).forEach(msg => {
                     msg.classList.add('message-deleted');
-                    msg.querySelectorAll('button').forEach(x => { x.remove(); });
-                }
+                    msg.querySelectorAll('button').forEach(b => b.remove());
+                });
             }
         });
-        w.on('result-query-stream-games', function (data) {
-            streamGameList.innerHTML = data.map(x => `<option data-id="${x.id}" data-name="${x.name}" >${x.name}</option>`).join('');
+        w.on('result-query-stream-games', (data) => {
+            document.getElementById('twitch-game-list').innerHTML = data.map(x => `<option data-id="${x.id}" data-name="${x.name}">${x.name}</option>`).join('');
         });
-        w.on('twitch-eventsub-keepalive', function (data) {
-            console.log('twitch-eventsub-keepalive', data);
-            let date = new Date(data.metadata.message_timestamp);
-            console.log(date);
-            twitchLastEventsub.innerHTML = `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}:${date.getSeconds().toString().padStart(2, '0')}`;
+        w.on('twitch-eventsub-keepalive', (data) => {
+            const date = new Date(data?.metadata?.message_timestamp);
+            if (!isNaN(date)) {
+                twitchLastEventsub.textContent = `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}:${date.getSeconds().toString().padStart(2, '0')}`;
+            }
         });
         w.on('result-connect-chat-youtube', updateYouTubeChatConnectiongDetails);
-        w.on('youtube-live-offline', (data)=> {
-            const chat = document.getElementById('chat-connection-youtube').querySelector('.list');
-            if(chat) {
-                const item = chat.querySelector(`[data-live-id="${data.liveId}"]`);
-                if(item) {
-                    item.classList.add('live-off');
-                }
-            }
+        w.on('youtube-live-offline', (data) => {
+            const item = document.querySelector(`#chat-connection-youtube [data-live-id="${data?.liveId}"]`);
+            if (item) item.classList.add('live-off');
         });
 
         w.onTwitch('channel.update', (data) => {
-            const e = data.payload?.event;
-            if (!e) {
-                console.error("stream.online without event", data);
-                return;
+            const e = data?.payload?.event;
+            if (e) {
+                if (!twitchData.stream_details) twitchData.stream_details = {};
+                twitchData.stream_details.title = e.title;
+                twitchData.stream_details.language = e.language;
+                twitchData.stream_details.game_id = e.category_id;
+                twitchData.stream_details.game_name = e.category_name;
+                updateTwitchConnectionDetails();
             }
-            if (!twitchData.stream_details) twitchData.stream_details = {};
-            twitchData.stream_details.title = e.title;
-            twitchData.stream_details.language = e.language;
-            twitchData.stream_details.game_id = e.category_id;
-            twitchData.stream_details.game_name = e.category_name;
-            updateTwitchConnectionDetails();
-        })
-        w.onTwitch("stream.online", (data) => {
-            const e = data.payload?.event;
-            if (!e) {
-                console.error("stream.online without event", data);
-                return;
-            }
-            if (!twitchData.stream_details) twitchData.stream_details = {};
-            twitchData.stream_details.started_at = e.started_at;
-            updateTwitchConnectionDetails();
         });
-        w.onTwitch("stream.offline", (data) => {
-            const e = data.payload?.event;
-            if (!e) {
-                console.error("stream.online without event", data);
-                return;
+        w.onTwitch("stream.online", (data) => {
+            const e = data?.payload?.event;
+            if (e) {
+                if (!twitchData.stream_details) twitchData.stream_details = {};
+                twitchData.stream_details.started_at = e.started_at;
+                updateTwitchConnectionDetails();
             }
-            if (!twitchData.stream_details) return;
-            twitchData.stream_details.started_at = '';
-            updateTwitchConnectionDetails();
+        });
+        w.onTwitch("stream.offline", () => {
+            if (twitchData?.stream_details) {
+                twitchData.stream_details.started_at = '';
+                updateTwitchConnectionDetails();
+            }
         });
         w.onTwitch("automod.message.hold", (data) => {
-            const event = data.payload?.event;
-            if (!event) {
-                console.error("automod.message.hold without event", data);
-                return;
-            }
+            const event = data?.payload?.event;
+            if (!event) return;
 
-            let div = document.createElement("div");
-            div.className = "message";
+            const div = document.createElement("div");
+            div.className = 'message';
             div.dataset.messageId = event.message_id;
             div.dataset.userId = event.user_id;
-            /*
-            div.dataset.channel = msg.channel;
-            div.dataset.user = msg.user;*/
             div.dataset.source = 'twitch';
             div.style.color = "#99999a";
 
-            let span = document.createElement("span");
+            const source = document.createElement("span");
+            source.className = 'chat-source';
+            source.innerHTML = `<img src="https://assets.twitch.tv/assets/favicon-32-e29e246c157142c94346.png" alt="twitch" />`;
 
-            let source = document.createElement("span");
-            let channel = document.createElement("span");
-            let badges = document.createElement('span');
-            let user = document.createElement('span');
-            let message = document.createElement('span');
+            const channel = document.createElement("span");
+            channel.className = 'chat-channel';
+            channel.textContent = event.broadcaster_user_name;
 
-            source.className = "chat-source";
-            channel.className = "chat-channel";
-            badges.className = "chat-badges";
-            user.className = "chat-user";
-            message.className = "chat-message";
+            const badges = document.createElement("span");
+            badges.className = 'chat-badges';
 
-            span.append(source, channel, badges, user, message);
+            const user = document.createElement("span");
+            user.className = 'chat-user';
+            user.textContent = event.user_name;
 
-            let textMessage = event.message.text;
-            const badWords = [];
-            if (event.automod.boundaries) {
+            const message = document.createElement("span");
+            message.className = 'chat-message';
+
+            let textMessage = event.message?.text || '';
+            if (event.automod?.boundaries) {
                 event.automod.boundaries.forEach(x => {
-                    const text = textMessage.substr(x.start_pos, x.end_pos + 1 - x.start_pos);
-                    badWords.push(text);
+                    const highlight = textMessage.substring(x.start_pos, x.end_pos + 1 - x.start_pos);
+                    textMessage = textMessage.replace(highlight, `<span style="background-color: yellow;">${highlight}</span>`);
                 });
             }
+            message.innerHTML = `[${event.reason} - ${event.automod?.category || 'unknown'}] ${textMessage}`;
 
-            badWords.forEach(x => {
-                textMessage = textMessage.replace(x, `<span style="background-color: yellow;">${x}</span>`)
-            })
-
-            source.textContent = 'twitch';
-            channel.textContent = event.broadcaster_user_name;
-            user.textContent = event.user_name;
-            message.innerHTML = `[${event.reason} - ${event.automod?.category}] ${textMessage}`;
-            source.innerHTML = `<img src="https://assets.twitch.tv/assets/favicon-32-e29e246c157142c94346.png" title="twitch" alt="twitch" />`
-
-            let allowBtn = document.createElement("button");
+            const allowBtn = document.createElement("button");
             allowBtn.title = "Permitir";
-            allowBtn.innerHTML = `<i class="fa fa-check" aria-hidden="true"></i>`;
+            allowBtn.innerHTML = '<i class="fa fa-check"></i>';
             allowBtn.onclick = automodTwitchUser;
-            div.appendChild(allowBtn);
 
-            div.appendChild(span);
+            div.append(source, channel, badges, user, message, allowBtn);
             chatDiv.appendChild(div);
-            if (chatAcompanhar.checked)
-                chatDiv.scrollTop = chatDiv.scrollHeight;
-
+            if (chatAcompanhar.checked) chatDiv.scrollTop = chatDiv.scrollHeight;
         });
         w.onTwitch("channel.follow", (data) => {
-            eventDiv.innerHTML += `<div class="event"><span><span class="user">${data.payload.event.user_name}</span> seguiu ${twitchData == null || twitchData.userId == data.payload.event.broadcaster_user_id ? data.payload.event.broadcaster_user_name : 'você'}!</span></div>`;
+            const el = document.createElement('div');
+            el.className = 'event';
+            const userName = data?.payload?.event?.user_name;
+            const broadcaster = twitchData?.userId == data?.payload?.event?.broadcaster_user_id 
+                ? data?.payload?.event?.broadcaster_user_name 
+                : 'você';
+            el.innerHTML = `<span><span class="user">${userName}</span> seguiu ${broadcaster}!</span>`;
+            eventDiv.appendChild(el);
         });
         w.onTwitch("channel.raid", (data) => {
-            eventDiv.innerHTML += `<div class="event"><span><span class="user">${data.payload.event.from_broadcaster_user_name}</span> está raidando ${twitchData == null || twitchData.userId == data.payload.event.to_broadcaster_user_id ? data.payload.event.to_broadcaster_user_name : 'você'} com ${data.payload.event.viewers} viewers!</span></div>`;
+            const el = document.createElement('div');
+            el.className = 'event';
+            const fromName = data?.payload?.event?.from_broadcaster_user_name;
+            const toName = twitchData?.userId == data?.payload?.event?.to_broadcaster_user_id 
+                ? data?.payload?.event?.to_broadcaster_user_name 
+                : 'você';
+            const viewers = data?.payload?.event?.viewers || 0;
+            el.innerHTML = `<span><span class="user">${fromName}</span> está raidando ${toName} com ${viewers} viewers!</span>`;
+            eventDiv.appendChild(el);
+        });
+        w.on('result-get-streamer-data', (data) => {
+            if (data && twitchData?.stream_details) {
+                if (data.viewer_count) twitchData.stream_details.viewer_count = data.viewer_count;
+                if (data.started_at) twitchData.stream_details.started_at = data.started_at;
+            }
         });
 
-        w.on('result-get-streamer-data', function (data) {
-            console.log('result-get-streamer-data', data);
-            //if (data.id == '') return;
-            if (data == null) return;
-            if (!twitchData.stream_details) twitchData.stream_details = {};
-            if (data.viewer_count) twitchData.stream_details.viewer_count = data.viewer_count;
-            if (data.started_at) twitchData.stream_details.started_at = data.started_at;
-        });
-
-        w.connect();
-
+        try {
+            w.connect();
+        } catch (e) {
+            window.onerror?.(`Socket connection error: ${e.message}`, '', 0, 0, e);
+        }
 
         function isValidLatinString(str) {
-            const regex = /^[\p{L}\p{N}!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?~`\s]+$/u;
-            return regex.test(str);
+            return /^[\p{L}\p{N}!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?~`\s]+$/u.test(str);
         }
 
         function getDateDiff(date1, date2) {
-            const diffInMilliseconds = Math.abs(date2.getTime() - date1.getTime());
-            const totalSeconds = Math.floor(diffInMilliseconds / 1000);
-            const hours = Math.floor(totalSeconds / 3600);
-            const minutes = Math.floor((totalSeconds % 3600) / 60);
-            const seconds = totalSeconds % 60;
-            return { hours, minutes, seconds, toString: () => { return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}` } };
+            const diff = Math.abs(date2.getTime() - date1.getTime());
+            const hours = Math.floor(diff / 3600000);
+            const minutes = Math.floor((diff % 3600000) / 60000);
+            const seconds = Math.floor((diff % 60000) / 1000);
+            const pad = (n) => n.toString().padStart(2, '0');
+            return { hours, minutes, seconds, toString: () => `${pad(hours)}:${pad(minutes)}:${pad(seconds)}` };
         }
 
         function parseTimeZone(date) {
-            return new Date(date.getTime() - date.getTimezoneOffset() * 60 * 1000);
+            return new Date(date.getTime() - date.getTimezoneOffset() * 60000);
         }
 
         let timeToUpdateTwitchData = 0;
         setInterval(() => {
-            if (twitchData) {
-                if (twitchData.stream_details) {
-                    lblTwitchViewCount.innerHTML = twitchData.stream_details.viewer_count.toString();
-                    if (twitchData.stream_details.started_at != "") {
-                        const current = new Date(twitchData.stream_details.started_at);
-                        const time = getDateDiff(parseTimeZone(new Date()), parseTimeZone(current));
-                        twitchDiv.querySelector('.stream-time').innerText = time.toString();
-                        
-                        timeToUpdateTwitchData++
-                        if (timeToUpdateTwitchData >= 60) {
-                            timeToUpdateTwitchData = 0;
-                            w.send("get-streamer-data", {});
-                        }
+            if (twitchData?.stream_details) {
+                lblTwitchViewCount.textContent = twitchData.stream_details.viewer_count?.toString() || '0';
+                if (twitchData.stream_details.started_at) {
+                    const start = parseTimeZone(new Date(twitchData.stream_details.started_at));
+                    twitchDiv.querySelector('.stream-time').textContent = getDateDiff(parseTimeZone(new Date()), start).toString();
+                    if (++timeToUpdateTwitchData >= 60) {
+                        timeToUpdateTwitchData = 0;
+                        w.send("get-streamer-data", {});
                     }
                 }
             }
         }, 1000);
 
-        chkShowViewCount.onchange = function () {
-            lblTwitchViewCount.style.color = chkShowViewCount.checked ? "" : "var(--bg-color)";
-        }
+        chkShowViewCount.addEventListener('change', () => {
+            lblTwitchViewCount.style.color = chkShowViewCount.checked ? "" : "var(--bg-primary)";
+        });
 
         function checkuserReference(text) {
-            let t1 = `@${twitchData.userLogin}`;
-            let t2 = `@${twitchData.display_name}`;
-
-            if (t1 == t2)
-                return text.replaceAll(t1, `<span class="streamer-ref">${t1}</span>`);
-
-            return text.replaceAll(t1, `<span class="streamer-ref">${t1}</span>`).replaceAll(t2, `<span class="streamer-ref">${t2}</span>`);
+            const t1 = `@${twitchData?.userLogin || ''}`;
+            const t2 = `@${twitchData?.display_name || ''}`;
+            const highlight = (s) => `<span class="streamer-ref">${s}</span>`;
+            if (t1 === t2) return text.replaceAll(t1, highlight(t1));
+            return text.replaceAll(t1, highlight(t1)).replaceAll(t2, highlight(t2));
         }
 
         function connectToTwitchChat(slug) {
@@ -855,12 +458,10 @@
 
         function deleteTwitchMessage(e) {
             e.preventDefault();
-            const messageDiv = e.target.closest('.message');
-            const user = messageDiv.dataset.user;
-            const message = messageDiv.dataset.messageId;
-
+            const msgDiv = e.target.closest('.message');
+            const user = msgDiv.dataset.user;
+            const message = msgDiv.dataset.messageId;
             if (!user || !message) return;
-
             fetch("/admin/delete/twitch", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -870,38 +471,37 @@
 
         function banTwitchUser(e) {
             e.preventDefault();
-            const messageDiv = e.target.closest('.message');
-            const userId = messageDiv.dataset.userId;
-
+            const msgDiv = e.target.closest('.message');
+            const userId = msgDiv.dataset.userId;
+            if (!userId) return;
             fetch("/admin/ban/twitch", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ userId: userId, duration: 3600 /*1h em segundos*/, reason: "" })
+                body: JSON.stringify({ userId, duration: 3600, reason: "" })
             }).then(res => console.log("Usuário banido:", userId));
         }
+
         function automodTwitchUser(e) {
             e.preventDefault();
-            const messageDiv = e.target.closest('.message');
-            const userId = messageDiv.dataset.userId;
-            const messageId = messageDiv.dataset.messageId;
-            const action = "ALLOW";
-
+            const msgDiv = e.target.closest('.message');
             fetch("/admin/automod/twitch", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ userId: userId, msgId: messageId, action: action })
-            }).then(res => {
-                if (!res.bodyUsed)
+                body: JSON.stringify({ 
+                    userId: msgDiv.dataset.userId, 
+                    msgId: msgDiv.dataset.messageId, 
+                    action: "ALLOW" 
+                })
+            }).then(() => {
+                if (!e.target.closest('.message').classList.contains('message-deleted')) {
                     e.target.closest('.message').remove();
+                }
             });
         }
 
-        // KICK FUNCS
-
         function connectToKickChat(slug) {
-            fetch(`https://kick.com/api/v2/channels/${slug}`).then(x => x.json()).then(d => {
-                console.log(d);
-                if (d.chatroom) {
+            fetch(`https://kick.com/api/v2/channels/${slug}`).then(r => r.json()).then(d => {
+                if (d?.chatroom) {
                     w.send('connect-chat-kick', { channel: slug, roomId: d.chatroom.id.toString() });
                 }
             });
@@ -909,229 +509,348 @@
 
         function deleteKickMessage(e) {
             e.preventDefault();
-
-            //https://kick.com/api/v2/chatrooms/76514426/messages/92504d5f-a107-4c70-85bd-315eb2b88dec
-            const messageDiv = e.target.parentElement;
-            const user = messageDiv.dataset.user;
-            const message = messageDiv.dataset.messageId;
-            const channel = messageDiv.dataset.channel;
-
+            const msgDiv = e.target.parentElement;
+            const channel = msgDiv.dataset.channel;
+            const message = msgDiv.dataset.messageId;
+            if (!channel || !message) return;
             fetch(`https://kick.com/api/v2/chatrooms/${channel.split('.')[1]}/messages/${message}`, {
                 method: "DELETE",
                 headers: {
                     "Authorization": "Bearer MTLJYZUWMZETMJAYYS0ZOWU1LTK4MJYTNGZIMGRHODK4NTK2",
                     "Content-Type": "application/json"
                 }
-            }).then(x => x.json()).then(d => {
-                console.log(d);
             });
         }
 
-
-        // VISUALS
-
-        chatDiv.onscroll = function () {
+        chatDiv.addEventListener('scroll', () => {
             const atBottom = chatDiv.scrollHeight - chatDiv.scrollTop <= chatDiv.clientHeight + 20;
-            if (atBottom) {
-                chatAcompanhar.checked = true;
-            } else {
-                chatAcompanhar.checked = false;
+            chatAcompanhar.checked = atBottom;
+        });
+
+        function sendMessage() {
+            const input = document.getElementById('msg-input');
+            const text = input.value.trim();
+            if (text) {
+                w.send('send-chat-message', { text: text });
+                input.value = '';
             }
         }
 
-        document.getElementById('collapse-events').onchange = function () {
-            document.getElementById('events-title').style.fontSize = this.checked ? '14px' : '';
-            eventDiv.style.display = this.checked ? 'none' : 'block';
-        }
+        document.getElementById('msg-input').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
 
-        document.getElementById('btn-mandar-msg').onclick = function (e) {
+        document.getElementById('btn-mandar-msg').addEventListener('click', (e) => {
             e.preventDefault();
-            const t = prompt("Informe a mensagem a ser enviada para o canal principal de todas plataformas conectadas: ");
-            if (!t || t == '') return;
-            w.send('send-chat-message', { text: t });
-        }
+            sendMessage();
+        });
 
         function updateMessageDelete(messageId) {
-            const msg = document.querySelector(`div[data-message-id="${messageId}"]`);
+            const msg = document.querySelector(`[data-message-id="${messageId}"]`);
             if (msg) {
                 msg.classList.add('message-deleted');
-                msg.querySelectorAll('button').forEach(x => { x.remove(); });
+                msg.querySelectorAll('button').forEach(b => b.remove());
             }
         }
 
         function updateTwitchConnectionDetails(data) {
             if (data) twitchData = data;
-
-            logins.querySelector('#login-twitch').innerHTML = !twitchData || twitchData.userLogin == '' ? `<a href="/twitch/login" target="_blank">Logar Twitch</a>` : `Twitch: <img src="${twitchData.profile_image_url}" /> ${twitchData.userLogin}`;
-            if (!twitchData || !twitchData.userLogin || twitchData.userLogin == '') {
+            const loginEl = logins.querySelector('#login-twitch');
+            
+            if (!twitchData?.userLogin) {
+                loginEl.innerHTML = '<a href="/twitch/login" target="_blank" class="login-link">Logar Twitch</a>';
                 twitchConnections.style.display = 'none';
                 return;
             }
 
-            const streamStatus = twitchDiv.querySelector('.stream-status');
-            streamStatus.innerText = "offline";
-            streamStatus.classList.remove('live-on');
+            loginEl.innerHTML = `Twitch: <img src="${twitchData.profile_image_url}" /> ${twitchData.userLogin}`;
 
+            const streamStatus = twitchDiv.querySelector('.stream-status');
             const sd = twitchData.stream_details;
+            
+            if (sd?.started_at) {
+                streamStatus.textContent = "online";
+                streamStatus.className = 'stream-status live-on';
+            } else {
+                streamStatus.textContent = "offline";
+                streamStatus.className = 'stream-status live-off';
+            }
+
             if (sd) {
-                if (sd.started_at != '') {
-                    twitchDiv.querySelector('.stream-status').innerText = "online";
-                    streamStatus.classList.add('live-on');
-                }
-                lblTwitchViewCount.innerText = sd.viewer_count;
-                twitchGameIdLabel.innerText = sd.game_id;
-                twitchDiv.querySelector('#twitch-title').value = sd.title;
-                if (twitchDiv.querySelectorAll(`#twitch-game-list option[content="${sd.game_id}"]`).length == 0) {
+                lblTwitchViewCount.textContent = sd.viewer_count?.toString() || '0';
+                twitchGameIdLabel.textContent = sd.game_id || '';
+                document.getElementById('twitch-title').value = sd.title || '';
+                if (twitchDiv.querySelectorAll(`#twitch-game-list option[data-id="${sd.game_id}"]`).length === 0) {
                     const gameoption = document.createElement("option");
-                    gameoption.innerText = sd.game_id;
+                    gameoption.textContent = sd.game_id;
                     gameoption.value = sd.game_name;
-                    twitchDiv.querySelector('#twitch-game-list').append(gameoption);
+                    gameoption.dataset.id = sd.game_id;
+                    document.getElementById('twitch-game-list').appendChild(gameoption);
                 }
-                twitchDiv.querySelector('#twitch-game').value = sd.game_name;
-                twitchDiv.querySelector('#twitch-lang').value = sd.language;
-                twitchDiv.querySelector('#twitch-tags').innerHTML = sd.tags.map(x => `<li>${x}</li>`).join('');
+                document.getElementById('twitch-game').value = sd.game_name || '';
+                document.getElementById('twitch-lang').value = sd.language || '';
+                document.getElementById('twitch-tags').innerHTML = (sd.tags || []).map(t => `<li>${t}</li>`).join('');
             }
 
             twitchConnections.style.display = 'inline-block';
-            twitchConnections.querySelector('.btn-novo-chat').onclick = function (e) {
-                e.preventDefault();
+            twitchConnections.querySelector('.btn-novo-chat').onclick = () => {
                 const t = prompt('Informe o usuário Twitch');
-                if (t == '' || !t) return;
-                connectToTwitchChat(t)
-            }
+                if (t) connectToTwitchChat(t);
+            };
         }
 
         function updateYouTubeConnectionDetails(data) {
             youtubeData = data;
-
-            if (!data || !data.Channels || data.Channels.length == 0) {
-                logins.querySelector('#login-youtube').innerHTML = `<a href="/youtube/login" target="_blank">Logar YouTube</a>`;
+            const loginEl = logins.querySelector('#login-youtube');
+            
+            if (!data?.Channels?.length) {
+                loginEl.innerHTML = '<a href="/youtube/login" target="_blank" class="login-link">Logar YouTube</a>';
                 youtubeConnections.style.display = 'none';
                 return;
             }
-            logins.querySelector('#login-youtube').innerHTML = `YouTube: ${data.Channels.map(x => `<img src="${x.thumbnail}" /> ${x.title}`).join('')}`;
 
-            youtubeConnections.querySelector('.form').innerHTML = data.Channels.map(x => `<button type="button" data-id="${x.id}" class="btn-youtube-chat-connect">Connectar ao Chat: ${x.title}</button>`).join('');
-
+            loginEl.innerHTML = `YouTube: ${data.Channels.map(x => `<img src="${x.thumbnail}" /> ${x.title}`).join('')}`;
+            
+            const formDiv = youtubeConnections.querySelector('.form');
+            formDiv.innerHTML = data.Channels.map(x => 
+                `<button type="button" data-id="${x.id}" class="btn-youtube-chat-connect">Connectar ao Chat: ${x.title}</button>`
+            ).join('');
+            
+            youtubeConnections.querySelectorAll('.btn-youtube-chat-connect').forEach(btn => {
+                btn.onclick = () => connectToYouTubeChat(btn.dataset.id);
+            });
             youtubeConnections.style.display = 'block';
-            youtubeConnections.querySelector('.btn-youtube-chat-connect').onclick = function (e) {
-                e.preventDefault();
-                connectToYouTubeChat(e.target.dataset.id);
-            }
         }
 
         function updateKickConnectionDetails(user) {
-            logins.querySelector('#login-kick').innerHTML = user == '' ? `<a href="/kick/login" target="_blank">Logar Kick</a>` : `Kick: ${user}`;
-            if (!user || user == '') {
+            const loginEl = logins.querySelector('#login-kick');
+            
+            if (!user) {
+                loginEl.innerHTML = '<a href="/kick/login" target="_blank" class="login-link">Logar Kick</a>';
                 kickConnections.style.display = "none";
                 return;
             }
-            // tenta conectar ao chat da kick
-            if (kickConnections.querySelectorAll('.list li').length == 0)
-                connectToKickChat(user);
-            kickConnections.style.display = "block";
 
-            kickConnections.querySelector('.btn-novo-chat').onclick = function (e) {
-                e.preventDefault();
+            loginEl.textContent = `Kick: ${user}`;
+            if (!kickConnections.querySelectorAll('.list li').length) connectToKickChat(user);
+            kickConnections.style.display = "block";
+            kickConnections.querySelector('.btn-novo-chat').onclick = () => {
                 const t = prompt('Informe o usuário Kick');
-                if (t == '' || !t) return;
-                connectToKickChat(t);
-            }
+                if (t) connectToKickChat(t);
+            };
         }
 
         function updateYouTubeChatConnectiongDetails(data) {
-            const chat = document.getElementById('chat-connection-youtube').querySelector('.list');
+            const chat = document.querySelector('#chat-connection-youtube .list');
             if (chat && data) {
-                chat.innerHTML = data.map(x => `<li data-live-id="${x.id}">${x.snippet.title}</li>`);
+                chat.innerHTML = data.map(x => `<li data-live-id="${x.id}">${x.snippet?.title || x.id}</li>`).join('');
             }
         }
 
-        txtStreamGame.addEventListener('input', function (e) {
-            console.log('input', txtStreamGame.value);
-            if (txtStreamGame.value == '' || txtStreamGame.value.length < 3) {
-                return;
-            }
-            w.send('query-stream-game', { q: txtStreamGame.value });
-        });
+        const twitchGameInput = document.getElementById('twitch-game');
+        if (twitchGameInput) {
+            twitchGameInput.addEventListener('input', (e) => {
+                if (e.target.value.length >= 3) {
+                    w.send('query-stream-game', { q: e.target.value });
+                }
+            });
+        }
 
         function parseText(data) {
-            let text = parseMessageWithEmotes(data.message);
+            let text = parseMessageWithEmotes(data.message || '');
 
-            if (data.source == "twitch" && data.metadata) {
-                let emotes = data.metadata.emotes.split('/')
-                if (emotes && emotes[0] != '') {
-                    emotes = emotes.map(x => {
-                        let v = x.split(':');
-                        let id = v[0];
-                        let url = `https://static-cdn.jtvnw.net/emoticons/v2/${id}/default/light/1.0`;
-                        let indexes = v[1].split('-').map(y => parseInt(y));
-                        let name = data.message.slice(indexes[0], indexes[1] + 1);
-                        return {
-                            id: id,
-                            url: url,
-                            name: name,
-                            indexes: indexes,
-                        }
-                    });
-                }
+            if (data.source === "twitch" && data.metadata?.emotes) {
+                const emotes = data.metadata.emotes.split('/').filter(e => e && e.includes(':')).map(x => {
+                    const [id, positions] = x.split(':');
+                    const [start, end] = positions.split('-').map(Number);
+                    return {
+                        id,
+                        url: `https://static-cdn.jtvnw.net/emoticons/v2/${id}/default/light/1.0`,
+                        name: (data.message || '').slice(start, end + 1),
+                    };
+                });
 
-                for (let i = 0; i < emotes.length; i++) {
-                    const emote = emotes[i];
-                    text = text.replaceAll(emote.name, `<img src="${emote.url}" alt="${emote.name}" title="${emote.name}" />`)
-                }
-
+                emotes.forEach(emote => {
+                    text = text.replaceAll(emote.name, `<img src="${emote.url}" alt="${emote.name}" title="${emote.name}" />`);
+                });
             }
-
             return text;
         }
 
         function parseMessageWithEmotes(message) {
             const emoteMap = w.getEmotes();
-            return message
+            return (message || '')
                 .split(/\s+/)
                 .map(word => {
                     const url = emoteMap[word];
-                    if (url)
-                        return `<img src="${url}" alt="${word}" title="${word}" class="emote">`;
-                    return word;
+                    return url ? `<img src="${url}" alt="${word}" title="${word}" class="emote">` : word;
                 })
                 .join(" ");
         }
 
+        function userMessage(msg) {
+            const div = document.createElement("div");
+            div.className = 'message';
+            div.dataset.userId = msg.userId;
+            div.dataset.channel = msg.channel;
+            div.dataset.messageId = msg.messageId;
+            div.dataset.user = msg.user;
+            div.dataset.source = msg.source;
+
+            // Build inline message structure
+            const source = document.createElement("span");
+            source.className = 'chat-source';
+
+            const channel = document.createElement("span");
+            channel.className = 'chat-channel';
+            channel.textContent = msg.channel;
+
+            const badges = document.createElement("span");
+            badges.className = 'chat-badges';
+
+            const user = document.createElement("span");
+            user.className = 'chat-user';
+            user.textContent = msg.user;
+
+            const message = document.createElement("span");
+            message.className = 'chat-message';
+
+            // Platform icon
+            const platformIcons = {
+                twitch: `<img src="https://assets.twitch.tv/assets/favicon-32-e29e246c157142c94346.png" alt="twitch" />`,
+                kick: `<img src="https://kick.com/favicon.ico" alt="kick" />`,
+                youtube: `<img src="https://www.youtube.com/s/desktop/d0c6b06b/img/favicon.ico" alt="YouTube" />`
+            };
+            source.innerHTML = platformIcons[msg.source] || msg.source;
+
+            // Parse message with emotes
+            if (msg.source === "twitch") {
+                message.innerHTML = checkuserReference(parseText(msg));
+            } else {
+                message.innerHTML = parseText(msg);
+            }
+
+            // Metadata handling
+            if (msg.metadata) {
+                user.style.color = msg.metadata.color || '';
+
+                if (msg.metadata['first-msg'] === '1') {
+                    div.classList.add('first-message');
+                }
+
+                if (msg.metadata['display-name'] && isValidLatinString(msg.metadata['display_name'])) {
+                    user.textContent = msg.metadata['display-name'];
+                }
+
+                if (msg.metadata['authorDetails']) {
+                    user.innerHTML = `<img src="${msg.metadata['authorDetails'].profileImageUrl}" /> ${msg.user}`;
+                }
+
+                if (msg.metadata['badges-info']) {
+                    badges.innerHTML = Object.entries(msg.metadata['badges-info']).map(([key, info]) => {
+                        if (info?.[0]?.image_url_1x) {
+                            return `<img src="${info[0].image_url_1x}" alt="${info[0].title}" title="${info[0].title}" />`;
+                        }
+                        return '';
+                    }).join('');
+                }
+
+                if (msg.metadata['room']?.profile_image_url) {
+                    channel.innerHTML = `<img src="${msg.metadata['room'].profile_image_url}" alt="${msg.metadata['room'].display_name}" />`;
+                }
+
+                if (msg.metadata['source-room']?.profile_image_url) {
+                    channel.innerHTML = `<img src="${msg.metadata['source-room'].profile_image_url}" alt="${msg.metadata['source-room'].display_name}" />`;
+                }
+
+                if (msg.metadata['source-room-id']) {
+                    div.dataset.sourceRoom = msg.metadata['source-room-id'];
+                }
+
+                // Reply message
+                if (msg.metadata['reply-parent-msg-body']) {
+                    const replyDiv = document.createElement('div');
+                    replyDiv.className = 'reply-message';
+                    const parentUser = `@${msg.metadata['reply-parent-display-name'] || ''}`;
+                    const parentText = parseMessageWithEmotes(msg.metadata['reply-parent-msg-body']);
+                    replyDiv.innerHTML = checkuserReference(`Respondendo a <span>${parentUser}</span>: ${parentText}`).replace(/\s/g, '&nbsp;').replace(/\n/g, '');
+                    div.prepend(replyDiv);
+                }
+            }
+
+            // Action buttons for Twitch
+            if (msg.source === "twitch") {
+                const buttons = document.createElement('span');
+                buttons.className = 'message-buttons-inline';
+
+                const delBtn = document.createElement("button");
+                delBtn.title = "Deletar mensagem";
+                delBtn.innerHTML = '<i class="fa fa-trash"></i>';
+                delBtn.onclick = deleteTwitchMessage;
+
+                const banBtn = document.createElement("button");
+                banBtn.title = "Timeout de 1h";
+                banBtn.innerHTML = '<i class="fa fa-ban"></i>';
+                banBtn.onclick = banTwitchUser;
+
+                buttons.append(delBtn, banBtn);
+                div.append(source, channel, badges, user, message, buttons);
+            } else {
+                div.append(source, channel, badges, user, message);
+            }
+
+            chatDiv.appendChild(div);
+            if (chatAcompanhar.checked) chatDiv.scrollTop = chatDiv.scrollHeight;
+        }
+
         function loadDyModules(modules) {
-            if (!modules || modules.length == 0) {
-                document.getElementById('dyeventstitle').style.display = 'none';
+            if (!modules?.length) {
+                document.getElementById('dyevents-panel').style.display = 'none';
                 dyEventsDiv.style.display = 'none';
                 return;
             }
 
+            const sidebar = document.getElementById('dyevents-sidebar');
+
             modules.forEach(m => {
+                const sidebarItem = document.createElement('div');
+                sidebarItem.className = 'sidebar-item';
+                sidebarItem.textContent = m.name;
+                sidebarItem.addEventListener('click', () => selectDyEvent(m.name));
+                sidebar.appendChild(sidebarItem);
+
                 const div = document.createElement('div');
                 div.id = m.name;
-                div.classList.add('event');
-
+                div.className = 'dyevent-content';
                 div.innerHTML = `
-                <h3>${m.name}</h3>
-                <div>
-                    <label>${m.paused ? 'Paused' : 'Running'}</label>
-                </div>
-                <div class="content-body"></div>
+                    <h3>${m.name}</h3>
+                    <div><label>${m.paused ? 'Paused' : 'Running'}</label></div>
+                    <div class="content-body"></div>
                 `;
 
-                import(`./customevents/${m.name}.js?t=${new Date().toISOString()}`)
-                    .then(module => {
-                        if (module.default) module.default();
-                    })
-                    .catch(error => {
-                        console.error('Module loading failed:', error);
-                    });
+                import(`./customevents/${m.name}.js?t=${Date.now()}`)
+                    .then(module => module.default?.())
+                    .catch(err => console.error('Module loading failed:', m.name, err));
 
-                dyEventsDiv.append(div);
+                dyEventsDiv.appendChild(div);
             });
+
+            if (modules.length > 0) {
+                selectDyEvent(modules[0].name);
+            }
         }
 
+        function selectDyEvent(name) {
+            document.querySelectorAll('.sidebar-item').forEach(item => {
+                item.classList.toggle('active', item.textContent === name);
+            });
+            document.querySelectorAll('.dyevent-content').forEach(content => {
+                content.style.display = content.id === name ? 'block' : 'none';
+            });
+        }
     </script>
-
 </body>
 
 </html>

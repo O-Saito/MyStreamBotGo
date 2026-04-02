@@ -28,8 +28,8 @@ type DyEventQueueData struct {
 	Type              int
 	InnerType         string
 	MessageFromStream globals.MessageFromStream
-	LuaCommand        globals.LuaCommand
-	LuaEvent          globals.LuaEvent
+	LuaCommand        globals.Command
+	LuaEvent          globals.Event
 	SocketMessage     globals.SocketMessage
 }
 
@@ -265,7 +265,7 @@ func RegisterGlobalState(L *lua.LState) {
 }
 
 // Dispatch events to modules
-func HandleCommand(name string, ev *globals.LuaCommand) {
+func HandleCommand(name string, ev *globals.Command) {
 	tbl := LCommands.NewTable()
 	tbl = ToLTableCommand(LCommands, ev, tbl)
 	if fn, ok := commandFunctions[name]; ok {
@@ -285,8 +285,9 @@ func HandleChat(ev *globals.MessageFromStream) {
 	}
 }
 
-func HandleEvent(eventName string, ev *globals.LuaEvent) {
+func HandleEvent(eventName string, ev *globals.Event) {
 	tbl := ToLValue(LEvents, ev.Data)
+
 	for name, fn := range eventFunctions {
 		if strings.Contains(name, eventName) {
 			if err := LEvents.CallByParam(lua.P{Fn: fn, NRet: 0, Protect: true}, tbl); err != nil {
@@ -335,77 +336,42 @@ func StartWatcher() {
 	})
 }
 
-func StartEventQueues() {
-	go func() {
-		helpers.Log(helpers.INFO, "Started chat queue!")
-		for ev := range globals.ChatQueue {
-			DyEventQueue <- DyEventQueueData{
-				Type:              DyEventChat,
-				MessageFromStream: ev,
-			}
-			HandleChat(&ev)
+func ProcessLuaRequest() {
+	helpers.Log(helpers.INFO, "Started lua requests queue!")
+	defer func() {
+		if r := recover(); r != nil {
+			helpers.Logf(helpers.ERROR, "[LuaRequest] panic: %v", r)
 		}
 	}()
-
-	go func() {
-		helpers.Log(helpers.INFO, "Started command queue!")
-		for ev := range globals.CommandQueue {
-			DyEventQueue <- DyEventQueueData{
-				Type:       DyEventCommand,
-				LuaCommand: ev,
-			}
-			HandleCommand(ev.Name, &ev)
+	for ev := range globals.LuaRequest {
+		DyEventQueue <- DyEventQueueData{
+			Type:          DyEventRequest,
+			SocketMessage: ev,
 		}
-	}()
+	}
+}
 
-	go func() {
-		helpers.Log(helpers.INFO, "Started event queue!")
-		for ev := range globals.EventQueue {
-			DyEventQueue <- DyEventQueueData{
-				Type:     DyEventEvent,
-				LuaEvent: ev,
+func ProcessDyEventQueue() {
+	helpers.Log(helpers.INFO, "Started dyevents processor!")
+	for deq := range DyEventQueue {
+		dynamicEventsMutex.RLock()
+		events := dynamicEvents
+		dynamicEventsMutex.RUnlock()
+		for _, dev := range events {
+			if deq.Type == DyEventChat {
+				dev.ProcessChat(&deq.MessageFromStream)
+				continue
+			} else if deq.Type == DyEventCommand {
+				dev.ProcessCommand(&deq.LuaCommand)
+				continue
+			} else if deq.Type == DyEventEvent {
+				dev.ProcessEvent(&deq.LuaEvent)
+				continue
+			} else if deq.Type == DyEventRequest {
+				dev.ProcessRequest(&deq.SocketMessage)
+				continue
 			}
-			HandleEvent(ev.Type, &ev)
+
 		}
-	}()
-
-	go func() {
-		helpers.Log(helpers.INFO, "Started lua requests queue!")
-		defer func() {
-			if r := recover(); r != nil {
-				helpers.Logf(helpers.ERROR, "[LuaRequest] panic: %v", r)
-			}
-		}()
-		for ev := range globals.LuaRequest {
-			DyEventQueue <- DyEventQueueData{
-				Type:          DyEventRequest,
-				SocketMessage: ev,
-			}
-		}
-	}()
-
-	go func() {
-		helpers.Log(helpers.INFO, "Started dyevents processor!")
-		for deq := range DyEventQueue {
-			dynamicEventsMutex.RLock()
-			events := dynamicEvents
-			dynamicEventsMutex.RUnlock()
-			for _, dev := range events {
-				if deq.Type == DyEventChat {
-					dev.ProcessChat(&deq.MessageFromStream)
-					continue
-				} else if deq.Type == DyEventCommand {
-					dev.ProcessCommand(&deq.LuaCommand)
-					continue
-				} else if deq.Type == DyEventEvent {
-					dev.ProcessEvent(&deq.LuaEvent)
-					continue
-				} else if deq.Type == DyEventRequest {
-					dev.ProcessRequest(&deq.SocketMessage)
-					continue
-				}
-
-			}
-		}
-	}()
+	}
 }

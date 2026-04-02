@@ -178,15 +178,8 @@ var messageHandlers = map[string]func(map[string]any, map[string]any){
 
 		eventType := payload["subscription"].(map[string]any)["type"].(string)
 		//ts.execute(metadata.subscription_type, payload.event, payload.subscription);
-		globals.WsBroadcast <- globals.SocketMessage{
+		globals.EventQueue <- globals.Event{
 			Type: "twitch-eventsub-notification",
-			Data: map[string]any{
-				"payload":  payload,
-				"metadata": metadata,
-			},
-		}
-		globals.EventQueue <- globals.LuaEvent{
-			Type: eventType,
 			Data: map[string]any{
 				"payload":  payload,
 				"metadata": metadata,
@@ -391,7 +384,7 @@ func subscribeToEvents() {
 			events = append(events, cd["type"].(string))
 
 			if cd["max_total_cost"] != nil && cd["total_cost"] != nil && cd["max_total_cost"].(float64) < cd["total_cost"].(float64) {
-				helpers.Logf(helpers.ERROR, "FODEU MANÉ LOTO OS COST TUDO!")
+				helpers.Logf(helpers.ERROR, "Twitch max cost reached!")
 			}
 			//helpers.Logf(helpers.INFO, "TWITCH COST FOR %s: (Total Cost: %d / Max Total Cost: %d)", name, int(cd["total_cost"].(float64)), int(cd["max_total_cost"].(float64)))
 

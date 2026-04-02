@@ -10,18 +10,31 @@ function ev.socket_send(type, data) end
 
 ---Get current interval in seconds
 ---@return number
-function ev.getInterval()end
+function ev.get_interval()end
 
 ---Set interval in seconds
 ---@param seconds number
-function ev.setInterval(seconds) end
+function ev.set_interval(seconds) end
 
 ---Check if the module is paused
 ---@return boolean
-function ev.isPaused() end
+function ev.is_paused() end
 
 ---Set the module paused or unpaused
 ---@param paused boolean
-function ev.setPaused(paused) end
+function ev.set_paused(paused) end
+
+---Tell the module to use the database connection
+function ev.use_db() end
+
+---Execute a raw SQL query on the database connection, returning the number of affected rows
+---@param query string
+---@return number
+function ev.db_exec(query) end
+
+---Query the database
+---@param query string
+---@return table
+function ev.db_query(query) end
 
 _G.ev = ev

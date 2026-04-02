@@ -5,6 +5,7 @@ import (
 	"MyStreamBot/goweb"
 	"MyStreamBot/helpers"
 	"MyStreamBot/mlua"
+	"MyStreamBot/processors"
 	"MyStreamBot/services/kick"
 	"MyStreamBot/services/twitch"
 	"MyStreamBot/services/youtube"
@@ -42,7 +43,12 @@ func main() {
 	mlua.StartWatcher()
 
 	// Inicia goroutines de consumo das filas
-	mlua.StartEventQueues()
+	go processors.ProcessChatQueue()
+	go processors.ProcessCommandQueue()
+	go processors.ProcessEventQueue()
+	go mlua.ProcessDyEventQueue()
+	go mlua.ProcessLuaRequest()
+
 	// iniciar servidor web
 	goweb.StartHTTPServer()
 
@@ -50,18 +56,6 @@ func main() {
 	twitch.HandleLogin()
 	kick.HandleLogin()
 	youtube.HandleLogin()
-
-	/*go func() {
-		for {
-			mem := getMemUsage()
-			helpers.Logf(helpers.Blue, "Mem: %.1f MB | Goroutines: %d", mem, runtime.NumGoroutine())
-			time.Sleep(5 * time.Second)
-		}
-	}()
-
-	go func() {
-		// validar refresh tokens
-	}()*/
 
 	select {} // manter aplicação rodando
 }

@@ -227,7 +227,7 @@ func BanUser(userId string, duration int32, reason string) (string, error) {
 	defer resp.Body.Close()
 	if resp.StatusCode != 204 {
 		body, _ := io.ReadAll(resp.Body)
-		return "", fmt.Errorf("erro ao excluir mensagem: %s", body)
+		return "", fmt.Errorf("erro ao banir usuario: %s", body)
 	}
 	body, _ := io.ReadAll(resp.Body)
 	return string(body), nil

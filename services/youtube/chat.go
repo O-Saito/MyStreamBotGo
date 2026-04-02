@@ -96,7 +96,7 @@ func ListenToChat(id string) {
 		data, _ := FetchLiveChatMessages(id, page)
 
 		for _, msg := range data.Items {
-			socketdata := globals.MessageFromStream{
+			messagedata := globals.MessageFromStream{
 				Source:    "youtube",
 				Channel:   id,
 				User:      msg.AuthorDetails.DisplayName,
@@ -110,21 +110,19 @@ func ListenToChat(id string) {
 			}
 
 			state := globals.GetState()
-			if socketdata.Metadata["color"] == nil || socketdata.Metadata["color"] == "" {
+			if messagedata.Metadata["color"] == nil || messagedata.Metadata["color"] == "" {
 				userColor := state.GetData("youtube-user-color")
 				if userColor == nil {
 					userColor = make(map[string]any)
 				}
-				if userColor.(map[string]any)[socketdata.User] == nil {
-					userColor.(map[string]any)[socketdata.User] = defaultUserColor(socketdata.User)
+				if userColor.(map[string]any)[messagedata.User] == nil {
+					userColor.(map[string]any)[messagedata.User] = defaultUserColor(messagedata.User)
 					state.SetData("youtube-user-color", userColor)
 				}
-				socketdata.Metadata["color"] = userColor.(map[string]any)[socketdata.User]
+				messagedata.Metadata["color"] = userColor.(map[string]any)[messagedata.User]
 			}
 
-			globals.WsBroadcast <- globals.SocketMessage{Type: "user-message", Data: socketdata}
-			globals.ChatQueue <- socketdata
-			//fmt.Println(msg.AuthorDetails.DisplayName + ": " + msg.Snippet.DisplayMessage)
+			globals.ChatQueue <- messagedata
 		}
 
 		if !data.OfflineAt.IsZero() && data.OfflineAt.After(time.Now()) {

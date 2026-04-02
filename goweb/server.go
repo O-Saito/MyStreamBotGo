@@ -41,10 +41,10 @@ var SocketHandlers = map[string]func(*websocket.Conn, map[string]any, int){
 				"youtube_connected_chat": globals.GetState().GetData("youtube-lives"),
 				"custom_events_modules":  mlua.ListDynamicEvents(),
 				"twitch_eventsubs":       globals.GetState().GetData("TwitchSubEventsConnectedEvents"),
+				"interface_config":       globals.GetState().GetData("htmlinterface"),
 			},
 			Respond: mytag,
 		}
-		//c.WriteMessage(websocket.TextMessage, []byte(d))
 	},
 	"upgrade-conn": func(c *websocket.Conn, m map[string]any, mytag int) {
 		data := globals.SocketMessage{
@@ -72,7 +72,6 @@ var SocketHandlers = map[string]func(*websocket.Conn, map[string]any, int){
 		}
 
 		globals.WsBroadcast <- data
-		//c.WriteMessage(websocket.TextMessage, []byte(d))
 	},
 }
 
@@ -97,7 +96,9 @@ func StartHTTPServer() {
 			_, msg, err := conn.ReadMessage()
 			if err != nil {
 				helpers.Logf(helpers.ERROR, "[Socket] Error: %v", err)
+				mu.Lock()
 				delete(wsClients, conn)
+				mu.Unlock()
 				break
 			}
 
@@ -108,7 +109,12 @@ func StartHTTPServer() {
 				continue
 			}
 			var data globals.SocketMessage
-			json.Unmarshal([]byte(m), &data)
+			err = json.Unmarshal([]byte(m), &data)
+
+			if err != nil {
+				helpers.Logf(helpers.ERROR, "[Socket] Invalid message format: %s", err.Error())
+				continue
+			}
 
 			if data.Filter != "" {
 				globals.LuaRequest <- data

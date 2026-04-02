@@ -52,8 +52,8 @@ end
 
 function on_start()
     print("[VOTE] Evento iniciado!")
-    ev.setInterval(1)
-    ev.setPaused(false)
+    ev.set_interval(1)
+    ev.set_paused(false)
     reset_data()
     ev.socket_send("config", {
         votacao_em_andamento = ev.data.votacao_em_andamento,

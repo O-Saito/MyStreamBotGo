@@ -564,20 +564,53 @@
         }
 
         /* DyEvents specific */
-        #dyevents-list .event {
+        #dyevents-panel .body {
+            display: flex;
+        }
+
+        #dyevents-sidebar {
+            width: 150px;
+            flex-shrink: 0;
+            border-right: 1px solid var(--border-color);
+            padding-right: 8px;
+        }
+
+        #dyevents-sidebar .sidebar-item {
+            padding: 8px 12px;
+            cursor: pointer;
+            border-radius: 4px;
+            margin-bottom: 4px;
+            transition: background var(--transition);
+        }
+
+        #dyevents-sidebar .sidebar-item:hover {
+            background: var(--bg-tertiary);
+        }
+
+        #dyevents-sidebar .sidebar-item.active {
+            background: var(--bg-tertiary);
+            border-left: 3px solid var(--twitch);
+        }
+
+        #dyevents-list {
+            flex: 1;
+            padding-left: 8px;
+        }
+
+        #dyevents-list .dyevent-content {
             border: 1px solid var(--border-color);
             margin: 5px;
             padding: 8px;
         }
 
-        #dyevents-list .event > h3 {
+        #dyevents-list .dyevent-content > h3 {
             margin-bottom: 2px;
             margin-top: 0;
             border-bottom: 1px solid var(--border-color);
             display: inline-block;
         }
 
-        #dyevents-list .event > div:not(.content-body) {
+        #dyevents-list .dyevent-content > div:not(.content-body) {
             display: inline-block;
         }
 

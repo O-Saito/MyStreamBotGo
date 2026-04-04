@@ -10,23 +10,6 @@
 
 <body>
     <div id="logins">
-        <div class="areas">
-            <div class="header">
-                <label><input type="checkbox" class="display-collapse" checked /></label>
-                <span>System</span>
-            </div>
-            <div class="body collapse-area">
-                <div class="nerd-section">
-                    <div><strong>Nerd:</strong></div>
-                    <div>Twitch Ultimo Keepalive: <label id="twitch-last-eventsub"></label></div>
-                    <div>Twitch GameID: <label id="twitch-game-id"></label></div>
-                </div>
-                <div class="ui-errors-section">
-                    <div><strong>UI Errors:</strong></div>
-                    <div id="ui-errors-list"></div>
-                </div>
-            </div>
-        </div>
         <div id="twitch" class="areas">
             <div class="header">
                 <label><input type="checkbox" class="display-collapse" /></label>
@@ -56,7 +39,8 @@
                         </div>
                     </div>
                     <div id="chat-connection-twitch" class="chat-list" style="display: inline-block;">
-                        <button type="button" class="btn-secondary btn-novo-chat" style="display: none;">Conectar a um chat Twitch</button>
+                        <button type="button" class="btn-secondary btn-novo-chat" style="display: none;">Conectar a um
+                            chat Twitch</button>
                         <ul class="list"></ul>
                     </div>
                 </div>
@@ -68,11 +52,13 @@
                 <span id="login-kick"></span>
             </div>
             <div class="body collapse-area">
-                <div id="chat-connection-kick" class="chat-list">
+                <div class="platform-grid">
                     <div class="form">
                         <button type="button" class="btn-secondary btn-novo-chat">Conectar a um chat Kick</button>
                     </div>
-                    <ul class="list"></ul>
+                    <div id="chat-connection-kick" class="chat-list">
+                        <ul class="list"></ul>
+                    </div>
                 </div>
             </div>
         </div>
@@ -82,8 +68,11 @@
                 <span id="login-youtube"><a href="/youtube/login" target="_blank">Logar Youtube</a></span>
             </div>
             <div class="body collapse-area">
-                <div id="chat-connection-youtube" class="chat-list">
-                    <ul class="list"></ul>
+                <div class="platform-grid">
+                    <div class="form"></div>
+                    <div id="chat-connection-youtube" class="chat-list">
+                        <ul class="list"></ul>
+                    </div>
                 </div>
             </div>
         </div>
@@ -100,7 +89,8 @@
             </label>
             <span class="view-count-area" style="float: right; vertical-align: middle;">
                 <span>
-                    <img src="https://assets.twitch.tv/assets/favicon-32-e29e246c157142c94346.png" style="height: 20px;" />
+                    <img src="https://assets.twitch.tv/assets/favicon-32-e29e246c157142c94346.png"
+                        style="height: 20px;" />
                     <span id="twitch-view-count">0</span>
                 </span>
             </span>
@@ -121,6 +111,24 @@
         </div>
         <div class="body collapse-area">
             <div id="events-list"></div>
+        </div>
+    </div>
+
+    <div id="system" class="areas">
+        <div class="header">
+            <label><input type="checkbox" class="display-collapse" /></label>
+            <span>System</span>
+        </div>
+        <div class="body collapse-area">
+            <div class="nerd-section">
+                <div><strong>Nerd:</strong></div>
+                <div>Twitch Last Keepalive: <label id="twitch-last-eventsub"></label></div>
+                <div>Twitch GameID: <label id="twitch-game-id"></label></div>
+            </div>
+            <div class="ui-errors-section">
+                <div><strong>UI Errors:</strong></div>
+                <div id="ui-errors-list"></div>
+            </div>
         </div>
     </div>
 
@@ -165,32 +173,174 @@
         import w from './wrapper.js'
 
         const twitchDiv = document.getElementById('twitch');
+        const youtubeDiv = document.getElementById('youtube');
+        const kickDiv = document.getElementById('kick');
+
         const logins = document.getElementById('logins');
         const kickConnections = document.querySelector('#chat-connection-kick');
         const twitchConnections = document.querySelector('#chat-connection-twitch');
         const youtubeConnections = document.querySelector('#chat-connection-youtube');
+
         const twitchLastEventsub = document.getElementById('twitch-last-eventsub');
         const chatDiv = document.querySelector("#chat .content");
         const chatAcompanhar = document.getElementById('chk-acompanhar-chat');
+
         const eventDiv = document.getElementById('events-list');
         const dyEventsDiv = document.getElementById('dyevents-list');
-        const lblTwitchViewCount = document.getElementById("twitch-view-count");
+
         const chkShowViewCount = document.getElementById('chk-show-view-count');
+        const lblTwitchViewCount = document.getElementById("twitch-view-count");
+
         const twitchGameIdLabel = document.getElementById('twitch-game-id');
         const txtStreamGame = document.getElementById('stream-game') || document.getElementById('twitch-game');
         const streamGameList = document.getElementById('stream-games') || document.getElementById('twitch-game-list');
 
+        const UI_STATE_KEY = 'mystreambot_ui_state';
+        const defaultState = {
+            sections: {
+                twitch: { collapsed: false },
+                kick: { collapsed: false },
+                youtube: { collapsed: false },
+                system: { collapsed: false },
+                'events-panel': { collapsed: false },
+                'dyevents-panel': { collapsed: false }
+            },
+            preferences: {
+                acompanharChat: true,
+                showViewCount: true,
+                chatHeight: 400,
+                eventsHeight: 100
+            }
+        };
+
+        let uiState = JSON.parse(JSON.stringify(defaultState));
+
+        function loadUIState() {
+            try {
+                const saved = localStorage.getItem(UI_STATE_KEY);
+                if (saved) {
+                    const parsed = JSON.parse(saved);
+                    uiState = {
+                        sections: { ...defaultState.sections, ...parsed.sections },
+                        preferences: { ...defaultState.preferences, ...parsed.preferences }
+                    };
+                }
+            } catch (e) {
+                console.error('Failed to load UI state:', e);
+                uiState = JSON.parse(JSON.stringify(defaultState));
+            }
+        }
+
+        function saveUIState() {
+            try {
+                localStorage.setItem(UI_STATE_KEY, JSON.stringify(uiState));
+            } catch (e) {
+                console.error('Failed to save UI state:', e);
+            }
+        }
+
+        function setSectionCollapsed(id, collapsed) {
+            if (uiState.sections[id] !== undefined) {
+                uiState.sections[id].collapsed = collapsed;
+                saveUIState();
+            }
+        }
+
+        function setPreference(key, value) {
+            if (uiState.preferences[key] !== undefined) {
+                uiState.preferences[key] = value;
+                saveUIState();
+            }
+        }
+
+        function setChatHeight(height) {
+            uiState.preferences.chatHeight = height;
+            saveUIState();
+        }
+
+        function setEventsHeight(height) {
+            uiState.preferences.eventsHeight = height;
+            saveUIState();
+        }
+
+        const chatContent = document.querySelector('#chat .content');
+        const eventsList = document.getElementById('events-list');
+
+        function applyUIState() {
+            Object.entries(uiState.sections).forEach(([id, data]) => {
+                const el = document.getElementById(id);
+                if (!el) return;
+                const chk = el.querySelector('.display-collapse, #toggle-dyevents, #collapse-events');
+                const area = el.querySelector('.collapse-area');
+                const body = el.querySelector('.body');
+                if (chk && area && body) {
+                    chk.checked = !data.collapsed;
+                    if (data.collapsed) {
+                        area.classList.add('closed');
+                        body.classList.add('collapsed');
+                    } else {
+                        area.classList.remove('closed');
+                        body.classList.remove('collapsed');
+                    }
+                }
+            });
+
+            chatAcompanhar.checked = uiState.preferences.acompanharChat;
+            chkShowViewCount.checked = uiState.preferences.showViewCount;
+            lblTwitchViewCount.style.color = uiState.preferences.showViewCount ? "" : "var(--bg-primary)";
+            chatContent.style.height = uiState.preferences.chatHeight + 'px';
+            eventsList.style.height = uiState.preferences.eventsHeight + 'px';
+        }
+
+        loadUIState();
+        applyUIState();
+
+        if (!(ResizeObserver)) { 
+            console.error('ResizeObserver is not supported in this browser. Chat and events panels will not resize dynamically.');
+        }
+
+        if (ResizeObserver) { 
+            const chatResizeObserver = new ResizeObserver(entries => {
+                for (let entry of entries) {
+                    setChatHeight(entry.contentRect.height);
+                }
+            });
+            chatResizeObserver.observe(chatContent);
+    
+            const eventsResizeObserver = new ResizeObserver(entries => {
+                for (let entry of entries) {
+                    setEventsHeight(entry.contentRect.height);
+                }
+            });
+            eventsResizeObserver.observe(eventsList);
+        }
+
+
+        // Preference handlers
+        chatAcompanhar.addEventListener('change', () => {
+            setPreference('acompanharChat', chatAcompanhar.checked);
+        });
+
+        chkShowViewCount.addEventListener('change', () => {
+            lblTwitchViewCount.style.color = chkShowViewCount.checked ? "" : "var(--bg-primary)";
+            setPreference('showViewCount', chkShowViewCount.checked);
+        });
+
         // Collapse handlers
         document.querySelectorAll('.display-collapse').forEach(chk => {
             chk.addEventListener('change', function () {
-                const area = this.closest('.areas').querySelector('.collapse-area');
-                const body = this.closest('.areas').querySelector('.body');
+                const area = this.closest('.areas');
+                const sectionId = area.id;
+                const collapseArea = area.querySelector('.collapse-area');
+                const body = area.querySelector('.body');
                 if (this.checked) {
-                    area.classList.remove('closed');
+                    collapseArea.classList.remove('closed');
                     body.classList.remove('collapsed');
+                    setSectionCollapsed(sectionId, false);
                 } else {
-                    area.classList.add('closed');
+                    collapseArea.classList.add('closed');
                     body.classList.add('collapsed');
+                    setSectionCollapsed(sectionId, true);
                 }
             });
             chk.dispatchEvent(new Event('change'));
@@ -203,9 +353,11 @@
             if (this.checked) {
                 collapseArea.classList.remove('closed');
                 body.classList.remove('collapsed');
+                setSectionCollapsed('dyevents-panel', false);
             } else {
                 collapseArea.classList.add('closed');
                 body.classList.add('collapsed');
+                setSectionCollapsed('dyevents-panel', true);
             }
         });
         document.getElementById('toggle-dyevents').dispatchEvent(new Event('change'));
@@ -217,9 +369,11 @@
             if (this.checked) {
                 collapseArea.classList.remove('closed');
                 body.classList.remove('collapsed');
+                setSectionCollapsed('events-panel', false);
             } else {
                 collapseArea.classList.add('closed');
                 body.classList.add('collapsed');
+                setSectionCollapsed('events-panel', true);
             }
         });
         document.getElementById('collapse-events').dispatchEvent(new Event('change'));
@@ -374,8 +528,8 @@
             const el = document.createElement('div');
             el.className = 'event';
             const userName = data?.payload?.event?.user_name;
-            const broadcaster = twitchData?.userId == data?.payload?.event?.broadcaster_user_id 
-                ? data?.payload?.event?.broadcaster_user_name 
+            const broadcaster = twitchData?.userId == data?.payload?.event?.broadcaster_user_id
+                ? data?.payload?.event?.broadcaster_user_name
                 : 'você';
             el.innerHTML = `<span><span class="user">${userName}</span> seguiu ${broadcaster}!</span>`;
             eventDiv.appendChild(el);
@@ -384,8 +538,8 @@
             const el = document.createElement('div');
             el.className = 'event';
             const fromName = data?.payload?.event?.from_broadcaster_user_name;
-            const toName = twitchData?.userId == data?.payload?.event?.to_broadcaster_user_id 
-                ? data?.payload?.event?.to_broadcaster_user_name 
+            const toName = twitchData?.userId == data?.payload?.event?.to_broadcaster_user_id
+                ? data?.payload?.event?.to_broadcaster_user_name
                 : 'você';
             const viewers = data?.payload?.event?.viewers || 0;
             el.innerHTML = `<span><span class="user">${fromName}</span> está raidando ${toName} com ${viewers} viewers!</span>`;
@@ -436,10 +590,6 @@
             }
         }, 1000);
 
-        chkShowViewCount.addEventListener('change', () => {
-            lblTwitchViewCount.style.color = chkShowViewCount.checked ? "" : "var(--bg-primary)";
-        });
-
         function checkuserReference(text) {
             const t1 = `@${twitchData?.userLogin || ''}`;
             const t2 = `@${twitchData?.display_name || ''}`;
@@ -487,10 +637,10 @@
             fetch("/admin/automod/twitch", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ 
-                    userId: msgDiv.dataset.userId, 
-                    msgId: msgDiv.dataset.messageId, 
-                    action: "ALLOW" 
+                body: JSON.stringify({
+                    userId: msgDiv.dataset.userId,
+                    msgId: msgDiv.dataset.messageId,
+                    action: "ALLOW"
                 })
             }).then(() => {
                 if (!e.target.closest('.message').classList.contains('message-deleted')) {
@@ -558,7 +708,7 @@
         function updateTwitchConnectionDetails(data) {
             if (data) twitchData = data;
             const loginEl = logins.querySelector('#login-twitch');
-            
+
             if (!twitchData?.userLogin) {
                 loginEl.innerHTML = '<a href="/twitch/login" target="_blank" class="login-link">Logar Twitch</a>';
                 twitchConnections.style.display = 'none';
@@ -569,7 +719,7 @@
 
             const streamStatus = twitchDiv.querySelector('.stream-status');
             const sd = twitchData.stream_details;
-            
+
             if (sd?.started_at) {
                 streamStatus.textContent = "online";
                 streamStatus.className = 'stream-status live-on';
@@ -604,21 +754,36 @@
         function updateYouTubeConnectionDetails(data) {
             youtubeData = data;
             const loginEl = logins.querySelector('#login-youtube');
-            
+            loginEl.innerHTML = '';
+
             if (!data?.Channels?.length) {
                 loginEl.innerHTML = '<a href="/youtube/login" target="_blank" class="login-link">Logar YouTube</a>';
                 youtubeConnections.style.display = 'none';
                 return;
             }
 
-            loginEl.innerHTML = `YouTube: ${data.Channels.map(x => `<img src="${x.thumbnail}" /> ${x.title}`).join('')}`;
-            
-            const formDiv = youtubeConnections.querySelector('.form');
-            formDiv.innerHTML = data.Channels.map(x => 
-                `<button type="button" data-id="${x.id}" class="btn-youtube-chat-connect">Connectar ao Chat: ${x.title}</button>`
-            ).join('');
-            
-            youtubeConnections.querySelectorAll('.btn-youtube-chat-connect').forEach(btn => {
+            data.Channels.forEach(c => {
+                const span = document.createElement('span');
+                span.innerHTML = `<img src="${c.thumbnail}" /> ${c.title}`;
+                loginEl.appendChild(span);
+            });
+
+            //loginEl.innerHTML = `YouTube: ${data.Channels.map(x => `<img src="${x.thumbnail}" /> ${x.title}`).join('')}`;
+
+            const formDiv = youtubeDiv.querySelector('.form');
+
+            const buttons = [];
+
+            data.Channels.forEach(c => {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.dataset.id = c.id;
+                btn.className = 'btn-youtube-chat-connect';
+                btn.textContent = `Conectar ao Chat: ${c.title}`;
+                formDiv.appendChild(btn);
+                buttons.push(btn);
+            });
+            buttons.forEach(btn => {
                 btn.onclick = () => connectToYouTubeChat(btn.dataset.id);
             });
             youtubeConnections.style.display = 'block';
@@ -626,7 +791,7 @@
 
         function updateKickConnectionDetails(user) {
             const loginEl = logins.querySelector('#login-kick');
-            
+
             if (!user) {
                 loginEl.innerHTML = '<a href="/kick/login" target="_blank" class="login-link">Logar Kick</a>';
                 kickConnections.style.display = "none";
@@ -636,10 +801,10 @@
             loginEl.textContent = `Kick: ${user}`;
             if (!kickConnections.querySelectorAll('.list li').length) connectToKickChat(user);
             kickConnections.style.display = "block";
-            kickConnections.querySelector('.btn-novo-chat').onclick = () => {
-                const t = prompt('Informe o usuário Kick');
-                if (t) connectToKickChat(t);
-            };
+            // kickConnections.querySelector('.btn-novo-chat').onclick = () => {
+            //     const t = prompt('Informe o usuário Kick');
+            //     if (t) connectToKickChat(t);
+            // };
         }
 
         function updateYouTubeChatConnectiongDetails(data) {

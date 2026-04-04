@@ -70,7 +70,6 @@ type Thumbnail struct {
 }
 
 func RefreshToken() error {
-
 	currentuser := globals.GetState().GetYouTubeUser()
 
 	data := url.Values{}
@@ -79,18 +78,7 @@ func RefreshToken() error {
 	data.Set("refresh_token", currentuser.RefreshToken)
 	data.Set("grant_type", "refresh_token")
 
-	/*d := map[string]any{
-		"client_id":     globals.GetConfig().YouTubeClientID,
-		"client_secret": globals.GetConfig().YouTubeClientSecret,
-		"refresh_token": currentuser.RefreshToken,
-		"grant_type":    "refresh_token",
-	}
-	data, _ := json.Marshal(d)
-	helpers.Logf(helpers.Red, "YT DATA %v", d)*/
 	resp, err := http.PostForm("https://oauth2.googleapis.com/token", data)
-	/*req, _ := http.NewRequest("POST", "https://oauth2.googleapis.com/token", bytes.NewBuffer(data))
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	resp, err := http.DefaultClient.Do(req)*/
 	if err != nil {
 		return err
 	}

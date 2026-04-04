@@ -4,12 +4,27 @@ import (
 	"MyStreamBot/globals"
 	"MyStreamBot/helpers"
 	"MyStreamBot/mlua"
+	"MyStreamBot/services"
 	"MyStreamBot/services/kick"
 	"MyStreamBot/services/twitch"
+	"MyStreamBot/services/youtube"
 	"encoding/json"
 
 	lua "github.com/yuin/gopher-lua"
 )
+
+var KickFunctionList = []services.LuaFunction{
+	{Name: "get_user", Fn: kick.GetUser},
+	{Name: "get_channel", Fn: kick.GetChannel},
+	{Name: "get_chatroom", Fn: kick.GetChatroom},
+	{Name: "post_message", Fn: kick.PostMessage},
+}
+
+var YouTubeFunctionList = []services.LuaFunction{
+	{Name: "get_current_youtube_channel", Fn: youtube.GetCurrentYouTubeChannel},
+	{Name: "get_current_streamings", Fn: youtube.GetCurrentStreamings},
+	{Name: "refresh_token", Fn: youtube.RefreshToken},
+}
 
 func RegisterLuaFunctions(L *lua.LState) {
 	mlua.ExposeServiceToLua(L, "g", map[string]func(*lua.LState) int{
@@ -108,7 +123,6 @@ func RegisterLuaFunctions(L *lua.LState) {
 }
 
 func RegisterTwitchLuaFunctions(L *lua.LState) {
-
 	mlua.ExposeServiceToLua(L, "twitch", map[string]func(*lua.LState) int{
 		"get_cache_user_chat_color": func(l *lua.LState) int {
 			if L.Get(1) == lua.LNil {
@@ -189,4 +203,9 @@ func RegisterTwitchLuaFunctions(L *lua.LState) {
 			return 1
 		},
 	})
+}
+
+func RegisterServiceAPIs(L *lua.LState) {
+	services.ExposeToLua(L, "kick", KickFunctionList)
+	services.ExposeToLua(L, "youtube", YouTubeFunctionList)
 }

@@ -26,6 +26,17 @@ var YouTubeFunctionList = []services.LuaFunction{
 	{Name: "refresh_token", Fn: youtube.RefreshToken},
 }
 
+var TwitchFunctionList = []services.LuaFunction{
+	{Name: "get_cache_user_chat_color", Fn: twitch.GetCacheUserChatColor},
+	{Name: "get_user_data", Fn: twitch.GetUserData},
+	{Name: "get_user_data_by_id", Fn: twitch.GetUserDataById},
+	{Name: "get_followers_data", Fn: twitch.GetFollowersData},
+	{Name: "get_follower_data", Fn: func(userId string) ([]twitch.TwitchViewerData, error) {
+		return twitch.GetFollowersData("", userId)
+	}},
+	{Name: "get_channel_stream_data", Fn: twitch.GetChannelStreamData},
+}
+
 func RegisterLuaFunctions(L *lua.LState) {
 	mlua.ExposeServiceToLua(L, "g", map[string]func(*lua.LState) int{
 		"log": func(L *lua.LState) int {
@@ -122,90 +133,8 @@ func RegisterLuaFunctions(L *lua.LState) {
 
 }
 
-func RegisterTwitchLuaFunctions(L *lua.LState) {
-	mlua.ExposeServiceToLua(L, "twitch", map[string]func(*lua.LState) int{
-		"get_cache_user_chat_color": func(l *lua.LState) int {
-			if L.Get(1) == lua.LNil {
-				L.Push(lua.LNil)
-				return 1
-			}
-			username := L.CheckString(1)
-			d := twitch.GetCacheUserChatColor(username)
-			//helpers.Logf(helpers.Blue, "TESTE %v", d)
-			L.Push(mlua.ToLValue(L, d))
-			return 1
-		},
-		"get_user_data": func(l *lua.LState) int {
-			if L.Get(1) == lua.LNil {
-				L.Push(lua.LNil)
-				return 1
-			}
-			username := L.CheckString(1)
-			d, err := twitch.GetUserData(username)
-			if err != nil {
-				L.Push(lua.LNil)
-				return 1
-			}
-			L.Push(mlua.ToLValue(L, d))
-			return 1
-		},
-		"get_user_data_by_id": func(l *lua.LState) int {
-			if L.Get(1) == lua.LNil {
-				L.Push(lua.LNil)
-				return 1
-			}
-			userid := L.CheckString(1)
-			d, err := twitch.GetUserDataById(userid)
-			if err != nil {
-				L.Push(lua.LNil)
-				return 1
-			}
-			L.Push(mlua.ToLValue(L, d))
-			return 1
-		},
-		"get_followers_data": func(l *lua.LState) int {
-			d, err := twitch.GetFollowersData(globals.GetState().TwitchUser.UserID, "")
-			//helpers.Logf(helpers.Red, "TESTE F %v %v", d, err)
-			if err != nil {
-				L.Push(lua.LNil)
-				return 1
-			}
-			L.Push(mlua.ToLValue(L, d))
-			return 1
-		},
-		"get_follower_data": func(l *lua.LState) int {
-			if L.Get(1) == lua.LNil {
-				L.Push(lua.LNil)
-				return 1
-			}
-			userid := L.CheckString(1)
-			d, err := twitch.GetFollowersData("", userid)
-			//helpers.Logf(helpers.Red, "TESTE F %v %v", d, err)
-			if err != nil {
-				L.Push(lua.LNil)
-				return 1
-			}
-			L.Push(mlua.ToLValue(L, d))
-			return 1
-		},
-		"get_channel_stream_data": func(l *lua.LState) int {
-			if L.Get(1) == lua.LNil {
-				L.Push(lua.LNil)
-				return 1
-			}
-			channel := L.CheckString(1)
-			d, err := twitch.GetChannelStreamData(channel)
-			if err != nil {
-				L.Push(lua.LNil)
-				return 1
-			}
-			L.Push(mlua.ToLValue(L, d))
-			return 1
-		},
-	})
-}
-
 func RegisterServiceAPIs(L *lua.LState) {
+	services.ExposeToLua(L, "twitch", TwitchFunctionList)
 	services.ExposeToLua(L, "kick", KickFunctionList)
 	services.ExposeToLua(L, "youtube", YouTubeFunctionList)
 }

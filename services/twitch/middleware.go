@@ -7,7 +7,7 @@ import (
 	"net/http"
 )
 
-func addAuthHeaders(req *http.Request) {
+func AddAuthHeaders(req *http.Request) {
 	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", globals.GetState().GetTwitchUser().Token))
 	req.Header.Set("Client-ID", globals.GetConfig().TwitchClientID)
 }
@@ -16,7 +16,7 @@ func addAuthHeaders(req *http.Request) {
 // Detecta erros 401 (token expirado) e tenta fazer refresh e retry automaticamente
 func DoRequest(req *http.Request) (*http.Response, error) {
 	// Define o Authorization header
-	addAuthHeaders(req)
+	AddAuthHeaders(req)
 
 	// Faz a requisição
 	resp, err := http.DefaultClient.Do(req)
@@ -38,7 +38,7 @@ func DoRequest(req *http.Request) (*http.Response, error) {
 		}
 
 		// Atualiza o Authorization header com o novo token
-		addAuthHeaders(req)
+		AddAuthHeaders(req)
 
 		// Tenta novamente
 		helpers.Logf(helpers.DEBUG, "[TWITCH] Retry de requisição com novo token")

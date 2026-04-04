@@ -36,7 +36,7 @@ func main() {
 	RegisterSocketHandlers()
 
 	// Inicializa o package mlua
-	mlua.Init(RegisterLuaFunctions, RegisterTwitchLuaFunctions)
+	mlua.Init(RegisterLuaFunctions, RegisterTwitchLuaFunctions, RegisterServiceAPIs)
 
 	// Carrega todos os módulos Lua e inicia hotreload
 	mlua.LoadAllModules()

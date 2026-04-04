@@ -342,9 +342,11 @@ func subscribeToEvents() {
 
 	oldSubs, _ := GetEventSubscriptions()
 
-	for _, sub := range oldSubs.Data {
-		if sub.Transport.Method == "websocket" && sub.Condition.BroadcasterUserId == data.Condition.BroadcasterUserId && sub.Transport.SessionId != data.Transport.SessionId {
-			DeleteEventSubscriptions(sub.Id)
+	if oldSubs != nil && oldSubs.Data != nil {
+		for _, sub := range oldSubs.Data {
+			if sub.Transport.Method == "websocket" && sub.Condition.BroadcasterUserId == data.Condition.BroadcasterUserId && sub.Transport.SessionId != data.Transport.SessionId {
+				DeleteEventSubscriptions(sub.Id)
+			}
 		}
 	}
 	subTypes := globals.GetConfig().GetTwitchSubTypes()

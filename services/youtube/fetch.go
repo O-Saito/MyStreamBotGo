@@ -123,3 +123,72 @@ func GetCurrentYouTubeChannel() (*YouTubeChannelListResponse, error) {
 	json.Unmarshal(body, &r)
 	return &r, nil
 }
+
+type VideoListResponse struct {
+	Kind  string  `json:"kind"`
+	Etag  string  `json:"etag"`
+	Items []Video `json:"items"`
+}
+
+type Video struct {
+	Kind                 string            `json:"kind"`
+	ID                   string            `json:"id"`
+	LiveStreamingDetails *VideoLiveDetails `json:"liveStreamingDetails,omitempty"`
+	Snippet              *VideoSnippet     `json:"snippet,omitempty"`
+}
+
+type VideoSnippet struct {
+	Title string `json:"title,omitempty"`
+}
+
+type VideoLiveDetails struct {
+	ConcurrentViewers  string `json:"concurrentViewers,omitempty"`
+	ActiveLiveChatID   string `json:"activeLiveChatId,omitempty"`
+	ActualStartTime    string `json:"actualStartTime,omitempty"`
+	ActualEndTime      string `json:"actualEndTime,omitempty"`
+	ScheduledStartTime string `json:"scheduledStartTime,omitempty"`
+	ScheduledEndTime   string `json:"scheduledEndTime,omitempty"`
+}
+
+type StreamData struct {
+	VideoID            string `json:"video_id"`
+	Title              string `json:"title"`
+	ConcurrentViewers  string `json:"concurrent_viewers"`
+	LiveChatID         string `json:"live_chat_id"`
+	ActualStartTime    string `json:"actual_start_time"`
+	ActualEndTime      string `json:"actual_end_time"`
+	ScheduledStartTime string `json:"scheduled_start_time"`
+	ScheduledEndTime   string `json:"scheduled_end_time"`
+}
+
+func GetStreamData(videoID string) (*StreamData, error) {
+	req, _ := http.NewRequest("GET", "https://www.googleapis.com/youtube/v3/videos", nil)
+	req.URL.RawQuery = fmt.Sprintf("part=liveStreamingDetails,snippet&id=%s", videoID)
+
+	resp, err := DoYouTubeRequest(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	var videoResp VideoListResponse
+	body, _ := io.ReadAll(resp.Body)
+	json.Unmarshal(body, &videoResp)
+
+	if len(videoResp.Items) == 0 {
+		return nil, nil
+	}
+
+	video := videoResp.Items[0]
+
+	return &StreamData{
+		VideoID:            videoID,
+		Title:              video.Snippet.Title,
+		ConcurrentViewers:  video.LiveStreamingDetails.ConcurrentViewers,
+		LiveChatID:         video.LiveStreamingDetails.ActiveLiveChatID,
+		ActualStartTime:    video.LiveStreamingDetails.ActualStartTime,
+		ActualEndTime:      video.LiveStreamingDetails.ActualEndTime,
+		ScheduledStartTime: video.LiveStreamingDetails.ScheduledStartTime,
+		ScheduledEndTime:   video.LiveStreamingDetails.ScheduledEndTime,
+	}, nil
+}

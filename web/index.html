@@ -66,6 +66,8 @@
             <div class="header">
                 <label><input type="checkbox" class="display-collapse" /></label>
                 <span id="login-youtube"><a href="/youtube/login" target="_blank">Logar Youtube</a></span>
+                <span class="stream-time"></span>
+                <span class="stream-status"></span>
             </div>
             <div class="body collapse-area">
                 <div class="platform-grid">
@@ -88,11 +90,12 @@
                 <input type="checkbox" id="chk-show-view-count" checked />Contador de View
             </label>
             <span class="view-count-area" style="float: right; vertical-align: middle;">
-                <span>
+                <span id="twitch-view-count-wrapper">
                     <img src="https://assets.twitch.tv/assets/favicon-32-e29e246c157142c94346.png"
                         style="height: 20px;" />
                     <span id="twitch-view-count">0</span>
                 </span>
+                <span id="youtube-view-counts-wrapper" style="margin-left: 10px;"></span>
             </span>
         </span>
         <div id="chat">
@@ -324,6 +327,7 @@
         chkShowViewCount.addEventListener('change', () => {
             lblTwitchViewCount.style.color = chkShowViewCount.checked ? "" : "var(--bg-primary)";
             setPreference('showViewCount', chkShowViewCount.checked);
+            updateYouTubeViewCounts();
         });
 
         // Collapse handlers
@@ -379,6 +383,8 @@
         document.getElementById('collapse-events').dispatchEvent(new Event('change'));
 
         let twitchData = null, youtubeData = null;
+        let youtubeStreamData = {};
+        let youtubeOfflineTimers = {};
 
         w.on('init', (data) => {
             if (data.twitch_connected_chat?.length > 0) {
@@ -450,6 +456,22 @@
         w.on('youtube-live-offline', (data) => {
             const item = document.querySelector(`#chat-connection-youtube [data-live-id="${data?.liveId}"]`);
             if (item) item.classList.add('live-off');
+
+            if (data?.liveId) {
+                if (youtubeStreamData[data.liveId]) {
+                    youtubeStreamData[data.liveId].actualEndTime = data.offlineAt || new Date().toISOString();
+                }
+                if (youtubeOfflineTimers[data.liveId]) {
+                    clearTimeout(youtubeOfflineTimers[data.liveId]);
+                }
+                youtubeOfflineTimers[data.liveId] = setTimeout(() => {
+                    delete youtubeStreamData[data.liveId];
+                    delete youtubeOfflineTimers[data.liveId];
+                    updateYouTubeViewCounts();
+                    updateYouTubeStreamStatus();
+                }, 5 * 60 * 1000);
+            }
+            updateYouTubeStreamStatus();
         });
 
         w.onTwitch('channel.update', (data) => {
@@ -547,10 +569,28 @@
         });
         w.on('result-get-streamer-data', (data) => {
             if (!data) return;
-            const { twitch } = data;
+            const { twitch, youtube } = data;
             if (twitch && twitchData?.stream_details) {
                 if (twitch.viewer_count) twitchData.stream_details.viewer_count = twitch.viewer_count;
                 if (twitch.started_at) twitchData.stream_details.started_at = twitch.started_at;
+            }
+            if (youtube && Array.isArray(youtube)) {
+                youtube.forEach(yt => {
+                    if (yt.video_id) {
+                        if (youtubeOfflineTimers[yt.video_id]) {
+                            clearTimeout(youtubeOfflineTimers[yt.video_id]);
+                            delete youtubeOfflineTimers[yt.video_id];
+                        }
+                        youtubeStreamData[yt.video_id] = {
+                            viewer_count: yt.concurrent_viewers,
+                            title: yt.title,
+                            actualStartTime: yt.actual_start_time,
+                            actualEndTime: yt.actual_end_time
+                        };
+                    }
+                });
+                updateYouTubeViewCounts();
+
             }
         });
 
@@ -577,6 +617,23 @@
             return new Date(date.getTime() - date.getTimezoneOffset() * 60000);
         }
 
+        function updateYouTubeViewCounts() {
+            const wrapper = document.getElementById('youtube-view-counts-wrapper');
+            if (!wrapper) return;
+
+            wrapper.innerHTML = '';
+            const showCount = chkShowViewCount.checked;
+
+            Object.entries(youtubeStreamData).forEach(([liveId, data]) => {
+                const span = document.createElement('span');
+                span.dataset.liveId = liveId;
+                span.style.marginLeft = '10px';
+                span.style.color = showCount ? '' : 'var(--bg-primary)';
+                span.innerHTML = `<img src="https://www.youtube.com/s/desktop/d0c6b06b/img/favicon.ico" alt="YouTube" style="height: 20px;" /> ${data.viewer_count || 0}`;
+                wrapper.appendChild(span);
+            });
+        }
+
         let timeToUpdateTwitchData = 0;
         setInterval(() => {
             if (twitchData?.stream_details) {
@@ -590,6 +647,9 @@
                     }
                 }
             }
+            updateYouTubeViewCounts();
+            updateYouTubeStreamStatus();
+            updateYouTubeStreamTime();
         }, 1000);
 
         function checkuserReference(text) {
@@ -761,6 +821,13 @@
             if (!data?.Channels?.length) {
                 loginEl.innerHTML = '<a href="/youtube/login" target="_blank" class="login-link">Logar YouTube</a>';
                 youtubeConnections.style.display = 'none';
+                const streamStatus = youtubeDiv.querySelector('.stream-status');
+                const streamTime = youtubeDiv.querySelector('.stream-time');
+                if (streamStatus) {
+                    streamStatus.textContent = "offline";
+                    streamStatus.className = 'stream-status live-off';
+                }
+                if (streamTime) streamTime.textContent = '';
                 return;
             }
 
@@ -789,6 +856,37 @@
                 btn.onclick = () => connectToYouTubeChat(btn.dataset.id);
             });
             youtubeConnections.style.display = 'block';
+
+            updateYouTubeStreamStatus();
+        }
+
+        function updateYouTubeStreamStatus() {
+            const streamStatus = youtubeDiv.querySelector('.stream-status');
+            const streamTime = youtubeDiv.querySelector('.stream-time');
+            if (!streamStatus || !streamTime) return;
+
+            const activeStreams = Object.entries(youtubeStreamData).filter(([_, d]) => !d.actualEndTime);
+            if (activeStreams.length > 0) {
+                const [_, firstStream] = activeStreams[0];
+                streamStatus.textContent = `online of ${firstStream.title || 'YouTube'}`;
+                streamStatus.className = 'stream-status live-on';
+            } else {
+                streamStatus.textContent = "offline";
+                streamStatus.className = 'stream-status live-off';
+                streamTime.textContent = '';
+            }
+        }
+
+        function updateYouTubeStreamTime() {
+            const streamTime = youtubeDiv.querySelector('.stream-time');
+            if (!streamTime) return;
+
+            const activeStreams = Object.entries(youtubeStreamData).filter(([_, d]) => !d.actualEndTime && d.actualStartTime);
+            if (activeStreams.length > 0) {
+                const [_, firstStream] = activeStreams[0];
+                const start = parseTimeZone(new Date(firstStream.actualStartTime));
+                streamTime.textContent = getDateDiff(parseTimeZone(new Date()), start).toString();
+            }
         }
 
         function updateKickConnectionDetails(user) {

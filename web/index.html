@@ -295,18 +295,18 @@
         loadUIState();
         applyUIState();
 
-        if (!(ResizeObserver)) { 
+        if (!(ResizeObserver)) {
             console.error('ResizeObserver is not supported in this browser. Chat and events panels will not resize dynamically.');
         }
 
-        if (ResizeObserver) { 
+        if (ResizeObserver) {
             const chatResizeObserver = new ResizeObserver(entries => {
                 for (let entry of entries) {
                     setChatHeight(entry.contentRect.height);
                 }
             });
             chatResizeObserver.observe(chatContent);
-    
+
             const eventsResizeObserver = new ResizeObserver(entries => {
                 for (let entry of entries) {
                     setEventsHeight(entry.contentRect.height);
@@ -546,9 +546,11 @@
             eventDiv.appendChild(el);
         });
         w.on('result-get-streamer-data', (data) => {
-            if (data && twitchData?.stream_details) {
-                if (data.viewer_count) twitchData.stream_details.viewer_count = data.viewer_count;
-                if (data.started_at) twitchData.stream_details.started_at = data.started_at;
+            if (!data) return;
+            const { twitch } = data;
+            if (twitch && twitchData?.stream_details) {
+                if (twitch.viewer_count) twitchData.stream_details.viewer_count = twitch.viewer_count;
+                if (twitch.started_at) twitchData.stream_details.started_at = twitch.started_at;
             }
         });
 

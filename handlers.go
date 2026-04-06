@@ -97,8 +97,8 @@ func RegisterSocketHandlers() {
 		twitchData, _ := twitch.GetStreamData(globals.GetState().GetTwitchUser().UserID)
 
 		ytData := []any{}
-		if ytLives := globals.GetState().GetData("youtube-lives").([]youtube.LiveBroadcast); len(ytLives) > 0 {
-			for _, live := range ytLives {
+		if ytLives := globals.GetState().GetData("youtube-lives"); ytLives != nil && len(ytLives.([]youtube.LiveBroadcast)) > 0 {
+			for _, live := range ytLives.([]youtube.LiveBroadcast) {
 				data, err := youtube.GetStreamData(live.ID)
 				if err != nil {
 					helpers.Logf(helpers.ERROR, "Failed to get data from YouTubeStreaming %v", err)

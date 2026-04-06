@@ -68,8 +68,7 @@ func GetUser(userId string) (UserData, error) {
 		url += fmt.Sprintf("?broadcaster_user_id=%s", userId)
 	}
 	req, _ := http.NewRequest("GET", url, nil)
-	req.Header.Set("Authorization", "Bearer "+Token)
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := DoRequest(req)
 	if err != nil {
 		return UserData{}, err
 	}
@@ -93,8 +92,7 @@ func GetChannel(streamerId int, slug *string) (ChannelData, error) {
 		url += fmt.Sprintf("?slug=%s", *slug)
 	}
 	req, _ := http.NewRequest("GET", url, nil)
-	req.Header.Set("Authorization", "Bearer "+Token)
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := DoRequest(req)
 	if err != nil {
 		return ChannelData{}, err
 	}
@@ -112,10 +110,8 @@ func GetChannel(streamerId int, slug *string) (ChannelData, error) {
 func GetChatroom(slug string) (ChatroomData, error) {
 	url := fmt.Sprintf("https://api.kick.com/public/v1/channels?slug=%s", slug)
 	req, _ := http.NewRequest("GET", url, nil)
-	req.Header.Set("Authorization", "Bearer "+Token)
 	req.Header.Set("Client-Id", globals.GetConfig().KickClientID)
-	req.Header.Set("Content-Type", "application/json")
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := DoRequest(req)
 	if err != nil {
 		return ChatroomData{}, err
 	}
@@ -136,10 +132,8 @@ func PostMessage(msg Message) error {
 	}
 	jsonData, _ := json.Marshal(data)
 	req, _ := http.NewRequest("POST", url, bytes.NewBuffer(jsonData))
-	req.Header.Set("Authorization", "Bearer "+Token)
-	//req.Header.Set("Client-Id", ClientID)
 	req.Header.Set("Content-Type", "application/json")
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := DoRequest(req)
 	if err != nil {
 		return err
 	}

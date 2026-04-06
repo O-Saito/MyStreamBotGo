@@ -16,8 +16,16 @@ import (
 )
 
 type DynamicEvent struct {
+	mu        sync.RWMutex
 	Name      string
 	Path      string
+	Reloading bool
+	Lua       DynamicEventLua
+	State     DynamicEventState
+}
+
+type DynamicEventLua struct {
+	mu        sync.RWMutex
 	LState    *lua.LState
 	OnStart   *lua.LFunction
 	OnTick    *lua.LFunction
@@ -25,13 +33,15 @@ type DynamicEvent struct {
 	OnMessage *lua.LFunction
 	OnCommand *lua.LFunction
 	OnRequest *lua.LFunction
-	LastTick  time.Time
-	NextTick  time.Time
-	Interval  time.Duration
-	Paused    bool
-	mu        sync.RWMutex
-	stateMu   sync.RWMutex
-	db        *sql.DB
+}
+
+type DynamicEventState struct {
+	mu       sync.RWMutex
+	LastTick time.Time
+	NextTick time.Time
+	Paused   bool
+	db       *sql.DB
+	Interval time.Duration
 }
 
 type DynamicEventInfo struct {
@@ -52,129 +62,232 @@ var (
 
 func (dev *DynamicEvent) Transfer(new *DynamicEvent) {
 	dev.mu.Lock()
-	dev.stateMu.Lock()
-	defer dev.mu.Unlock()
-	defer dev.stateMu.Unlock()
-	new.mu.Lock()
-	new.stateMu.Lock()
 	defer new.mu.Unlock()
-	defer new.stateMu.Unlock()
-	data := FromLValue(dev.LState, dev.LState.GetGlobal("ev")).(map[string]any)
+	new.mu.Lock()
+	defer dev.mu.Unlock()
+
+	dev.Reloading = true
+
+	dev.Lua.mu.Lock()
+	data := FromLValue(dev.Lua.LState, dev.Lua.LState.GetGlobal("ev")).(map[string]any)
+	dev.Lua.mu.Unlock()
+
 	d := map[string]any{}
 	if data["data"] != nil {
 		d = data["data"].(map[string]any)
 	}
-	oldData := ToLValue(new.LState, d)
-	evTable := new.LState.GetGlobal("ev").(*lua.LTable)
+
+	new.Lua.mu.Lock()
+	oldData := ToLValue(new.Lua.LState, d)
+	evTable := new.Lua.LState.GetGlobal("ev").(*lua.LTable)
 	evTable.RawSetString("data", oldData)
-	new.db = dev.db
-	dev.db = nil
+	new.Lua.mu.Unlock()
+
+	new.State.mu.Lock()
+	dev.State.mu.Lock()
+	new.State.db = dev.State.db
+	dev.State.db = nil
+	dev.State.mu.Unlock()
+	new.State.mu.Unlock()
 }
 
 func (dev *DynamicEvent) Close() {
-	dev.mu.Lock()
-	dev.stateMu.Lock()
-	defer dev.mu.Unlock()
-	defer dev.stateMu.Unlock()
+	dev.State.mu.Lock()
+	defer dev.State.mu.Unlock()
 
-	if dev.db != nil {
-		dev.db.Close()
-		dev.db = nil
+	if dev.State.db != nil {
+		dev.State.db.Close()
+		dev.State.db = nil
 	}
 
-	if dev.LState != nil {
-		dev.LState.Close()
-		dev.LState = nil
+	dev.Lua.mu.Lock()
+	defer dev.Lua.mu.Unlock()
+	if dev.Lua.LState != nil {
+		dev.Lua.LState.Close()
+		dev.Lua.LState = nil
+	}
+}
+
+func (dev *DynamicEvent) CanProcess() bool {
+	dev.mu.RLock()
+	defer dev.mu.RUnlock()
+
+	if dev.Reloading {
+		return false
+	}
+
+	dev.State.mu.RLock()
+	paused := dev.State.Paused
+	dev.State.mu.RUnlock()
+
+	if paused {
+		return false
+	}
+	return true
+}
+
+func (dev *DynamicEvent) ProcessWebsocketEvent(msg any) {
+	if !dev.CanProcess() {
+		return
+	}
+
+	dev.Lua.mu.Lock()
+	defer dev.Lua.mu.Unlock()
+	LState := dev.Lua.LState
+	f := dev.Lua.OnEvent
+
+	if f == nil {
+		return
+	}
+
+	tbl := LState.NewTable()
+	LState.SetField(tbl, "payload", ToLValue(LState, msg))
+
+	if err := LState.CallByParam(lua.P{Fn: f, NRet: 0, Protect: true}, tbl); err != nil {
+		helpers.Logf(helpers.ERROR, "[DYNAMIC] Erro no on_event de %s: %v", dev.Name, err)
+	}
+}
+
+func (dev *DynamicEvent) ProcessStart() {
+	dev.mu.Lock()
+	dev.Reloading = false
+	dev.mu.Unlock()
+
+	dev.Lua.mu.Lock()
+	defer dev.Lua.mu.Unlock()
+
+	LState := dev.Lua.LState
+	f := dev.Lua.OnStart
+
+	if f == nil {
+		return
+	}
+
+	if err := LState.CallByParam(lua.P{Fn: f, NRet: 0, Protect: true}); err != nil {
+		helpers.Logf(helpers.ERROR, "[DYNAMIC] Erro no on_start de %s: %v", dev.Name, err)
+	}
+}
+
+func (dev *DynamicEvent) ProcessOnTick() {
+	dev.Lua.mu.Lock()
+	defer dev.Lua.mu.Unlock()
+
+	LState := dev.Lua.LState
+	f := dev.Lua.OnTick
+
+	if f != nil {
+		if err := LState.CallByParam(lua.P{Fn: f, NRet: 0, Protect: true}); err != nil {
+			helpers.Logf(helpers.ERROR, "[DYNAMIC] Erro no on_tick de %s: %v", dev.Name, err)
+		}
 	}
 }
 
 func (dev *DynamicEvent) ProcessChat(evm *globals.MessageFromStream) {
-	dev.stateMu.RLock()
-	paused := dev.Paused
-	dev.stateMu.RUnlock()
-
-	if dev.OnMessage == nil || paused {
+	if !dev.CanProcess() {
 		return
 	}
 
-	dev.stateMu.Lock()
-	LState := dev.LState
-	f := dev.OnMessage
+	dev.Lua.mu.Lock()
+	defer dev.Lua.mu.Unlock()
+
+	LState := dev.Lua.LState
+	f := dev.Lua.OnMessage
+
+	if f == nil {
+		return
+	}
+
 	tbl := LState.NewTable()
 	tbl = ToLTable(LState, evm, tbl)
 
 	if err := LState.CallByParam(lua.P{Fn: f, NRet: 0, Protect: true}, tbl); err != nil {
 		helpers.Logf(helpers.ERROR, "[LUA CHAT ERROR] %s: %v", dev.Name, err)
 	}
-	dev.stateMu.Unlock()
 }
 
 func (dev *DynamicEvent) ProcessCommand(evm *globals.Command) {
-	dev.stateMu.RLock()
-	paused := dev.Paused
-	dev.stateMu.RUnlock()
+	if !dev.CanProcess() {
+		return
+	}
 
-	if dev.OnCommand == nil || paused {
+	dev.Lua.mu.Lock()
+	defer dev.Lua.mu.Unlock()
+
+	LState := dev.Lua.LState
+	f := dev.Lua.OnCommand
+
+	if f == nil {
 		return
 	}
 
 	lname := lua.LString(evm.Name)
-	dev.stateMu.Lock()
-	LState := dev.LState
-	f := dev.OnCommand
 	tbl := LState.NewTable()
 	tbl = ToLTableCommand(LState, evm, tbl)
 
 	if err := LState.CallByParam(lua.P{Fn: f, NRet: 0, Protect: true}, lname, tbl); err != nil {
 		helpers.Logf(helpers.ERROR, "[LUA COMMAND ERROR] %s: %v", dev.Name, err)
 	}
-	dev.stateMu.Unlock()
 }
 
 func (dev *DynamicEvent) ProcessEvent(evm *globals.Event) {
-	dev.stateMu.RLock()
-	paused := dev.Paused
-	dev.stateMu.RUnlock()
+	if !dev.CanProcess() {
+		return
+	}
 
-	if dev.OnEvent == nil || paused {
+	dev.Lua.mu.Lock()
+	defer dev.Lua.mu.Unlock()
+
+	LState := dev.Lua.LState
+	f := dev.Lua.OnEvent
+
+	if f == nil {
 		return
 	}
 
 	evName := lua.LString(evm.Type)
-	dev.stateMu.Lock()
-	LState := dev.LState
-	f := dev.OnEvent
 	ntbl := ToLValue(LState, evm.Data)
 
 	if err := LState.CallByParam(lua.P{Fn: f, NRet: 0, Protect: true}, evName, ntbl); err != nil {
 		helpers.Logf(helpers.ERROR, "[LUA EVENT ERROR] %s: %v", dev.Name, err)
 	}
-	dev.stateMu.Unlock()
 }
 
 func (dev *DynamicEvent) ProcessRequest(evm *globals.SocketMessage) {
-	if dev.Name != evm.Filter || dev.OnRequest == nil {
+	if dev.Name != evm.Filter {
 		return
 	}
 
-	dev.stateMu.Lock()
-	LState := dev.LState
-	f := dev.OnRequest
+	if !dev.CanProcess() {
+		return
+	}
+
+	dev.Lua.mu.Lock()
+	defer dev.Lua.mu.Unlock()
+
+	LState := dev.Lua.LState
+	f := dev.Lua.OnRequest
+
+	if f == nil {
+		return
+	}
+
 	tbl := ToLValue(LState, evm.Data)
 
 	if err := LState.CallByParam(lua.P{Fn: f, NRet: 0, Protect: true}, lua.LString(evm.Type), tbl); err != nil {
 		helpers.Logf(helpers.ERROR, "[LUA EVENT ERROR] %s: %v", dev.Name, err)
 	}
-	dev.stateMu.Unlock()
 }
 
 func ListDynamicEvents() []DynamicEventInfo {
 	dynamicEventsMutex.RLock()
 	defer dynamicEventsMutex.RUnlock()
 	events := make([]DynamicEventInfo, 0, len(dynamicEvents))
+
 	for name, val := range dynamicEvents {
-		val.stateMu.RLock()
-		ldata := FromLValue(val.LState, val.LState.GetGlobal("ev"))
+		val.Lua.mu.RLock()
+		ldata := FromLValue(val.Lua.LState, val.Lua.LState.GetGlobal("ev"))
+		val.Lua.mu.RUnlock()
+
 		data := map[string]any{}
 		if ldata != nil {
 			data = ldata.(map[string]any)
@@ -183,13 +296,14 @@ func ListDynamicEvents() []DynamicEventInfo {
 		if data["data"] != nil {
 			d = data["data"].(map[string]any)
 		}
+		val.State.mu.RLock()
 		events = append(events, DynamicEventInfo{
 			Name:       name,
-			Paused:     val.Paused,
-			Interval:   val.Interval,
+			Paused:     val.State.Paused,
+			Interval:   val.State.Interval,
 			ModuleData: d,
 		})
-		val.stateMu.RUnlock()
+		val.State.mu.RUnlock()
 	}
 
 	return events
@@ -199,10 +313,12 @@ func UpdateDynamicEvent(event DynamicEventInfo) error {
 	dynamicEventsMutex.Lock()
 	defer dynamicEventsMutex.Unlock()
 	if ev, exists := dynamicEvents[event.Name]; exists {
-		ev.mu.Lock()
-		ev.Paused = event.Paused
-		ev.Interval = time.Duration(float64(event.Interval) * float64(time.Second))
-		ev.mu.Unlock()
+		ev.mu.RLock()
+		defer ev.mu.RUnlock()
+		ev.State.mu.Lock()
+		defer ev.State.mu.Unlock()
+		ev.State.Paused = event.Paused
+		ev.State.Interval = time.Duration(float64(event.Interval) * float64(time.Second))
 		return nil
 	}
 	return os.ErrNotExist
@@ -250,19 +366,23 @@ func LoadDyEvents(baseDir string) {
 		}
 
 		ev := &DynamicEvent{
-			Name:      name,
-			Path:      fullPath,
-			LState:    L,
-			OnStart:   getGlobalFunction(L, "on_start"),
-			OnTick:    getGlobalFunction(L, "on_tick"),
-			OnEvent:   getGlobalFunction(L, "on_event"),
-			OnMessage: getGlobalFunction(L, "on_message"),
-			OnCommand: getGlobalFunction(L, "on_command"),
-			OnRequest: getGlobalFunction(L, "on_request"),
-			NextTick:  time.Now().Add(time.Second),
-			Interval:  time.Second, // padrão
-			Paused:    true,        // padrão
-			db:        nil,
+			Name: name,
+			Path: fullPath,
+			Lua: DynamicEventLua{
+				LState:    L,
+				OnStart:   getGlobalFunction(L, "on_start"),
+				OnTick:    getGlobalFunction(L, "on_tick"),
+				OnEvent:   getGlobalFunction(L, "on_event"),
+				OnMessage: getGlobalFunction(L, "on_message"),
+				OnCommand: getGlobalFunction(L, "on_command"),
+				OnRequest: getGlobalFunction(L, "on_request"),
+			},
+			State: DynamicEventState{
+				NextTick: time.Now().Add(time.Second),
+				Interval: time.Second, // padrão
+				Paused:   true,        // padrão
+				db:       nil,
+			},
 		}
 
 		setFunctionOnTable(ev, eventTable)
@@ -279,12 +399,7 @@ func LoadDyEvents(baseDir string) {
 
 		helpers.Logf(helpers.DEBUG, "[DYNAMIC] Evento carregado: %s", name)
 
-		// Executa on_start
-		if ev.OnStart != nil {
-			if err := L.CallByParam(lua.P{Fn: ev.OnStart, NRet: 0, Protect: true}); err != nil {
-				helpers.Logf(helpers.ERROR, "[DYNAMIC] Erro no on_start de %s: %v", name, err)
-			}
-		}
+		ev.ProcessStart()
 	}
 
 	// Inicia o loop global apenas uma vez
@@ -299,11 +414,14 @@ func LoadDyEvents(baseDir string) {
 }
 
 func setFunctionOnTable(ev *DynamicEvent, tbl *lua.LTable) {
-	if ev.LState == nil {
+	ev.Lua.mu.Lock()
+	defer ev.Lua.mu.Unlock()
+
+	if ev.Lua.LState == nil {
 		return
 	}
 
-	ev.LState.SetField(tbl, "socket_send", ev.LState.NewFunction(func(L *lua.LState) int {
+	ev.Lua.LState.SetField(tbl, "socket_send", ev.Lua.LState.NewFunction(func(L *lua.LState) int {
 		if L.Get(1) == lua.LNil || L.Get(2) == lua.LNil {
 			return -1
 		}
@@ -320,64 +438,64 @@ func setFunctionOnTable(ev *DynamicEvent, tbl *lua.LTable) {
 		return 0
 	}))
 
-	ev.LState.SetField(tbl, "set_interval", ev.LState.NewFunction(func(L *lua.LState) int {
+	ev.Lua.LState.SetField(tbl, "set_interval", ev.Lua.LState.NewFunction(func(L *lua.LState) int {
 		val := L.CheckNumber(1)
-		ev.stateMu.Lock()
-		defer ev.stateMu.Unlock()
-		ev.Interval = time.Duration(float64(val) * float64(time.Second))
+		ev.State.mu.Lock()
+		defer ev.State.mu.Unlock()
+		ev.State.Interval = time.Duration(float64(val) * float64(time.Second))
 		return 0
 	}))
 
-	ev.LState.SetField(tbl, "set_paused", ev.LState.NewFunction(func(L *lua.LState) int {
+	ev.Lua.LState.SetField(tbl, "set_paused", ev.Lua.LState.NewFunction(func(L *lua.LState) int {
 		val := L.CheckBool(1)
-		ev.stateMu.Lock()
-		defer ev.stateMu.Unlock()
-		ev.Paused = val
+		ev.State.mu.Lock()
+		defer ev.State.mu.Unlock()
+		ev.State.Paused = val
 		return 0
 	}))
 
-	ev.LState.SetField(tbl, "get_interval", ev.LState.NewFunction(func(L *lua.LState) int {
-		ev.stateMu.RLock()
-		defer ev.stateMu.RUnlock()
-		L.Push(lua.LNumber(ev.Interval.Seconds()))
+	ev.Lua.LState.SetField(tbl, "get_interval", ev.Lua.LState.NewFunction(func(L *lua.LState) int {
+		ev.State.mu.RLock()
+		defer ev.State.mu.RUnlock()
+		L.Push(lua.LNumber(ev.State.Interval.Seconds()))
 		return 1
 	}))
 
-	ev.LState.SetField(tbl, "is_paused", ev.LState.NewFunction(func(L *lua.LState) int {
-		ev.stateMu.RLock()
-		defer ev.stateMu.RUnlock()
-		L.Push(lua.LBool(ev.Paused))
+	ev.Lua.LState.SetField(tbl, "is_paused", ev.Lua.LState.NewFunction(func(L *lua.LState) int {
+		ev.State.mu.RLock()
+		defer ev.State.mu.RUnlock()
+		L.Push(lua.LBool(ev.State.Paused))
 		return 1
 	}))
 
-	ev.LState.SetField(tbl, "use_db", ev.LState.NewFunction(func(L *lua.LState) int {
+	ev.Lua.LState.SetField(tbl, "use_db", ev.Lua.LState.NewFunction(func(L *lua.LState) int {
 		createdDb := false
-		ev.stateMu.Lock()
-		defer ev.stateMu.Unlock()
-		if ev.db == nil {
+		ev.State.mu.Lock()
+		defer ev.State.mu.Unlock()
+		if ev.State.db == nil {
 			db, err := msql.OpenModuleDB(ev.Name)
 			if err != nil {
 				helpers.Logf(helpers.ERROR, "[DYEVENTS USE_DB] %s", err.Error())
 				return 0
 			}
-			ev.db = db
+			ev.State.db = db
 			createdDb = true
 		}
 		L.Push(lua.LBool(createdDb))
 		return 1
 	}))
 
-	ev.LState.SetField(tbl, "db_exec", ev.LState.NewFunction(func(L *lua.LState) int {
+	ev.Lua.LState.SetField(tbl, "db_exec", ev.Lua.LState.NewFunction(func(L *lua.LState) int {
 		if L.Get(1) == lua.LNil {
 			return 0
 		}
 		query := L.CheckString(1)
-		ev.stateMu.RLock()
-		defer ev.stateMu.RUnlock()
-		if ev.db == nil {
+		ev.State.mu.RLock()
+		defer ev.State.mu.RUnlock()
+		if ev.State.db == nil {
 			return 0
 		}
-		r, err := ev.db.Exec(query)
+		r, err := ev.State.db.Exec(query)
 		if err != nil {
 			helpers.Logf(helpers.ERROR, "[DYEVENTS DB_EXEC] %s", err.Error())
 			return 0
@@ -391,21 +509,21 @@ func setFunctionOnTable(ev *DynamicEvent, tbl *lua.LTable) {
 		return 1
 	}))
 
-	ev.LState.SetField(tbl, "db_query", ev.LState.NewFunction(func(L *lua.LState) int {
+	ev.Lua.LState.SetField(tbl, "db_query", ev.Lua.LState.NewFunction(func(L *lua.LState) int {
 		if L.Get(1) == lua.LNil {
 			helpers.Logf(helpers.ERROR, "[QUERY] QUERY IS NIL")
 			return 0
 		}
 		query := L.CheckString(1)
-		ev.stateMu.RLock()
-		if ev.db == nil {
+		ev.State.mu.RLock()
+		if ev.State.db == nil {
 			helpers.Logf(helpers.ERROR, "[QUERY] DB IS NIL")
-			ev.stateMu.RUnlock()
+			ev.State.mu.RUnlock()
 			return 0
 		}
 		helpers.Logf(helpers.DEBUG, "[QUERY] %s", query)
-		r, err := ev.db.Query(query)
-		ev.stateMu.RUnlock()
+		r, err := ev.State.db.Query(query)
+		ev.State.mu.RUnlock()
 		defer r.Close()
 
 		if err != nil {
@@ -421,7 +539,6 @@ func setFunctionOnTable(ev *DynamicEvent, tbl *lua.LTable) {
 			d := map[string]any{}
 			items := make([]any, len(cols))
 			for i := range items {
-				// http://go-database-sql.org/varcols.html
 				items[i] = new(sql.RawBytes)
 			}
 			r.Scan(items...)
@@ -433,7 +550,7 @@ func setFunctionOnTable(ev *DynamicEvent, tbl *lua.LTable) {
 			}
 			result = append(result, d)
 		}
-		L.Push(ToLValue(ev.LState, result))
+		L.Push(ToLValue(ev.Lua.LState, result))
 		return 1
 	}))
 
@@ -454,35 +571,24 @@ func globalEventLoop() {
 		case now := <-ticker.C:
 			dynamicEventsMutex.RLock()
 			for _, ev := range dynamicEvents {
-				ev.stateMu.RLock()
-				if ev.Paused || ev.OnTick == nil {
-					ev.stateMu.RUnlock()
-					continue
-				}
-				shouldRun := now.After(ev.NextTick)
-				ev.stateMu.RUnlock()
-
-				if !shouldRun {
+				if !ev.CanProcess() {
 					continue
 				}
 
-				ev.stateMu.Lock()
-				LState := ev.LState
-				f := ev.OnTick
+				ev.State.mu.RLock()
+				nextTick := ev.State.NextTick
+				ev.State.mu.RUnlock()
 
-				if f != nil {
-					err := LState.CallByParam(lua.P{
-						Fn:      f,
-						NRet:    0,
-						Protect: true,
-					})
-					if err != nil {
-						helpers.Logf(helpers.ERROR, "[DYNAMIC] Erro no on_tick de %s: %v", ev.Name, err)
-					}
+				if !now.After(nextTick) {
+					continue
 				}
-				ev.LastTick = now
-				ev.NextTick = now.Add(ev.Interval)
-				ev.stateMu.Unlock()
+
+				ev.ProcessOnTick()
+
+				ev.State.mu.Lock()
+				ev.State.LastTick = now
+				ev.State.NextTick = now.Add(ev.State.Interval)
+				ev.State.mu.Unlock()
 			}
 			dynamicEventsMutex.RUnlock()
 		}
@@ -495,24 +601,7 @@ func HandleDyEventWebsocket(msg any) {
 	defer dynamicEventsMutex.RUnlock()
 
 	for _, ev := range dynamicEvents {
-		if ev.OnEvent == nil {
-			continue
-		}
-
-		ev.stateMu.Lock()
-		LState := ev.LState
-		f := ev.OnEvent
-		tbl := LState.NewTable()
-		LState.SetField(tbl, "payload", ToLValue(LState, msg))
-
-		if err := LState.CallByParam(lua.P{
-			Fn:      f,
-			NRet:    0,
-			Protect: true,
-		}, tbl); err != nil {
-			helpers.Logf(helpers.ERROR, "[DYNAMIC] Erro no on_event de %s: %v", ev.Name, err)
-		}
-		ev.stateMu.Unlock()
+		ev.ProcessWebsocketEvent(msg)
 	}
 }
 

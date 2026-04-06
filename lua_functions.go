@@ -17,13 +17,11 @@ var KickFunctionList = []services.LuaFunction{
 	{Name: "get_user", Fn: kick.GetUser},
 	{Name: "get_channel", Fn: kick.GetChannel},
 	{Name: "get_chatroom", Fn: kick.GetChatroom},
-	{Name: "post_message", Fn: kick.PostMessage},
 }
 
 var YouTubeFunctionList = []services.LuaFunction{
 	{Name: "get_current_youtube_channel", Fn: youtube.GetCurrentYouTubeChannel},
 	{Name: "get_current_streamings", Fn: youtube.GetCurrentStreamings},
-	{Name: "refresh_token", Fn: youtube.RefreshToken},
 }
 
 var TwitchFunctionList = []services.LuaFunction{

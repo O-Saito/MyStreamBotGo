@@ -174,6 +174,18 @@
         }
 
         import w from './wrapper.js'
+        import { loadDyModules } from './customevent.js'
+
+        const CONSTANTS = {
+            ICONS: {
+                twitch: 'https://assets.twitch.tv/assets/favicon-32-e29e246c157142c94346.png',
+                youtube: 'https://www.youtube.com/s/desktop/d0c6b06b/img/favicon.ico',
+                kick: 'https://kick.com/favicon.ico'
+            },
+            EMOTE_URL: 'https://static-cdn.jtvnw.net/emoticons/v2/{id}/default/light/1.0',
+            STORAGE_KEY: 'mystreambot_ui_state',
+            SECTIONS: ['twitch', 'kick', 'youtube', 'system', 'events-panel', 'dyevents-panel']
+        };
 
         const twitchDiv = document.getElementById('twitch');
         const youtubeDiv = document.getElementById('youtube');
@@ -198,7 +210,9 @@
         const txtStreamGame = document.getElementById('stream-game') || document.getElementById('twitch-game');
         const streamGameList = document.getElementById('stream-games') || document.getElementById('twitch-game-list');
 
-        const UI_STATE_KEY = 'mystreambot_ui_state';
+        const chatContent = document.querySelector('#chat .content');
+        const eventsList = document.getElementById('events-list');
+
         const defaultState = {
             sections: {
                 twitch: { collapsed: false },
@@ -220,7 +234,7 @@
 
         function loadUIState() {
             try {
-                const saved = localStorage.getItem(UI_STATE_KEY);
+                const saved = localStorage.getItem(CONSTANTS.STORAGE_KEY);
                 if (saved) {
                     const parsed = JSON.parse(saved);
                     uiState = {
@@ -236,7 +250,7 @@
 
         function saveUIState() {
             try {
-                localStorage.setItem(UI_STATE_KEY, JSON.stringify(uiState));
+                localStorage.setItem(CONSTANTS.STORAGE_KEY, JSON.stringify(uiState));
             } catch (e) {
                 console.error('Failed to save UI state:', e);
             }
@@ -265,9 +279,6 @@
             uiState.preferences.eventsHeight = height;
             saveUIState();
         }
-
-        const chatContent = document.querySelector('#chat .content');
-        const eventsList = document.getElementById('events-list');
 
         function applyUIState() {
             Object.entries(uiState.sections).forEach(([id, data]) => {
@@ -318,7 +329,6 @@
             eventsResizeObserver.observe(eventsList);
         }
 
-
         // Preference handlers
         chatAcompanhar.addEventListener('change', () => {
             setPreference('acompanharChat', chatAcompanhar.checked);
@@ -331,13 +341,12 @@
         });
 
         // Collapse handlers
-        document.querySelectorAll('.display-collapse').forEach(chk => {
-            chk.addEventListener('change', function () {
-                const area = this.closest('.areas');
-                const sectionId = area.id;
-                const collapseArea = area.querySelector('.collapse-area');
-                const body = area.querySelector('.body');
-                if (this.checked) {
+        function setupCollapseHandler(element, sectionId) {
+            element.addEventListener('change', function () {
+                const panel = element.closest('.areas, .panel');
+                const collapseArea = panel.querySelector('.collapse-area');
+                const body = panel.querySelector('.body');
+                if (element.checked) {
                     collapseArea.classList.remove('closed');
                     body.classList.remove('collapsed');
                     setSectionCollapsed(sectionId, false);
@@ -347,40 +356,15 @@
                     setSectionCollapsed(sectionId, true);
                 }
             });
-            chk.dispatchEvent(new Event('change'));
+            element.dispatchEvent(new Event('change'));
+        }
+
+        document.querySelectorAll('.display-collapse').forEach(chk => {
+            setupCollapseHandler(chk, chk.closest('.areas').id);
         });
 
-        document.getElementById('toggle-dyevents').addEventListener('change', function () {
-            const panel = this.closest('.panel');
-            const collapseArea = panel.querySelector('.collapse-area');
-            const body = panel.querySelector('.body');
-            if (this.checked) {
-                collapseArea.classList.remove('closed');
-                body.classList.remove('collapsed');
-                setSectionCollapsed('dyevents-panel', false);
-            } else {
-                collapseArea.classList.add('closed');
-                body.classList.add('collapsed');
-                setSectionCollapsed('dyevents-panel', true);
-            }
-        });
-        document.getElementById('toggle-dyevents').dispatchEvent(new Event('change'));
-
-        document.getElementById('collapse-events').addEventListener('change', function () {
-            const panel = this.closest('.panel');
-            const collapseArea = panel.querySelector('.collapse-area');
-            const body = panel.querySelector('.body');
-            if (this.checked) {
-                collapseArea.classList.remove('closed');
-                body.classList.remove('collapsed');
-                setSectionCollapsed('events-panel', false);
-            } else {
-                collapseArea.classList.add('closed');
-                body.classList.add('collapsed');
-                setSectionCollapsed('events-panel', true);
-            }
-        });
-        document.getElementById('collapse-events').dispatchEvent(new Event('change'));
+        setupCollapseHandler(document.getElementById('toggle-dyevents'), 'dyevents-panel');
+        setupCollapseHandler(document.getElementById('collapse-events'), 'events-panel');
 
         let twitchData = null, youtubeData = null;
         let youtubeStreamData = {};
@@ -512,7 +496,7 @@
 
             const source = document.createElement("span");
             source.className = 'chat-source';
-            source.innerHTML = `<img src="https://assets.twitch.tv/assets/favicon-32-e29e246c157142c94346.png" alt="twitch" />`;
+            source.innerHTML = `<img src="${CONSTANTS.ICONS.twitch}" alt="twitch" />`;
 
             const channel = document.createElement("span");
             channel.className = 'chat-channel';
@@ -600,23 +584,6 @@
             window.onerror?.(`Socket connection error: ${e.message}`, '', 0, 0, e);
         }
 
-        function isValidLatinString(str) {
-            return /^[\p{L}\p{N}!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?~`\s]+$/u.test(str);
-        }
-
-        function getDateDiff(date1, date2) {
-            const diff = Math.abs(date2.getTime() - date1.getTime());
-            const hours = Math.floor(diff / 3600000);
-            const minutes = Math.floor((diff % 3600000) / 60000);
-            const seconds = Math.floor((diff % 60000) / 1000);
-            const pad = (n) => n.toString().padStart(2, '0');
-            return { hours, minutes, seconds, toString: () => `${pad(hours)}:${pad(minutes)}:${pad(seconds)}` };
-        }
-
-        function parseTimeZone(date) {
-            return new Date(date.getTime() - date.getTimezoneOffset() * 60000);
-        }
-
         function updateYouTubeViewCounts() {
             const wrapper = document.getElementById('youtube-view-counts-wrapper');
             if (!wrapper) return;
@@ -629,7 +596,7 @@
                 span.dataset.liveId = liveId;
                 span.style.marginLeft = '10px';
                 span.style.color = showCount ? '' : 'var(--bg-primary)';
-                span.innerHTML = `<img src="https://www.youtube.com/s/desktop/d0c6b06b/img/favicon.ico" alt="YouTube" style="height: 20px;" /> ${data.viewer_count || 0}`;
+                span.innerHTML = `<img src="${CONSTANTS.ICONS.youtube}" alt="YouTube" style="height: 20px;" /> ${data.viewer_count || 0}`;
                 wrapper.appendChild(span);
             });
         }
@@ -932,7 +899,7 @@
                     const [start, end] = positions.split('-').map(Number);
                     return {
                         id,
-                        url: `https://static-cdn.jtvnw.net/emoticons/v2/${id}/default/light/1.0`,
+                        url: CONSTANTS.EMOTE_URL.replace('{id}', id),
                         name: (data.message || '').slice(start, end + 1),
                     };
                 });
@@ -983,12 +950,8 @@
             message.className = 'chat-message';
 
             // Platform icon
-            const platformIcons = {
-                twitch: `<img src="https://assets.twitch.tv/assets/favicon-32-e29e246c157142c94346.png" alt="twitch" />`,
-                kick: `<img src="https://kick.com/favicon.ico" alt="kick" />`,
-                youtube: `<img src="https://www.youtube.com/s/desktop/d0c6b06b/img/favicon.ico" alt="YouTube" />`
-            };
-            source.innerHTML = platformIcons[msg.source] || msg.source;
+            const iconHtml = (platform) => `<img src="${CONSTANTS.ICONS[platform]}" alt="${platform}" />`;
+            source.innerHTML = iconHtml(msg.source) || msg.source;
 
             // Parse message with emotes
             if (msg.source === "twitch") {
@@ -1070,50 +1033,21 @@
             if (chatAcompanhar.checked) chatDiv.scrollTop = chatDiv.scrollHeight;
         }
 
-        function loadDyModules(modules) {
-            if (!modules?.length) {
-                document.getElementById('dyevents-panel').style.display = 'none';
-                dyEventsDiv.style.display = 'none';
-                return;
-            }
-
-            const sidebar = document.getElementById('dyevents-sidebar');
-
-            modules.forEach(m => {
-                const sidebarItem = document.createElement('div');
-                sidebarItem.className = 'sidebar-item';
-                sidebarItem.textContent = m.name;
-                sidebarItem.addEventListener('click', () => selectDyEvent(m.name));
-                sidebar.appendChild(sidebarItem);
-
-                const div = document.createElement('div');
-                div.id = m.name;
-                div.className = 'dyevent-content';
-                div.innerHTML = `
-                    <h3>${m.name}</h3>
-                    <div><label>${m.paused ? 'Paused' : 'Running'}</label></div>
-                    <div class="content-body"></div>
-                `;
-
-                import(`./customevents/${m.name}.js?t=${Date.now()}`)
-                    .then(module => module.default?.())
-                    .catch(err => console.error('Module loading failed:', m.name, err));
-
-                dyEventsDiv.appendChild(div);
-            });
-
-            if (modules.length > 0) {
-                selectDyEvent(modules[0].name);
-            }
+        function isValidLatinString(str) {
+            return /^[\p{L}\p{N}!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?~`\s]+$/u.test(str);
         }
 
-        function selectDyEvent(name) {
-            document.querySelectorAll('.sidebar-item').forEach(item => {
-                item.classList.toggle('active', item.textContent === name);
-            });
-            document.querySelectorAll('.dyevent-content').forEach(content => {
-                content.style.display = content.id === name ? 'block' : 'none';
-            });
+        function getDateDiff(date1, date2) {
+            const diff = Math.abs(date2.getTime() - date1.getTime());
+            const hours = Math.floor(diff / 3600000);
+            const minutes = Math.floor((diff % 3600000) / 60000);
+            const seconds = Math.floor((diff % 60000) / 1000);
+            const pad = (n) => n.toString().padStart(2, '0');
+            return { hours, minutes, seconds, toString: () => `${pad(hours)}:${pad(minutes)}:${pad(seconds)}` };
+        }
+
+        function parseTimeZone(date) {
+            return new Date(date.getTime() - date.getTimezoneOffset() * 60000);
         }
     </script>
 </body>

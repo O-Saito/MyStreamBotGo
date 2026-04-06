@@ -73,6 +73,13 @@ func RegisterSocketHandlers() {
 				kick.SendMessage(data["text"].(string), channel)
 			}
 		}
+		if len(globals.GetState().GetData("youtube-lives").([]youtube.LiveBroadcast)) > 0 {
+			for _, live := range globals.GetState().GetData("youtube-lives").([]youtube.LiveBroadcast) {
+				helpers.Logf(helpers.DEBUG, "Youtube chat should send to %s: %s", live.Snippet.LiveChatID, data["text"].(string))
+				//youtube.SendMessage(data["text"].(string), live.Snippet.LiveChatID)
+				//helpers.Printf(helpers.Yellow, "YT Send Message to %s: %s", live.Snippet.Title, data["text"].(string))
+			}
+		}
 	}
 
 	goweb.SocketHandlers["query-stream-game"] = func(c *websocket.Conn, m map[string]any, tag int) {
@@ -87,11 +94,27 @@ func RegisterSocketHandlers() {
 	}
 
 	goweb.SocketHandlers["get-streamer-data"] = func(c *websocket.Conn, m map[string]any, tag int) {
-		data, _ := twitch.GetStreamData(globals.GetState().GetTwitchUser().UserID)
+		twitchData, _ := twitch.GetStreamData(globals.GetState().GetTwitchUser().UserID)
+
+		ytData := []any{}
+		if ytLives := globals.GetState().GetData("youtube-lives").([]youtube.LiveBroadcast); len(ytLives) > 0 {
+			for _, live := range ytLives {
+				data, err := youtube.GetStreamData(live.ID)
+				if err != nil {
+					helpers.Logf(helpers.ERROR, "Failed to get data from YouTubeStreaming %v", err)
+					continue
+				}
+				ytData = append(ytData, data)
+			}
+		}
+
 		globals.WsBroadcast <- globals.SocketMessage{
 			Respond: tag,
 			Type:    "result-get-streamer-data",
-			Data:    data,
+			Data: map[string]any{
+				"twitch":  twitchData,
+				"youtube": ytData,
+			},
 		}
 	}
 

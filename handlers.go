@@ -73,8 +73,8 @@ func RegisterSocketHandlers() {
 				kick.SendMessage(data["text"].(string), channel)
 			}
 		}
-		if len(globals.GetState().GetData("youtube-lives").([]youtube.LiveBroadcast)) > 0 {
-			for _, live := range globals.GetState().GetData("youtube-lives").([]youtube.LiveBroadcast) {
+		if ytLives := globals.GetState().GetData("youtube-lives"); ytLives != nil && len(ytLives.([]youtube.LiveBroadcast)) > 0 {
+			for _, live := range ytLives.([]youtube.LiveBroadcast) {
 				helpers.Logf(helpers.DEBUG, "Youtube chat should send to %s: %s", live.Snippet.LiveChatID, data["text"].(string))
 				//youtube.SendMessage(data["text"].(string), live.Snippet.LiveChatID)
 				//helpers.Printf(helpers.Yellow, "YT Send Message to %s: %s", live.Snippet.Title, data["text"].(string))

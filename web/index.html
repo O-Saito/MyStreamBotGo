@@ -174,7 +174,6 @@
         }
 
         import w from './wrapper.js'
-        import { loadDyModules } from './customevent.js'
 
         const CONSTANTS = {
             ICONS: {
@@ -419,21 +418,21 @@
 
             updateYouTubeConnectionDetails();
             updateYouTubeStreamStatus();
+            syncYouTubeChatConnections(data.youtube_connected_chat);
 
             updateKickConnectionDetails(data.kick?.connected_as);
-            syncYouTubeChatConnections(data.youtube_connected_chat);
             loadDyModules(data.custom_events_modules);
             if (data.interface_config) {
                 try {
                     const config = JSON.parse(data.interface_config);
                     if (config.ignoreKick) {
-                        document.getElementById('kick').style.display = 'none';
+                        kickDiv.style.display = 'none';
                     }
                     if (config.ignoreYoutube) {
-                        document.getElementById('youtube').style.display = 'none';
+                        youtubeDiv.style.display = 'none';
                     }
                     if (config.ignoreTwitch) {
-                        document.getElementById('twitch').style.display = 'none';
+                        twitchDiv.style.display = 'none';
                     }
                 } catch (e) {
                     console.error('Failed to parse interface_config:', e);
@@ -878,7 +877,7 @@
             if (!streamTime) return;
 
             const activeStreams = Object.entries(streams.youtube.streams).filter(([_, d]) => !d.actualEndTime);
-            
+
             if (activeStreams.length > 0) {
                 const [_, firstStream] = activeStreams[0];
                 streamStatus.textContent = `online of ${firstStream.title || 'YouTube'}`;
@@ -931,7 +930,7 @@
         function updateYouTubeChatConnectiongDetails() {
             const chat = document.querySelector('#chat-connection-youtube .list');
             if (chat) {
-                chat.innerHTML = Object.entries(streams.youtube.streams).map(([id, data]) => 
+                chat.innerHTML = Object.entries(streams.youtube.streams).map(([id, data]) =>
                     `<li data-live-id="${id}">${data.title || id}</li>`
                 ).join('');
             }
@@ -1105,6 +1104,51 @@
         function parseTimeZone(date) {
             return new Date(date.getTime() - date.getTimezoneOffset() * 60000);
         }
+
+        function loadDyModules(modules) {
+            if (!modules?.length) {
+                document.getElementById('dyevents-panel').style.display = 'none';
+                document.getElementById('dyevents-list').style.display = 'none';
+                return;
+            }
+
+            const sidebar = document.getElementById('dyevents-sidebar');
+            const dyEventsDiv = document.getElementById('dyevents-list');
+
+            modules.forEach(m => {
+                const sidebarItem = document.createElement('div');
+                sidebarItem.className = 'sidebar-item';
+                sidebarItem.textContent = m.name;
+                sidebarItem.addEventListener('click', () => selectDyEvent(m.name));
+                sidebar.appendChild(sidebarItem);
+
+                const div = document.createElement('div');
+                div.id = m.name;
+                div.className = 'dyevent-content';
+                div.innerHTML = `
+<h3>${m.name}</h3>
+<div><label>${m.paused ? 'Paused' : 'Running'}</label></div>
+<div class="content-body"></div>
+`;
+
+                import(`./customevents/${m.name}.js?t=${Date.now()}`)
+                    .then(module => module.default?.())
+                    .catch(err => console.error('Module loading failed:', m.name, err));
+
+                dyEventsDiv.appendChild(div);
+            });
+
+            if (modules.length > 0) {
+                selectDyEvent(modules[0].name);
+            }
+        }
+
+        function selectDyEvent(name) {
+            document.querySelectorAll('.sidebar-item').forEach(item => { item.classList.toggle('active', item.textContent === name); });
+            document.querySelectorAll('.dyevent-content').forEach(content => { content.style.display = content.id === name ? 'block' : 'none'; });
+        }
+
+
     </script>
 </body>
 

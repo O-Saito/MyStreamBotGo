@@ -946,7 +946,7 @@
         }
 
         function parseText(data) {
-            let text = parseMessageWithEmotes(data.message.replace(/\\s|\s/g, ' ').replace(/\n/g, '') || '');
+            let text = parseMessageWithEmotes(data.message || '');
 
             if (data.source === "twitch" && data.metadata?.emotes) {
                 const emotes = data.metadata.emotes.split('/').filter(e => e && e.includes(':')).map(x => {
@@ -968,7 +968,7 @@
 
         function parseMessageWithEmotes(message) {
             const emoteMap = w.getEmotes();
-            return (message || '')
+            return (message.replace(/\\s|\s/g, ' ').replace(/\n/g, '') || '')
                 .split(/\s+/)
                 .map(word => {
                     const url = emoteMap[word];
@@ -1057,7 +1057,7 @@
                     const replyDiv = document.createElement('div');
                     replyDiv.className = 'reply-message';
                     const parentUser = `@${msg.metadata['reply-parent-display-name'] || ''}`;
-                    const parentText = parseMessageWithEmotes(msg.metadata['reply-parent-msg-body'].replace(/\\s|\s/g, ' ').replace(/\n/g, ''));
+                    const parentText = parseMessageWithEmotes(msg.metadata['reply-parent-msg-body']);
                     replyDiv.innerHTML = checkuserReference(`Respondendo a <span>${parentUser}</span>: ${parentText}`);
                     div.prepend(replyDiv);
                 }

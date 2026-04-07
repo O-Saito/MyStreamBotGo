@@ -337,7 +337,7 @@
         chkShowViewCount.addEventListener('change', () => {
             lblTwitchViewCount.style.color = chkShowViewCount.checked ? "" : "var(--bg-primary)";
             setPreference('showViewCount', chkShowViewCount.checked);
-            updateYouTubeViewCounts();
+            updateViewCount();
         });
 
         // Collapse handlers
@@ -366,9 +366,37 @@
         setupCollapseHandler(document.getElementById('toggle-dyevents'), 'dyevents-panel');
         setupCollapseHandler(document.getElementById('collapse-events'), 'events-panel');
 
-        let twitchData = null, youtubeData = null;
-        let youtubeStreamData = {};
-        let youtubeOfflineTimers = {};
+        chatDiv.addEventListener('scroll', () => {
+            const atBottom = chatDiv.scrollHeight - chatDiv.scrollTop <= chatDiv.clientHeight + 20;
+            chatAcompanhar.checked = atBottom;
+        });
+
+        function sendMessage() {
+            const input = document.getElementById('msg-input');
+            const text = input.value.trim();
+            if (text) {
+                w.send('send-chat-message', { text: text });
+                input.value = '';
+            }
+        }
+
+        document.getElementById('msg-input').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+
+        document.getElementById('btn-mandar-msg').addEventListener('click', (e) => {
+            e.preventDefault();
+            sendMessage();
+        });
+
+        const streams = {
+            // twitch data is reflection of /globals/state.go/TwitchUser
+            twitch: { data: null },
+            youtube: { data: null, streams: {}, offlineTimers: {} },
+            kick: { connectedAs: null }
+        };
 
         w.on('init', (data) => {
             if (data.twitch_connected_chat?.length > 0) {
@@ -377,8 +405,19 @@
             if (data.kick_connected_chat?.length > 0) {
                 data.kick_connected_chat.forEach(c => w.exec('kick-chat-connection', { id: c.ID, name: c.Slug }));
             }
-            updateTwitchConnectionDetails(data.twitch);
-            updateYouTubeConnectionDetails(data.youtube);
+
+            if (data.twitch) {
+                streams.twitch.data = data.twitch;
+            }
+
+            if(data.youtube){
+                 streams.youtube.data = data.youtube;
+            }
+            
+            updateTwitchConnectionDetails();
+            updateTwitchGameData();
+
+            updateYouTubeConnectionDetails();
             updateKickConnectionDetails(data.kick?.connected_as);
             updateYouTubeChatConnectiongDetails(data.youtube_connected_chat);
             loadDyModules(data.custom_events_modules);
@@ -402,8 +441,15 @@
             w.send("get-streamer-data", {});
         });
 
-        w.on('twitch-connection', updateTwitchConnectionDetails);
-        w.on('youtube-connection', updateYouTubeConnectionDetails);
+        w.on('twitch-connection', (data) => {
+            streams.twitch.data.stream_details = data;
+            updateTwitchConnectionDetails();
+            updateTwitchGameData();
+        });
+        w.on('youtube-connection', (data)=> {
+            streams.youtube.data = data;
+            updateYouTubeConnectionDetails();
+        });
         w.on('kick-connection', updateKickConnectionDetails);
         w.on('twitch-chat-connection', (data) => {
             const li = document.createElement('li');
@@ -442,16 +488,16 @@
             if (item) item.classList.add('live-off');
 
             if (data?.liveId) {
-                if (youtubeStreamData[data.liveId]) {
-                    youtubeStreamData[data.liveId].actualEndTime = data.offlineAt || new Date().toISOString();
+                if (streams.youtube.streams[data.liveId]) {
+                    streams.youtube.streams[data.liveId].actualEndTime = data.offlineAt || new Date().toISOString();
                 }
-                if (youtubeOfflineTimers[data.liveId]) {
-                    clearTimeout(youtubeOfflineTimers[data.liveId]);
+                if (streams.youtube.offlineTimers[data.liveId]) {
+                    clearTimeout(streams.youtube.offlineTimers[data.liveId]);
                 }
-                youtubeOfflineTimers[data.liveId] = setTimeout(() => {
-                    delete youtubeStreamData[data.liveId];
-                    delete youtubeOfflineTimers[data.liveId];
-                    updateYouTubeViewCounts();
+                streams.youtube.offlineTimers[data.liveId] = setTimeout(() => {
+                    delete streams.youtube.streams[data.liveId];
+                    delete streams.youtube.offlineTimers[data.liveId];
+                    updateViewCount();
                     updateYouTubeStreamStatus();
                 }, 5 * 60 * 1000);
             }
@@ -461,25 +507,29 @@
         w.onTwitch('channel.update', (data) => {
             const e = data?.payload?.event;
             if (e) {
-                if (!twitchData.stream_details) twitchData.stream_details = {};
-                twitchData.stream_details.title = e.title;
-                twitchData.stream_details.language = e.language;
-                twitchData.stream_details.game_id = e.category_id;
-                twitchData.stream_details.game_name = e.category_name;
-                updateTwitchConnectionDetails();
+
+                if (!streams.twitch.data.stream_details)
+                    streams.twitch.data.stream_details = {};
+                const sd = streams.twitch.data.stream_details;
+                sd.title = e.title;
+                sd.language = e.language;
+                sd.game_id = e.category_id;
+                sd.game_name = e.category_name;
+                updateTwitchGameData();
             }
         });
         w.onTwitch("stream.online", (data) => {
             const e = data?.payload?.event;
             if (e) {
-                if (!twitchData.stream_details) twitchData.stream_details = {};
-                twitchData.stream_details.started_at = e.started_at;
+                if (!streams.twitch.data.stream_details)
+                    streams.twitch.data.stream_details = {};
+                streams.twitch.data.stream_details.started_at = e.started_at;
                 updateTwitchConnectionDetails();
             }
         });
         w.onTwitch("stream.offline", () => {
-            if (twitchData?.stream_details) {
-                twitchData.stream_details.started_at = '';
+            if (streams.twitch.stream_details.started_at) {
+                streams.twitch.stream_details.started_at = '';
                 updateTwitchConnectionDetails();
             }
         });
@@ -534,7 +584,7 @@
             const el = document.createElement('div');
             el.className = 'event';
             const userName = data?.payload?.event?.user_name;
-            const broadcaster = twitchData?.userId == data?.payload?.event?.broadcaster_user_id
+            const broadcaster = streams.twitch.data?.userId == data?.payload?.event?.broadcaster_user_id
                 ? data?.payload?.event?.broadcaster_user_name
                 : 'você';
             el.innerHTML = `<span><span class="user">${userName}</span> seguiu ${broadcaster}!</span>`;
@@ -544,7 +594,7 @@
             const el = document.createElement('div');
             el.className = 'event';
             const fromName = data?.payload?.event?.from_broadcaster_user_name;
-            const toName = twitchData?.userId == data?.payload?.event?.to_broadcaster_user_id
+            const toName = streams.twitch.data?.userId == data?.payload?.event?.to_broadcaster_user_id
                 ? data?.payload?.event?.to_broadcaster_user_name
                 : 'você';
             const viewers = data?.payload?.event?.viewers || 0;
@@ -554,28 +604,33 @@
         w.on('result-get-streamer-data', (data) => {
             if (!data) return;
             const { twitch, youtube } = data;
-            if (twitch && twitchData?.stream_details) {
-                if (twitch.viewer_count) twitchData.stream_details.viewer_count = twitch.viewer_count;
-                if (twitch.started_at) twitchData.stream_details.started_at = twitch.started_at;
+
+            if (twitch) {
+                if (!streams.twitch.data.stream_details) streams.twitch.data.stream_details = {};
+                const sd = streams.twitch.data.stream_details;
+                if (twitch.viewer_count) sd.viewer_count = twitch.viewer_count;
+                if (twitch.started_at) sd.started_at = twitch.started_at;
+
+                updateTwitchLiveTimer();
             }
             if (youtube && Array.isArray(youtube)) {
                 youtube.forEach(yt => {
                     if (yt.video_id) {
-                        if (youtubeOfflineTimers[yt.video_id]) {
-                            clearTimeout(youtubeOfflineTimers[yt.video_id]);
-                            delete youtubeOfflineTimers[yt.video_id];
+                        if (streams.youtube.offlineTimers[yt.video_id]) {
+                            clearTimeout(streams.youtube.offlineTimers[yt.video_id]);
+                            delete streams.youtube.offlineTimers[yt.video_id];
                         }
-                        youtubeStreamData[yt.video_id] = {
-                            viewer_count: yt.concurrent_viewers,
+                        streams.youtube.streams[yt.video_id] = {
+                            viewer_count: parseInt(yt.concurrent_viewers) || 0,
                             title: yt.title,
                             actualStartTime: yt.actual_start_time,
                             actualEndTime: yt.actual_end_time
                         };
                     }
                 });
-                updateYouTubeViewCounts();
-
             }
+
+            updateViewCount();
         });
 
         try {
@@ -584,56 +639,29 @@
             window.onerror?.(`Socket connection error: ${e.message}`, '', 0, 0, e);
         }
 
-        function updateYouTubeViewCounts() {
-            const wrapper = document.getElementById('youtube-view-counts-wrapper');
-            if (!wrapper) return;
-
-            wrapper.innerHTML = '';
-            const showCount = chkShowViewCount.checked;
-
-            Object.entries(youtubeStreamData).forEach(([liveId, data]) => {
-                const span = document.createElement('span');
-                span.dataset.liveId = liveId;
-                span.style.marginLeft = '10px';
-                span.style.color = showCount ? '' : 'var(--bg-primary)';
-                span.innerHTML = `<img src="${CONSTANTS.ICONS.youtube}" alt="YouTube" style="height: 20px;" /> ${data.viewer_count || 0}`;
-                wrapper.appendChild(span);
-            });
-        }
-
-        let timeToUpdateTwitchData = 0;
+        let timeToUpdateData = 0;
         setInterval(() => {
-            if (twitchData?.stream_details) {
-                lblTwitchViewCount.textContent = twitchData.stream_details.viewer_count?.toString() || '0';
-                if (twitchData.stream_details.started_at) {
-                    const start = parseTimeZone(new Date(twitchData.stream_details.started_at));
-                    twitchDiv.querySelector('.stream-time').textContent = getDateDiff(parseTimeZone(new Date()), start).toString();
-                    if (++timeToUpdateTwitchData >= 60) {
-                        timeToUpdateTwitchData = 0;
-                        w.send("get-streamer-data", {});
-                    }
-                }
+            if (++timeToUpdateData >= 60) {
+                timeToUpdateData = 0;
+                w.send("get-streamer-data", {});
             }
-            updateYouTubeViewCounts();
+            updateViewCount();
+
             updateYouTubeStreamStatus();
             updateYouTubeStreamTime();
         }, 1000);
 
         function checkuserReference(text) {
-            const t1 = `@${twitchData?.userLogin || ''}`;
-            const t2 = `@${twitchData?.display_name || ''}`;
+            const t1 = `@${streams.twitch.data?.userLogin || ''}`;
+            const t2 = `@${streams.twitch.data?.display_name || ''}`;
             const highlight = (s) => `<span class="streamer-ref">${s}</span>`;
             if (t1 === t2) return text.replaceAll(t1, highlight(t1));
             return text.replaceAll(t1, highlight(t1)).replaceAll(t2, highlight(t2));
         }
 
-        function connectToTwitchChat(slug) {
-            w.send('connect-chat-twitch', { channel: slug });
-        }
+        function connectToTwitchChat(slug) { w.send('connect-chat-twitch', { channel: slug }); }
 
-        function connectToYouTubeChat(id) {
-            w.send('connect-chat-youtube', { channel: id });
-        }
+        function connectToYouTubeChat(id) { w.send('connect-chat-youtube', { channel: id }); }
 
         function deleteTwitchMessage(e) {
             e.preventDefault();
@@ -701,31 +729,6 @@
             });
         }
 
-        chatDiv.addEventListener('scroll', () => {
-            const atBottom = chatDiv.scrollHeight - chatDiv.scrollTop <= chatDiv.clientHeight + 20;
-            chatAcompanhar.checked = atBottom;
-        });
-
-        function sendMessage() {
-            const input = document.getElementById('msg-input');
-            const text = input.value.trim();
-            if (text) {
-                w.send('send-chat-message', { text: text });
-                input.value = '';
-            }
-        }
-
-        document.getElementById('msg-input').addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                sendMessage();
-            }
-        });
-
-        document.getElementById('btn-mandar-msg').addEventListener('click', (e) => {
-            e.preventDefault();
-            sendMessage();
-        });
-
         function updateMessageDelete(messageId) {
             const msg = document.querySelector(`[data-message-id="${messageId}"]`);
             if (msg) {
@@ -734,44 +737,19 @@
             }
         }
 
-        function updateTwitchConnectionDetails(data) {
-            if (data) twitchData = data;
+        function updateTwitchConnectionDetails() {
             const loginEl = logins.querySelector('#login-twitch');
-
-            if (!twitchData?.userLogin) {
+            const data = streams.twitch.data;
+            const sd = data?.stream_details;
+            if (!data?.userLogin) {
                 loginEl.innerHTML = '<a href="/twitch/login" target="_blank" class="login-link">Logar Twitch</a>';
                 twitchConnections.style.display = 'none';
                 return;
             }
 
-            loginEl.innerHTML = `Twitch: <img src="${twitchData.profile_image_url}" /> ${twitchData.userLogin}`;
+            loginEl.innerHTML = `Twitch: <img src="${streams.twitch.data.profile_image_url}" /> ${streams.twitch.data.userLogin}`;
 
-            const streamStatus = twitchDiv.querySelector('.stream-status');
-            const sd = twitchData.stream_details;
-
-            if (sd?.started_at) {
-                streamStatus.textContent = "online";
-                streamStatus.className = 'stream-status live-on';
-            } else {
-                streamStatus.textContent = "offline";
-                streamStatus.className = 'stream-status live-off';
-            }
-
-            if (sd) {
-                lblTwitchViewCount.textContent = sd.viewer_count?.toString() || '0';
-                twitchGameIdLabel.textContent = sd.game_id || '';
-                document.getElementById('twitch-title').value = sd.title || '';
-                if (twitchDiv.querySelectorAll(`#twitch-game-list option[data-id="${sd.game_id}"]`).length === 0) {
-                    const gameoption = document.createElement("option");
-                    gameoption.textContent = sd.game_id;
-                    gameoption.value = sd.game_name;
-                    gameoption.dataset.id = sd.game_id;
-                    document.getElementById('twitch-game-list').appendChild(gameoption);
-                }
-                document.getElementById('twitch-game').value = sd.game_name || '';
-                document.getElementById('twitch-lang').value = sd.language || '';
-                document.getElementById('twitch-tags').innerHTML = (sd.tags || []).map(t => `<li>${t}</li>`).join('');
-            }
+            updateTwitchStreamOnlineStatus();
 
             twitchConnections.style.display = 'inline-block';
             twitchConnections.querySelector('.btn-novo-chat').onclick = () => {
@@ -780,8 +758,75 @@
             };
         }
 
-        function updateYouTubeConnectionDetails(data) {
-            youtubeData = data;
+        function updateTwitchGameData() {
+            const data = streams.twitch.data;
+            const sd = data?.stream_details;
+
+            if (!data || !sd) return;
+
+            twitchGameIdLabel.textContent = sd.game_id || '';
+            document.getElementById('twitch-title').value = sd.title || '';
+            if (twitchDiv.querySelectorAll(`#twitch-game-list option[data-id="${sd.game_id}"]`).length === 0) {
+                const gameoption = document.createElement("option");
+                gameoption.textContent = sd.game_id;
+                gameoption.value = sd.game_name;
+                gameoption.dataset.id = sd.game_id;
+                document.getElementById('twitch-game-list').appendChild(gameoption);
+            }
+            document.getElementById('twitch-game').value = sd.game_name || '';
+            document.getElementById('twitch-lang').value = sd.language || '';
+            document.getElementById('twitch-tags').innerHTML = (sd.tags || []).map(t => `<li>${t}</li>`).join('');
+        }
+
+        function updateTwitchLiveTimer() {
+            if (!streams.twitch?.data?.stream_details?.started_at) return;
+            const start = parseTimeZone(new Date(streams.twitch.data.stream_details.started_at));
+            twitchDiv.querySelector('.stream-time').textContent = getDateDiff(parseTimeZone(new Date()), start).toString();
+        }
+
+        function updateTwitchStreamOnlineStatus() {
+            const data = streams.twitch.data;
+            const sd = data?.stream_details;
+
+            if (!data || !sd) return;
+
+            const streamStatus = twitchDiv.querySelector('.stream-status');
+            streamStatus.className = 'stream-status live-off';
+            streamStatus.textContent = "offline";
+
+            if (sd?.started_at) {
+                streamStatus.textContent = "online";
+                streamStatus.className = 'stream-status live-on';
+            }
+        }
+
+        function updateViewCount() {
+            if (streams.twitch.data) {
+                const data = streams.twitch.data;
+                const sd = data.stream_details;
+                lblTwitchViewCount.textContent = sd?.viewer_count?.toString() || '0';
+                updateTwitchStreamOnlineStatus();
+            }
+
+            if (streams.youtube.streams) {
+                const wrapper = document.getElementById('youtube-view-counts-wrapper');
+                if (!wrapper) return;
+
+                wrapper.innerHTML = '';
+                const showCount = chkShowViewCount.checked;
+
+                Object.entries(streams.youtube.streams).forEach(([liveId, data]) => {
+                    const span = document.createElement('span');
+                    span.dataset.liveId = liveId;
+                    span.style.marginLeft = '10px';
+                    span.style.color = showCount ? '' : 'var(--bg-primary)';
+                    span.innerHTML = `<img src="${CONSTANTS.ICONS.youtube}" alt="YouTube" style="height: 20px;" /> ${data.viewer_count || 0}`;
+                    wrapper.appendChild(span);
+                });
+            }
+        }
+
+        function updateYouTubeConnectionDetails() {
             const loginEl = logins.querySelector('#login-youtube');
             loginEl.innerHTML = '';
 
@@ -832,7 +877,7 @@
             const streamTime = youtubeDiv.querySelector('.stream-time');
             if (!streamStatus || !streamTime) return;
 
-            const activeStreams = Object.entries(youtubeStreamData).filter(([_, d]) => !d.actualEndTime);
+            const activeStreams = Object.entries(streams.youtube.streams).filter(([_, d]) => !d.actualEndTime);
             if (activeStreams.length > 0) {
                 const [_, firstStream] = activeStreams[0];
                 streamStatus.textContent = `online of ${firstStream.title || 'YouTube'}`;
@@ -848,7 +893,7 @@
             const streamTime = youtubeDiv.querySelector('.stream-time');
             if (!streamTime) return;
 
-            const activeStreams = Object.entries(youtubeStreamData).filter(([_, d]) => !d.actualEndTime && d.actualStartTime);
+            const activeStreams = Object.entries(streams.youtube.streams).filter(([_, d]) => !d.actualEndTime && d.actualStartTime);
             if (activeStreams.length > 0) {
                 const [_, firstStream] = activeStreams[0];
                 const start = parseTimeZone(new Date(firstStream.actualStartTime));
@@ -856,17 +901,18 @@
             }
         }
 
-        function updateKickConnectionDetails(user) {
+        function updateKickConnectionDetails(connectedAs) {
+            streams.kick.connectedAs = connectedAs;
             const loginEl = logins.querySelector('#login-kick');
 
-            if (!user) {
+            if (!connectedAs) {
                 loginEl.innerHTML = '<a href="/kick/login" target="_blank" class="login-link">Logar Kick</a>';
                 kickConnections.style.display = "none";
                 return;
             }
 
-            loginEl.textContent = `Kick: ${user}`;
-            if (!kickConnections.querySelectorAll('.list li').length) connectToKickChat(user);
+            loginEl.textContent = `Kick: ${connectedAs}`;
+            if (!kickConnections.querySelectorAll('.list li').length) connectToKickChat(connectedAs);
             kickConnections.style.display = "block";
             // kickConnections.querySelector('.btn-novo-chat').onclick = () => {
             //     const t = prompt('Informe o usuário Kick');

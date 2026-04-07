@@ -117,6 +117,17 @@
         </div>
     </div>
 
+    <div id="dyevents-panel" class="areas panel">
+        <div class="header">
+            <label><input type="checkbox" id="toggle-dyevents" /></label>
+            <span>Custom Events</span>
+        </div>
+        <div class="body collapse-area">
+            <div id="dyevents-sidebar"></div>
+            <div id="dyevents-list"></div>
+        </div>
+    </div>
+
     <div id="system" class="areas">
         <div class="header">
             <label><input type="checkbox" class="display-collapse" /></label>
@@ -132,17 +143,6 @@
                 <div><strong>UI Errors:</strong></div>
                 <div id="ui-errors-list"></div>
             </div>
-        </div>
-    </div>
-
-    <div id="dyevents-panel" class="areas panel">
-        <div class="header">
-            <label><input type="checkbox" id="toggle-dyevents" /></label>
-            <span>Custom Events</span>
-        </div>
-        <div class="body collapse-area">
-            <div id="dyevents-sidebar"></div>
-            <div id="dyevents-list"></div>
         </div>
     </div>
 
@@ -946,7 +946,7 @@
         }
 
         function parseText(data) {
-            let text = parseMessageWithEmotes(data.message || '');
+            let text = parseMessageWithEmotes(data.message.replace(/\\s|\s/g, ' ').replace(/\n/g, '') || '');
 
             if (data.source === "twitch" && data.metadata?.emotes) {
                 const emotes = data.metadata.emotes.split('/').filter(e => e && e.includes(':')).map(x => {
@@ -1057,8 +1057,8 @@
                     const replyDiv = document.createElement('div');
                     replyDiv.className = 'reply-message';
                     const parentUser = `@${msg.metadata['reply-parent-display-name'] || ''}`;
-                    const parentText = parseMessageWithEmotes(msg.metadata['reply-parent-msg-body']);
-                    replyDiv.innerHTML = checkuserReference(`Respondendo a <span>${parentUser}</span>: ${parentText}`).replace(/\s/g, '&nbsp;').replace(/\n/g, '');
+                    const parentText = parseMessageWithEmotes(msg.metadata['reply-parent-msg-body'].replace(/\\s|\s/g, ' ').replace(/\n/g, ''));
+                    replyDiv.innerHTML = checkuserReference(`Respondendo a <span>${parentUser}</span>: ${parentText}`);
                     div.prepend(replyDiv);
                 }
             }

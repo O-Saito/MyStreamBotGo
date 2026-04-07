@@ -410,16 +410,18 @@
                 streams.twitch.data = data.twitch;
             }
 
-            if(data.youtube){
-                 streams.youtube.data = data.youtube;
+            if (data.youtube) {
+                streams.youtube.data = data.youtube;
             }
-            
+
             updateTwitchConnectionDetails();
             updateTwitchGameData();
 
             updateYouTubeConnectionDetails();
+            updateYouTubeStreamStatus();
+
             updateKickConnectionDetails(data.kick?.connected_as);
-            updateYouTubeChatConnectiongDetails(data.youtube_connected_chat);
+            syncYouTubeChatConnections(data.youtube_connected_chat);
             loadDyModules(data.custom_events_modules);
             if (data.interface_config) {
                 try {
@@ -446,9 +448,10 @@
             updateTwitchConnectionDetails();
             updateTwitchGameData();
         });
-        w.on('youtube-connection', (data)=> {
+        w.on('youtube-connection', (data) => {
             streams.youtube.data = data;
             updateYouTubeConnectionDetails();
+            updateYouTubeStreamStatus();
         });
         w.on('kick-connection', updateKickConnectionDetails);
         w.on('twitch-chat-connection', (data) => {
@@ -482,7 +485,7 @@
                 twitchLastEventsub.textContent = `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}:${date.getSeconds().toString().padStart(2, '0')}`;
             }
         });
-        w.on('result-connect-chat-youtube', updateYouTubeChatConnectiongDetails);
+        w.on('result-connect-chat-youtube', (data) => syncYouTubeChatConnections(data));
         w.on('youtube-live-offline', (data) => {
             const item = document.querySelector(`#chat-connection-youtube [data-live-id="${data?.liveId}"]`);
             if (item) item.classList.add('live-off');
@@ -646,9 +649,6 @@
                 w.send("get-streamer-data", {});
             }
             updateViewCount();
-
-            updateYouTubeStreamStatus();
-            updateYouTubeStreamTime();
         }, 1000);
 
         function checkuserReference(text) {
@@ -823,12 +823,14 @@
                     span.innerHTML = `<img src="${CONSTANTS.ICONS.youtube}" alt="YouTube" style="height: 20px;" /> ${data.viewer_count || 0}`;
                     wrapper.appendChild(span);
                 });
+                updateYouTubeStreamStatus();
             }
         }
 
         function updateYouTubeConnectionDetails() {
             const loginEl = logins.querySelector('#login-youtube');
-            loginEl.innerHTML = '';
+            const data = streams.youtube.data;
+            loginEl.textContent = '';
 
             if (!data?.Channels?.length) {
                 loginEl.innerHTML = '<a href="/youtube/login" target="_blank" class="login-link">Logar YouTube</a>';
@@ -849,8 +851,6 @@
                 loginEl.appendChild(span);
             });
 
-            //loginEl.innerHTML = `YouTube: ${data.Channels.map(x => `<img src="${x.thumbnail}" /> ${x.title}`).join('')}`;
-
             const formDiv = youtubeDiv.querySelector('.form');
 
             const buttons = [];
@@ -868,8 +868,6 @@
                 btn.onclick = () => connectToYouTubeChat(btn.dataset.id);
             });
             youtubeConnections.style.display = 'block';
-
-            updateYouTubeStreamStatus();
         }
 
         function updateYouTubeStreamStatus() {
@@ -877,28 +875,21 @@
             const streamTime = youtubeDiv.querySelector('.stream-time');
             if (!streamStatus || !streamTime) return;
 
+            if (!streamTime) return;
+
             const activeStreams = Object.entries(streams.youtube.streams).filter(([_, d]) => !d.actualEndTime);
+            
             if (activeStreams.length > 0) {
                 const [_, firstStream] = activeStreams[0];
                 streamStatus.textContent = `online of ${firstStream.title || 'YouTube'}`;
                 streamStatus.className = 'stream-status live-on';
-            } else {
-                streamStatus.textContent = "offline";
-                streamStatus.className = 'stream-status live-off';
-                streamTime.textContent = '';
-            }
-        }
-
-        function updateYouTubeStreamTime() {
-            const streamTime = youtubeDiv.querySelector('.stream-time');
-            if (!streamTime) return;
-
-            const activeStreams = Object.entries(streams.youtube.streams).filter(([_, d]) => !d.actualEndTime && d.actualStartTime);
-            if (activeStreams.length > 0) {
-                const [_, firstStream] = activeStreams[0];
                 const start = parseTimeZone(new Date(firstStream.actualStartTime));
                 streamTime.textContent = getDateDiff(parseTimeZone(new Date()), start).toString();
+                return;
             }
+            streamStatus.textContent = "offline";
+            streamStatus.className = 'stream-status live-off';
+            streamTime.textContent = '';
         }
 
         function updateKickConnectionDetails(connectedAs) {
@@ -914,16 +905,35 @@
             loginEl.textContent = `Kick: ${connectedAs}`;
             if (!kickConnections.querySelectorAll('.list li').length) connectToKickChat(connectedAs);
             kickConnections.style.display = "block";
-            // kickConnections.querySelector('.btn-novo-chat').onclick = () => {
-            //     const t = prompt('Informe o usuário Kick');
-            //     if (t) connectToKickChat(t);
-            // };
         }
 
-        function updateYouTubeChatConnectiongDetails(data) {
+        function syncYouTubeChatConnections(data) {
+            if (!data || !Array.isArray(data)) return;
+            data.forEach(c => {
+                if (c.ID) {
+                    if (!streams.youtube.streams[c.ID]) {
+                        streams.youtube.streams[c.ID] = {
+                            viewer_count: 0,
+                            actualStartTime: null,
+                            actualEndTime: null,
+                            title: c.Snippet?.title || c.ID,
+                            liveChatId: c.Snippet?.liveChatId
+                        };
+                    } else {
+                        streams.youtube.streams[c.ID].title = c.Snippet?.title || streams.youtube.streams[c.ID].title;
+                        streams.youtube.streams[c.ID].liveChatId = c.Snippet?.liveChatId;
+                    }
+                }
+            });
+            updateYouTubeChatConnectiongDetails();
+        }
+
+        function updateYouTubeChatConnectiongDetails() {
             const chat = document.querySelector('#chat-connection-youtube .list');
-            if (chat && data) {
-                chat.innerHTML = data.map(x => `<li data-live-id="${x.id}">${x.snippet?.title || x.id}</li>`).join('');
+            if (chat) {
+                chat.innerHTML = Object.entries(streams.youtube.streams).map(([id, data]) => 
+                    `<li data-live-id="${id}">${data.title || id}</li>`
+                ).join('');
             }
         }
 

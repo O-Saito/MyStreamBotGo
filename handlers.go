@@ -62,6 +62,81 @@ func RegisterSocketHandlers() {
 		}
 	}
 
+	goweb.SocketHandlers["get-next-streams-youtube"] = func(c *websocket.Conn, data map[string]any, tag int) {
+		helpers.Printf(helpers.Reset, "[Socket Handler] get-next-streams-youtube %s\r\n", data["channel"].(string))
+		lives, err := youtube.GetNextStreamings()
+		if err != nil {
+			helpers.Logf(helpers.ERROR, "Falha ao buscar YouTubeStreamings %v", err)
+			return
+		}
+
+		previews := globals.GetState().GetData("youtube-preview-lives")
+		if previews == nil {
+			previews = []youtube.LiveBroadcast{}
+		}
+
+		for _, v := range lives.Items {
+
+			_, finded := helpers.Find(previews.([]youtube.LiveBroadcast), func(l youtube.LiveBroadcast) bool {
+				return l.Snippet.LiveChatID == v.Snippet.LiveChatID
+			})
+			if !finded {
+				previews = append(previews.([]youtube.LiveBroadcast), v)
+			}
+		}
+
+		globals.GetState().SetData("youtube-preview-lives", previews)
+
+		globals.WsBroadcast <- globals.SocketMessage{
+			Respond: tag,
+			Type:    "result-get-next-streams-youtube",
+			Data:    previews,
+		}
+	}
+
+	goweb.SocketHandlers["connect-to-preview-youtube"] = func(c *websocket.Conn, data map[string]any, tag int) {
+		helpers.Printf(helpers.Reset, "[Socket Handler] connect-to-preview-youtube %s\r\n", data["liveChatId"].(string))
+		liveChatId := data["liveChatId"].(string)
+
+		if liveChatId == "" {
+			return
+		}
+
+		previews := globals.GetState().GetData("youtube-preview-lives")
+		if previews == nil {
+			return
+		}
+
+		connectedChat := globals.GetState().GetData("youtube-lives")
+		if connectedChat == nil {
+			connectedChat = []youtube.LiveBroadcast{}
+		}
+
+		_, findedConnected := helpers.Find(connectedChat.([]youtube.LiveBroadcast), func(l youtube.LiveBroadcast) bool {
+			return l.Snippet.LiveChatID == liveChatId
+		})
+
+		if findedConnected {
+			return
+		}
+
+		current, finded := helpers.Find(previews.([]youtube.LiveBroadcast), func(l youtube.LiveBroadcast) bool {
+			return l.Snippet.LiveChatID == liveChatId
+		})
+
+		if finded {
+			connectedChat = append(connectedChat.([]youtube.LiveBroadcast), current)
+			go youtube.ListenToChat(liveChatId)
+			globals.GetState().SetData("youtube-lives", connectedChat)
+		}
+
+		globals.WsBroadcast <- globals.SocketMessage{
+			Respond: tag,
+			Type:    "result-connect-chat-youtube",
+			Data:    connectedChat,
+		}
+	}
+
 	goweb.SocketHandlers["send-chat-message"] = func(c *websocket.Conn, data map[string]any, tag int) {
 		if len(twitch.Channels) > 0 {
 			for _, channel := range twitch.Channels {

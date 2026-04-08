@@ -2,6 +2,7 @@ package youtube
 
 import (
 	"MyStreamBot/globals"
+	"MyStreamBot/helpers"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -43,6 +44,15 @@ type LiveBroadcast struct {
 	Etag    string                `json:"etag"`
 	ID      string                `json:"id"`
 	Snippet *LiveBroadcastSnippet `json:"snippet,omitempty"`
+	Status  *LiveBroadcastStatus  `json:"status,omitempty"`
+}
+
+type LiveBroadcastStatus struct {
+	LifeCycleStatus         string `json:"lifeCycleStatus,omitempty"`
+	PrivacyStatus           string `json:"privacyStatus,omitempty"`
+	RecordingStatus         string `json:"recordingStatus,omitempty"`
+	MadeForKids             bool   `json:"madeForKids,omitempty"`
+	SelfDeclaredMadeForKids bool   `json:"selfDeclaredMadeForKids,omitempty"`
 }
 
 type LiveBroadcastSnippet struct {
@@ -97,7 +107,7 @@ func RefreshToken() error {
 }
 
 func GetCurrentStreamings() (*LiveBroadcastListResponse, error) {
-	req, _ := http.NewRequest("GET", "https://www.googleapis.com/youtube/v3/liveBroadcasts?broadcastStatus=active&part=snippet", nil)
+	req, _ := http.NewRequest("GET", "https://www.googleapis.com/youtube/v3/liveBroadcasts?broadcastStatus=active&part=snippet,status", nil)
 	resp, err := DoYouTubeRequest(req)
 	if err != nil {
 		return nil, err
@@ -105,6 +115,22 @@ func GetCurrentStreamings() (*LiveBroadcastListResponse, error) {
 	defer resp.Body.Close()
 
 	body, _ := io.ReadAll(resp.Body)
+	helpers.Logf(helpers.DEBUG, "[YT] GetCurrentStreamings: %s", body)
+	var r LiveBroadcastListResponse
+	json.Unmarshal(body, &r)
+	return &r, nil
+}
+
+func GetNextStreamings() (*LiveBroadcastListResponse, error) {
+	req, _ := http.NewRequest("GET", "https://www.googleapis.com/youtube/v3/liveBroadcasts?broadcastStatus=upcoming&part=snippet,status", nil)
+	resp, err := DoYouTubeRequest(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	body, _ := io.ReadAll(resp.Body)
+	helpers.Logf(helpers.DEBUG, "[YT] GetCurrentStreamings: %s", body)
 	var r LiveBroadcastListResponse
 	json.Unmarshal(body, &r)
 	return &r, nil

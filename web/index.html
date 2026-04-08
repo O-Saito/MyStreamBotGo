@@ -393,9 +393,11 @@
         const streams = {
             // twitch data is reflection of /globals/state.go/TwitchUser
             twitch: { data: null },
-            youtube: { data: null, streams: {}, offlineTimers: {} },
+            youtube: { data: null, streams: {}, offlineTimers: {}, previewStreams: {} },
             kick: { connectedAs: null }
         };
+
+        window.streams = streams;
 
         w.on('init', (data) => {
             if (data.twitch_connected_chat?.length > 0) {
@@ -485,6 +487,28 @@
             }
         });
         w.on('result-connect-chat-youtube', (data) => syncYouTubeChatConnections(data));
+        w.on('result-get-next-streams-youtube', (data) => {
+            data.forEach(item => {
+                if (!streams.youtube.previewStreams[item.id]) {
+                    streams.youtube.previewStreams[item.id] = {
+                        channelId: "",
+                        description: "",
+                        liveChatId: "",
+                        publishedAt: "",
+                        thumbnail: "",
+                        title: "",
+                    };
+                }
+                const current = streams.youtube.previewStreams[item.id];
+                current.channelId = item.snippet.channelId;
+                current.title = item.snippet.title;
+                current.description = item.snippet.description;
+                current.liveChatId = item.snippet.liveChatId;
+                current.publishedAt = item.snippet.publishedAt;
+                current.thumbnail = item.snippet.thumbnails?.medium?.url || item.snippet.thumbnails?.default?.url || "";
+            });
+            updateYouTubeConnectionDetails();
+        });
         w.on('youtube-live-offline', (data) => {
             const item = document.querySelector(`#chat-connection-youtube [data-live-id="${data?.liveId}"]`);
             if (item) item.classList.add('live-off');
@@ -579,8 +603,7 @@
             allowBtn.onclick = automodTwitchUser;
 
             div.append(source, channel, badges, user, message, allowBtn);
-            chatDiv.appendChild(div);
-            if (chatAcompanhar.checked) chatDiv.scrollTop = chatDiv.scrollHeight;
+            addChatMessage(div);
         });
         w.onTwitch("channel.follow", (data) => {
             const el = document.createElement('div');
@@ -612,8 +635,7 @@
                 const sd = streams.twitch.data.stream_details;
                 if (twitch.viewer_count) sd.viewer_count = twitch.viewer_count;
                 if (twitch.started_at) sd.started_at = twitch.started_at;
-
-                updateTwitchLiveTimer();
+                updateTwitchStreamOnlineStatus();
             }
             if (youtube && Array.isArray(youtube)) {
                 youtube.forEach(yt => {
@@ -661,6 +683,8 @@
         function connectToTwitchChat(slug) { w.send('connect-chat-twitch', { channel: slug }); }
 
         function connectToYouTubeChat(id) { w.send('connect-chat-youtube', { channel: id }); }
+
+        function getNextYouTubeStreams(id) { w.send('get-next-streams-youtube', { channel: id }); }
 
         function deleteTwitchMessage(e) {
             e.preventDefault();
@@ -777,11 +801,11 @@
             document.getElementById('twitch-tags').innerHTML = (sd.tags || []).map(t => `<li>${t}</li>`).join('');
         }
 
-        function updateTwitchLiveTimer() {
-            if (!streams.twitch?.data?.stream_details?.started_at) return;
-            const start = parseTimeZone(new Date(streams.twitch.data.stream_details.started_at));
-            twitchDiv.querySelector('.stream-time').textContent = getDateDiff(parseTimeZone(new Date()), start).toString();
-        }
+        // function updateTwitchLiveTimer() {
+        //     if (!streams.twitch?.data?.stream_details?.started_at) return;
+        //     const start = parseTimeZone(new Date(streams.twitch.data.stream_details.started_at));
+        //     twitchDiv.querySelector('.stream-time').textContent = getDateDiff(parseTimeZone(new Date()), start).toString();
+        // }
 
         function updateTwitchStreamOnlineStatus() {
             const data = streams.twitch.data;
@@ -794,16 +818,17 @@
             streamStatus.textContent = "offline";
 
             if (sd?.started_at) {
-                streamStatus.textContent = "online";
+                const start = parseTimeZone(new Date(sd.started_at));
+                streamStatus.textContent = `online ${getDateDiff(parseTimeZone(new Date()), start).toString()}`;
                 streamStatus.className = 'stream-status live-on';
             }
         }
 
         function updateViewCount() {
             if (streams.twitch.data) {
-                const data = streams.twitch.data;
-                const sd = data.stream_details;
-                lblTwitchViewCount.textContent = sd?.viewer_count?.toString() || '0';
+                //const data = streams.twitch.data;
+                //const sd = data.stream_details;
+                //lblTwitchViewCount.textContent = sd?.viewer_count?.toString() || '0';
                 updateTwitchStreamOnlineStatus();
             }
 
@@ -851,21 +876,61 @@
             });
 
             const formDiv = youtubeDiv.querySelector('.form');
+            formDiv.innerHTML = '';
 
             const buttons = [];
-
+            const buttonsNext = [];
             data.Channels.forEach(c => {
+                const div = document.createElement('div');
                 const btn = document.createElement('button');
                 btn.type = 'button';
                 btn.dataset.id = c.id;
                 btn.className = 'btn-youtube-chat-connect';
                 btn.textContent = `Conectar ao Chat: ${c.title}`;
-                formDiv.appendChild(btn);
                 buttons.push(btn);
+
+                const btnNext = document.createElement('button');
+                btnNext.type = 'button';
+                btnNext.dataset.id = c.id;
+                btnNext.className = 'btn-youtube-next';
+                btnNext.textContent = `Buscar Próximas Transmissões: ${c.title}`;
+
+                div.appendChild(btn);
+                div.appendChild(btnNext);
+                formDiv.appendChild(div);
+                buttonsNext.push(btnNext);
             });
-            buttons.forEach(btn => {
-                btn.onclick = () => connectToYouTubeChat(btn.dataset.id);
+            buttons.forEach(btn => { btn.onclick = () => connectToYouTubeChat(btn.dataset.id); });
+
+            buttonsNext.forEach(btn => { btn.onclick = () => getNextYouTubeStreams(btn.dataset.id); });
+
+            const previewLives = document.createElement('div');
+            Object.entries(streams.youtube.previewStreams).forEach(([liveId, data]) => {
+                const activeStream = streams.youtube.streams[liveId];
+
+                const div = document.createElement('div');
+                const span = document.createElement('span');
+                div.dataset.liveId = liveId;
+                div.style.marginLeft = '10px';
+                if (activeStream) {
+                    div.classList.add("live-on");
+                }
+                span.innerHTML = `<img src="${data.thumbnail || CONSTANTS.ICONS.youtube}" alt="${data.title || 'YouTube'}" style="height: 20px;" /> ${data.title || liveId}`;
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.classList.add("btn-sm");
+                btn.textContent = "Chat Conectado";
+                btn.style.width = "120px";
+                if (!activeStream) {
+                    btn.textContent = 'Conectar ao Chat';
+                    btn.onclick = () => { w.send('connect-to-preview-youtube', { liveChatId: data.liveChatId }) };
+                }
+                div.appendChild(btn);
+                div.appendChild(span);
+                previewLives.appendChild(div);
             });
+            formDiv.appendChild(previewLives);
+
             youtubeConnections.style.display = 'block';
         }
 
@@ -876,14 +941,18 @@
 
             if (!streamTime) return;
 
-            const activeStreams = Object.entries(streams.youtube.streams).filter(([_, d]) => !d.actualEndTime);
+            const activeStreams = Object.entries(streams.youtube.streams).filter(([_, d]) => !d.actualEndTime && d.actualStartTime);
 
             if (activeStreams.length > 0) {
                 const [_, firstStream] = activeStreams[0];
-                streamStatus.textContent = `online of ${firstStream.title || 'YouTube'}`;
+                let time = "";
+                if (firstStream.actualStartTime) {
+                    const start = parseTimeZone(new Date(firstStream.actualStartTime));
+                    time = getDateDiff(parseTimeZone(new Date()), start).toString();
+                }
+                streamStatus.textContent = `${firstStream.title || 'YouTube'} (online) ${time}`;
                 streamStatus.className = 'stream-status live-on';
-                const start = parseTimeZone(new Date(firstStream.actualStartTime));
-                streamTime.textContent = getDateDiff(parseTimeZone(new Date()), start).toString();
+                //streamTime.textContent = time;
                 return;
             }
             streamStatus.textContent = "offline";
@@ -909,30 +978,36 @@
         function syncYouTubeChatConnections(data) {
             if (!data || !Array.isArray(data)) return;
             data.forEach(c => {
-                if (c.ID) {
-                    if (!streams.youtube.streams[c.ID]) {
-                        streams.youtube.streams[c.ID] = {
+                if (c.id) {
+                    if (!streams.youtube.streams[c.id]) {
+                        streams.youtube.streams[c.id] = {
                             viewer_count: 0,
                             actualStartTime: null,
                             actualEndTime: null,
-                            title: c.Snippet?.title || c.ID,
-                            liveChatId: c.Snippet?.liveChatId
+                            title: "",
+                            liveChatId: ""
                         };
-                    } else {
-                        streams.youtube.streams[c.ID].title = c.Snippet?.title || streams.youtube.streams[c.ID].title;
-                        streams.youtube.streams[c.ID].liveChatId = c.Snippet?.liveChatId;
                     }
+                    streams.youtube.streams[c.id].title = c.snippet?.title || streams.youtube.streams[c.id].title;
+                    streams.youtube.streams[c.id].liveChatId = c.snippet?.liveChatId;
+                    streams.youtube.streams[c.id].thumbnail = c.snippet?.thumbnails.medium?.url || c.snippet?.thumbnails.default?.url;
+
                 }
             });
+            console.log(data);
+            updateYouTubeStreamStatus();
+            updateYouTubeConnectionDetails();
             updateYouTubeChatConnectiongDetails();
         }
 
         function updateYouTubeChatConnectiongDetails() {
             const chat = document.querySelector('#chat-connection-youtube .list');
             if (chat) {
-                chat.innerHTML = Object.entries(streams.youtube.streams).map(([id, data]) =>
-                    `<li data-live-id="${id}">${data.title || id}</li>`
-                ).join('');
+                console.log(streams.youtube.streams);
+                chat.innerHTML = Object.entries(streams.youtube.streams).map(([id, data]) => {
+                    console.log(data);
+                    return `<li data-live-id="${id}"><img src="${data.thumbnail}" alt="${data.title || id}" />${data.title || id}</li>`;
+                }).join('');
             }
         }
 
@@ -1084,7 +1159,25 @@
                 div.append(source, channel, badges, user, message);
             }
 
-            chatDiv.appendChild(div);
+            addChatMessage(div);
+        }
+
+        function addChatMessage(element) {
+            if (!element) return;
+            if (typeof element === 'string') {
+                const div = document.createElement('div');
+                div.innerHTML = element;
+                element = div;
+            }
+
+            if (!element.classList.contains('message')) {
+                element.classList.add('message');
+            }
+
+            chatDiv.appendChild(element);
+            if (chatDiv.querySelectorAll('.message').length >= 300) {
+                chatDiv.removeChild(chatDiv.querySelector('.message'));
+            }
             if (chatAcompanhar.checked) chatDiv.scrollTop = chatDiv.scrollHeight;
         }
 

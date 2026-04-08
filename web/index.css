@@ -271,6 +271,11 @@ button {
     background: var(--bg-hover);
 }
 
+.btn-sm {
+    padding: 4px 10px;
+    font-size: 0.75rem;
+}
+
 /* Chat Section */
 #chat-section {
     margin-bottom: 8px;

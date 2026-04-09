@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"runtime/metrics"
 	"strings"
 	"sync"
 	"time"
@@ -34,12 +35,21 @@ const (
 	ERROR
 )
 
+type Metrics struct {
+	Goroutines      int
+	Alloc           uint64
+	TotalAlloc      uint64
+	Sys             uint64
+	TotalCpuSeconds float64
+}
+
 var (
 	infoLogger    *log.Logger
 	errorLogger   *log.Logger
 	debugLogger   *log.Logger
 	warningLogger *log.Logger
 	mu            sync.Mutex
+	myMetrics     Metrics
 )
 
 func (l Level) String() string {
@@ -113,7 +123,44 @@ func InitLog() error {
 }
 
 func SaveLog(level Level, message string) {
+	mu.Lock()
+	defer mu.Unlock()
+	if debugLogger == nil || infoLogger == nil || warningLogger == nil || errorLogger == nil {
+		log.Printf("Loggers not initialized: %s", message)
+		return
+	}
+	const cpuMetric = "/cpu/classes/total:cpu-seconds"
+	var m runtime.MemStats
+	runtime.ReadMemStats(&m)
+
+	samples := make([]metrics.Sample, 1)
+	samples[0].Name = cpuMetric
+	// Read the current cumulative CPU seconds
+	metrics.Read(samples)
+	if samples[0].Value.Kind() == metrics.KindBad {
+		fmt.Printf("Metric %s is not supported\n", cpuMetric)
+	}
+
 	goroutines := runtime.NumGoroutine()
+	alloc := m.Alloc / 1024 / 1024
+	totalAlloc := m.TotalAlloc / 1024 / 1024
+	sys := m.Sys / 1024 / 1024
+	totalCpuSeconds := samples[0].Value.Float64()
+
+	if goroutines != myMetrics.Goroutines {
+		myMetrics.Goroutines = goroutines
+		infoLogger.Output(2, fmt.Sprintf("[METRICS] Goroutines: %d", goroutines))
+	}
+	if alloc != myMetrics.Alloc || totalAlloc != myMetrics.TotalAlloc || sys != myMetrics.Sys {
+		myMetrics.Alloc = alloc
+		myMetrics.TotalAlloc = totalAlloc
+		myMetrics.Sys = sys
+		infoLogger.Output(2, fmt.Sprintf("[METRICS] Mem Alloc: %d MiB, TotalAlloc: %d MiB, Sys: %d MiB", alloc, totalAlloc, sys))
+	}
+	if totalCpuSeconds != myMetrics.TotalCpuSeconds {
+		myMetrics.TotalCpuSeconds = totalCpuSeconds
+		infoLogger.Output(2, fmt.Sprintf("[METRICS] Total CPU Seconds: %f", totalCpuSeconds))
+	}
 
 	pc, file, line, _ := runtime.Caller(2)
 
@@ -133,16 +180,8 @@ func SaveLog(level Level, message string) {
 		function = function[:lastDotIndex]
 	}
 
-	format := "[goroutines=%d] [%s/%s:%d] %s\n"
-	logLine := fmt.Sprintf(format, goroutines, function, filepath.Base(file), line, message)
-
-	mu.Lock()
-	defer mu.Unlock()
-
-	if debugLogger == nil || infoLogger == nil || warningLogger == nil || errorLogger == nil {
-		log.Printf("Loggers not initialized: %s", message)
-		return
-	}
+	format := "[%s/%s:%d] %s\n"
+	logLine := fmt.Sprintf(format, function, filepath.Base(file), line, message)
 
 	switch level {
 	case DEBUG:

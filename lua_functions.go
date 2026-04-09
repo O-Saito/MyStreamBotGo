@@ -45,6 +45,9 @@ var KickFunctionList = []services.LuaFunction{
 }
 
 var YouTubeFunctionList = []services.LuaFunction{
+	{Name: "get_state", Fn: func() []globals.YouTubeChannel {
+		return globals.GetState().GetYouTubeUser().Channels
+	}},
 	{Name: "get_current_youtube_channel", Fn: youtube.GetCurrentYouTubeChannel},
 	{Name: "get_current_streamings", Fn: youtube.GetCurrentStreamings},
 }

@@ -572,22 +572,27 @@ func ProcessDyEventQueue() {
 		dynamicEventsMutex.RLock()
 		events := dynamicEvents
 		dynamicEventsMutex.RUnlock()
+		wait := sync.WaitGroup{}
+		wait.Add(len(events))
 		for _, dev := range events {
-			if deq.Type == DyEventChat {
-				dev.ProcessChat(&deq.MessageFromStream)
-				continue
-			} else if deq.Type == DyEventCommand {
-				dev.ProcessCommand(&deq.LuaCommand)
-				continue
-			} else if deq.Type == DyEventEvent {
-				dev.ProcessEvent(&deq.LuaEvent)
-				continue
-			} else if deq.Type == DyEventRequest {
-				dev.ProcessRequest(&deq.SocketMessage)
-				continue
-			}
-
+			go func() {
+				switch deq.Type {
+				case DyEventChat:
+					dev.ProcessChat(&deq.MessageFromStream)
+				case DyEventCommand:
+					dev.ProcessCommand(&deq.LuaCommand)
+				case DyEventEvent:
+					dev.ProcessEvent(&deq.LuaEvent)
+				case DyEventRequest:
+					dev.ProcessRequest(&deq.SocketMessage)
+				default:
+				}
+				wait.Done()
+			}()
 		}
+		helpers.Logf(helpers.DEBUG, "WAINTING DY PROCESSOR")
+		wait.Wait()
+		helpers.Logf(helpers.DEBUG, "WAINTED DY PROCESSOR")
 	}
 }
 

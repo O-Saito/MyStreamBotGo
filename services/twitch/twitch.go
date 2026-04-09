@@ -387,6 +387,17 @@ func writer(ctx context.Context) {
 func SendMessage(msg, channel string, messageToReply ...string) {
 	if helpers.Contains(Channels, channel) {
 		user := globals.GetState().GetTwitchUser()
+
+		metadata := map[string]any{
+			"user-id":     user.UserID,
+			"id":          "self",
+			"user-type":   "mod",
+			"room":        user,
+			"color":       GetCacheUserChatColor(user.UserLogin),
+			"badges":      "",
+			"badges-info": map[string]any{},
+		}
+
 		globals.ChatQueue <- globals.MessageFromStream{
 			Source:    "twitch",
 			Channel:   channel,
@@ -394,7 +405,7 @@ func SendMessage(msg, channel string, messageToReply ...string) {
 			UserId:    user.UserID,
 			MessageId: "self",
 			Message:   msg,
-			Metadata:  nil,
+			Metadata:  metadata,
 		}
 		if messageToReply == nil {
 			messageToReply = []string{""}

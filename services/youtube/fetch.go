@@ -2,6 +2,7 @@ package youtube
 
 import (
 	"MyStreamBot/globals"
+	"MyStreamBot/helpers"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -43,6 +44,15 @@ type LiveBroadcast struct {
 	Etag    string                `json:"etag"`
 	ID      string                `json:"id"`
 	Snippet *LiveBroadcastSnippet `json:"snippet,omitempty"`
+	Status  *LiveBroadcastStatus  `json:"status,omitempty"`
+}
+
+type LiveBroadcastStatus struct {
+	LifeCycleStatus         string `json:"lifeCycleStatus,omitempty"`
+	PrivacyStatus           string `json:"privacyStatus,omitempty"`
+	RecordingStatus         string `json:"recordingStatus,omitempty"`
+	MadeForKids             bool   `json:"madeForKids,omitempty"`
+	SelfDeclaredMadeForKids bool   `json:"selfDeclaredMadeForKids,omitempty"`
 }
 
 type LiveBroadcastSnippet struct {
@@ -70,7 +80,6 @@ type Thumbnail struct {
 }
 
 func RefreshToken() error {
-
 	currentuser := globals.GetState().GetYouTubeUser()
 
 	data := url.Values{}
@@ -79,18 +88,7 @@ func RefreshToken() error {
 	data.Set("refresh_token", currentuser.RefreshToken)
 	data.Set("grant_type", "refresh_token")
 
-	/*d := map[string]any{
-		"client_id":     globals.GetConfig().YouTubeClientID,
-		"client_secret": globals.GetConfig().YouTubeClientSecret,
-		"refresh_token": currentuser.RefreshToken,
-		"grant_type":    "refresh_token",
-	}
-	data, _ := json.Marshal(d)
-	helpers.Logf(helpers.Red, "YT DATA %v", d)*/
 	resp, err := http.PostForm("https://oauth2.googleapis.com/token", data)
-	/*req, _ := http.NewRequest("POST", "https://oauth2.googleapis.com/token", bytes.NewBuffer(data))
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	resp, err := http.DefaultClient.Do(req)*/
 	if err != nil {
 		return err
 	}
@@ -109,7 +107,7 @@ func RefreshToken() error {
 }
 
 func GetCurrentStreamings() (*LiveBroadcastListResponse, error) {
-	req, _ := http.NewRequest("GET", "https://www.googleapis.com/youtube/v3/liveBroadcasts?broadcastStatus=active&part=snippet", nil)
+	req, _ := http.NewRequest("GET", "https://www.googleapis.com/youtube/v3/liveBroadcasts?broadcastStatus=active&part=snippet,status", nil)
 	resp, err := DoYouTubeRequest(req)
 	if err != nil {
 		return nil, err
@@ -117,6 +115,22 @@ func GetCurrentStreamings() (*LiveBroadcastListResponse, error) {
 	defer resp.Body.Close()
 
 	body, _ := io.ReadAll(resp.Body)
+	helpers.Logf(helpers.DEBUG, "[YT] GetCurrentStreamings: %s", body)
+	var r LiveBroadcastListResponse
+	json.Unmarshal(body, &r)
+	return &r, nil
+}
+
+func GetNextStreamings() (*LiveBroadcastListResponse, error) {
+	req, _ := http.NewRequest("GET", "https://www.googleapis.com/youtube/v3/liveBroadcasts?broadcastStatus=upcoming&part=snippet,status", nil)
+	resp, err := DoYouTubeRequest(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	body, _ := io.ReadAll(resp.Body)
+	helpers.Logf(helpers.DEBUG, "[YT] GetCurrentStreamings: %s", body)
 	var r LiveBroadcastListResponse
 	json.Unmarshal(body, &r)
 	return &r, nil
@@ -134,4 +148,73 @@ func GetCurrentYouTubeChannel() (*YouTubeChannelListResponse, error) {
 	var r YouTubeChannelListResponse
 	json.Unmarshal(body, &r)
 	return &r, nil
+}
+
+type VideoListResponse struct {
+	Kind  string  `json:"kind"`
+	Etag  string  `json:"etag"`
+	Items []Video `json:"items"`
+}
+
+type Video struct {
+	Kind                 string            `json:"kind"`
+	ID                   string            `json:"id"`
+	LiveStreamingDetails *VideoLiveDetails `json:"liveStreamingDetails,omitempty"`
+	Snippet              *VideoSnippet     `json:"snippet,omitempty"`
+}
+
+type VideoSnippet struct {
+	Title string `json:"title,omitempty"`
+}
+
+type VideoLiveDetails struct {
+	ConcurrentViewers  string `json:"concurrentViewers,omitempty"`
+	ActiveLiveChatID   string `json:"activeLiveChatId,omitempty"`
+	ActualStartTime    string `json:"actualStartTime,omitempty"`
+	ActualEndTime      string `json:"actualEndTime,omitempty"`
+	ScheduledStartTime string `json:"scheduledStartTime,omitempty"`
+	ScheduledEndTime   string `json:"scheduledEndTime,omitempty"`
+}
+
+type StreamData struct {
+	VideoID            string `json:"video_id"`
+	Title              string `json:"title"`
+	ConcurrentViewers  string `json:"concurrent_viewers"`
+	LiveChatID         string `json:"live_chat_id"`
+	ActualStartTime    string `json:"actual_start_time"`
+	ActualEndTime      string `json:"actual_end_time"`
+	ScheduledStartTime string `json:"scheduled_start_time"`
+	ScheduledEndTime   string `json:"scheduled_end_time"`
+}
+
+func GetStreamData(videoID string) (*StreamData, error) {
+	req, _ := http.NewRequest("GET", "https://www.googleapis.com/youtube/v3/videos", nil)
+	req.URL.RawQuery = fmt.Sprintf("part=liveStreamingDetails,snippet&id=%s", videoID)
+
+	resp, err := DoYouTubeRequest(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	var videoResp VideoListResponse
+	body, _ := io.ReadAll(resp.Body)
+	json.Unmarshal(body, &videoResp)
+
+	if len(videoResp.Items) == 0 {
+		return nil, nil
+	}
+
+	video := videoResp.Items[0]
+
+	return &StreamData{
+		VideoID:            videoID,
+		Title:              video.Snippet.Title,
+		ConcurrentViewers:  video.LiveStreamingDetails.ConcurrentViewers,
+		LiveChatID:         video.LiveStreamingDetails.ActiveLiveChatID,
+		ActualStartTime:    video.LiveStreamingDetails.ActualStartTime,
+		ActualEndTime:      video.LiveStreamingDetails.ActualEndTime,
+		ScheduledStartTime: video.LiveStreamingDetails.ScheduledStartTime,
+		ScheduledEndTime:   video.LiveStreamingDetails.ScheduledEndTime,
+	}, nil
 }

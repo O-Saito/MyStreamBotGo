@@ -3,16 +3,20 @@ package twitch
 import (
 	"MyStreamBot/globals"
 	"MyStreamBot/helpers"
+	"fmt"
 	"net/http"
 )
+
+func AddAuthHeaders(req *http.Request) {
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", globals.GetState().GetTwitchUser().Token))
+	req.Header.Set("Client-ID", globals.GetConfig().TwitchClientID)
+}
 
 // DoRequest executa uma requisição HTTP para Twitch com renovação automática de token
 // Detecta erros 401 (token expirado) e tenta fazer refresh e retry automaticamente
 func DoRequest(req *http.Request) (*http.Response, error) {
-	user := globals.GetState().GetTwitchUser()
-
 	// Define o Authorization header
-	req.Header.Set("Authorization", "Bearer "+user.Token)
+	AddAuthHeaders(req)
 
 	// Faz a requisição
 	resp, err := http.DefaultClient.Do(req)
@@ -33,10 +37,8 @@ func DoRequest(req *http.Request) (*http.Response, error) {
 			return nil, err
 		}
 
-		newUser := globals.GetState().GetTwitchUser()
-
 		// Atualiza o Authorization header com o novo token
-		req.Header.Set("Authorization", "Bearer "+newUser.Token)
+		AddAuthHeaders(req)
 
 		// Tenta novamente
 		helpers.Logf(helpers.DEBUG, "[TWITCH] Retry de requisição com novo token")

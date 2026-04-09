@@ -10,23 +10,6 @@
 
 <body>
     <div id="logins">
-        <div class="areas">
-            <div class="header">
-                <label><input type="checkbox" class="display-collapse" checked /></label>
-                <span>System</span>
-            </div>
-            <div class="body collapse-area">
-                <div class="nerd-section">
-                    <div><strong>Nerd:</strong></div>
-                    <div>Twitch Ultimo Keepalive: <label id="twitch-last-eventsub"></label></div>
-                    <div>Twitch GameID: <label id="twitch-game-id"></label></div>
-                </div>
-                <div class="ui-errors-section">
-                    <div><strong>UI Errors:</strong></div>
-                    <div id="ui-errors-list"></div>
-                </div>
-            </div>
-        </div>
         <div id="twitch" class="areas">
             <div class="header">
                 <label><input type="checkbox" class="display-collapse" /></label>
@@ -56,7 +39,8 @@
                         </div>
                     </div>
                     <div id="chat-connection-twitch" class="chat-list" style="display: inline-block;">
-                        <button type="button" class="btn-secondary btn-novo-chat" style="display: none;">Conectar a um chat Twitch</button>
+                        <button type="button" class="btn-secondary btn-novo-chat" style="display: none;">Conectar a um
+                            chat Twitch</button>
                         <ul class="list"></ul>
                     </div>
                 </div>
@@ -68,11 +52,13 @@
                 <span id="login-kick"></span>
             </div>
             <div class="body collapse-area">
-                <div id="chat-connection-kick" class="chat-list">
+                <div class="platform-grid">
                     <div class="form">
                         <button type="button" class="btn-secondary btn-novo-chat">Conectar a um chat Kick</button>
                     </div>
-                    <ul class="list"></ul>
+                    <div id="chat-connection-kick" class="chat-list">
+                        <ul class="list"></ul>
+                    </div>
                 </div>
             </div>
         </div>
@@ -80,10 +66,15 @@
             <div class="header">
                 <label><input type="checkbox" class="display-collapse" /></label>
                 <span id="login-youtube"><a href="/youtube/login" target="_blank">Logar Youtube</a></span>
+                <span class="stream-time"></span>
+                <span class="stream-status"></span>
             </div>
             <div class="body collapse-area">
-                <div id="chat-connection-youtube" class="chat-list">
-                    <ul class="list"></ul>
+                <div class="platform-grid">
+                    <div class="form"></div>
+                    <div id="chat-connection-youtube" class="chat-list">
+                        <ul class="list"></ul>
+                    </div>
                 </div>
             </div>
         </div>
@@ -99,10 +90,12 @@
                 <input type="checkbox" id="chk-show-view-count" checked />Contador de View
             </label>
             <span class="view-count-area" style="float: right; vertical-align: middle;">
-                <span>
-                    <img src="https://assets.twitch.tv/assets/favicon-32-e29e246c157142c94346.png" style="height: 20px;" />
+                <span id="twitch-view-count-wrapper">
+                    <img src="https://assets.twitch.tv/assets/favicon-32-e29e246c157142c94346.png"
+                        style="height: 20px;" />
                     <span id="twitch-view-count">0</span>
                 </span>
+                <span id="youtube-view-counts-wrapper" style="margin-left: 10px;"></span>
             </span>
         </span>
         <div id="chat">
@@ -135,6 +128,24 @@
         </div>
     </div>
 
+    <div id="system" class="areas">
+        <div class="header">
+            <label><input type="checkbox" class="display-collapse" /></label>
+            <span>System</span>
+        </div>
+        <div class="body collapse-area">
+            <div class="nerd-section">
+                <div><strong>Nerd:</strong></div>
+                <div>Twitch Last Keepalive: <label id="twitch-last-eventsub"></label></div>
+                <div>Twitch GameID: <label id="twitch-game-id"></label></div>
+            </div>
+            <div class="ui-errors-section">
+                <div><strong>UI Errors:</strong></div>
+                <div id="ui-errors-list"></div>
+            </div>
+        </div>
+    </div>
+
     <script type="module">
         const uiErrorsList = document.getElementById('ui-errors-list');
         const errorBuffer = [];
@@ -164,67 +175,229 @@
 
         import w from './wrapper.js'
 
+        const CONSTANTS = {
+            ICONS: {
+                twitch: 'https://assets.twitch.tv/assets/favicon-32-e29e246c157142c94346.png',
+                youtube: 'https://www.youtube.com/s/desktop/d0c6b06b/img/favicon.ico',
+                kick: 'https://kick.com/favicon.ico'
+            },
+            EMOTE_URL: 'https://static-cdn.jtvnw.net/emoticons/v2/{id}/default/light/1.0',
+            STORAGE_KEY: 'mystreambot_ui_state',
+            SECTIONS: ['twitch', 'kick', 'youtube', 'system', 'events-panel', 'dyevents-panel']
+        };
+
         const twitchDiv = document.getElementById('twitch');
+        const youtubeDiv = document.getElementById('youtube');
+        const kickDiv = document.getElementById('kick');
+
         const logins = document.getElementById('logins');
         const kickConnections = document.querySelector('#chat-connection-kick');
         const twitchConnections = document.querySelector('#chat-connection-twitch');
         const youtubeConnections = document.querySelector('#chat-connection-youtube');
+
         const twitchLastEventsub = document.getElementById('twitch-last-eventsub');
         const chatDiv = document.querySelector("#chat .content");
         const chatAcompanhar = document.getElementById('chk-acompanhar-chat');
+
         const eventDiv = document.getElementById('events-list');
         const dyEventsDiv = document.getElementById('dyevents-list');
-        const lblTwitchViewCount = document.getElementById("twitch-view-count");
+
         const chkShowViewCount = document.getElementById('chk-show-view-count');
+        const lblTwitchViewCount = document.getElementById("twitch-view-count");
+
         const twitchGameIdLabel = document.getElementById('twitch-game-id');
         const txtStreamGame = document.getElementById('stream-game') || document.getElementById('twitch-game');
         const streamGameList = document.getElementById('stream-games') || document.getElementById('twitch-game-list');
 
-        // Collapse handlers
-        document.querySelectorAll('.display-collapse').forEach(chk => {
-            chk.addEventListener('change', function () {
-                const area = this.closest('.areas').querySelector('.collapse-area');
-                const body = this.closest('.areas').querySelector('.body');
-                if (this.checked) {
-                    area.classList.remove('closed');
-                    body.classList.remove('collapsed');
-                } else {
-                    area.classList.add('closed');
-                    body.classList.add('collapsed');
+        const chatContent = document.querySelector('#chat .content');
+        const eventsList = document.getElementById('events-list');
+
+        const defaultState = {
+            sections: {
+                twitch: { collapsed: false },
+                kick: { collapsed: false },
+                youtube: { collapsed: false },
+                system: { collapsed: false },
+                'events-panel': { collapsed: false },
+                'dyevents-panel': { collapsed: false }
+            },
+            preferences: {
+                acompanharChat: true,
+                showViewCount: true,
+                chatHeight: 400,
+                eventsHeight: 100
+            }
+        };
+
+        let uiState = JSON.parse(JSON.stringify(defaultState));
+
+        function loadUIState() {
+            try {
+                const saved = localStorage.getItem(CONSTANTS.STORAGE_KEY);
+                if (saved) {
+                    const parsed = JSON.parse(saved);
+                    uiState = {
+                        sections: { ...defaultState.sections, ...parsed.sections },
+                        preferences: { ...defaultState.preferences, ...parsed.preferences }
+                    };
+                }
+            } catch (e) {
+                console.error('Failed to load UI state:', e);
+                uiState = JSON.parse(JSON.stringify(defaultState));
+            }
+        }
+
+        function saveUIState() {
+            try {
+                localStorage.setItem(CONSTANTS.STORAGE_KEY, JSON.stringify(uiState));
+            } catch (e) {
+                console.error('Failed to save UI state:', e);
+            }
+        }
+
+        function setSectionCollapsed(id, collapsed) {
+            if (uiState.sections[id] !== undefined) {
+                uiState.sections[id].collapsed = collapsed;
+                saveUIState();
+            }
+        }
+
+        function setPreference(key, value) {
+            if (uiState.preferences[key] !== undefined) {
+                uiState.preferences[key] = value;
+                saveUIState();
+            }
+        }
+
+        function setChatHeight(height) {
+            uiState.preferences.chatHeight = height;
+            saveUIState();
+        }
+
+        function setEventsHeight(height) {
+            uiState.preferences.eventsHeight = height;
+            saveUIState();
+        }
+
+        function applyUIState() {
+            Object.entries(uiState.sections).forEach(([id, data]) => {
+                const el = document.getElementById(id);
+                if (!el) return;
+                const chk = el.querySelector('.display-collapse, #toggle-dyevents, #collapse-events');
+                const area = el.querySelector('.collapse-area');
+                const body = el.querySelector('.body');
+                if (chk && area && body) {
+                    chk.checked = !data.collapsed;
+                    if (data.collapsed) {
+                        area.classList.add('closed');
+                        body.classList.add('collapsed');
+                    } else {
+                        area.classList.remove('closed');
+                        body.classList.remove('collapsed');
+                    }
                 }
             });
-            chk.dispatchEvent(new Event('change'));
+
+            chatAcompanhar.checked = uiState.preferences.acompanharChat;
+            chkShowViewCount.checked = uiState.preferences.showViewCount;
+            lblTwitchViewCount.style.color = uiState.preferences.showViewCount ? "" : "var(--bg-primary)";
+            chatContent.style.height = uiState.preferences.chatHeight + 'px';
+            eventsList.style.height = uiState.preferences.eventsHeight + 'px';
+        }
+
+        loadUIState();
+        applyUIState();
+
+        if (!(ResizeObserver)) {
+            console.error('ResizeObserver is not supported in this browser. Chat and events panels will not resize dynamically.');
+        }
+
+        if (ResizeObserver) {
+            const chatResizeObserver = new ResizeObserver(entries => {
+                for (let entry of entries) {
+                    setChatHeight(entry.contentRect.height);
+                }
+            });
+            chatResizeObserver.observe(chatContent);
+
+            const eventsResizeObserver = new ResizeObserver(entries => {
+                for (let entry of entries) {
+                    setEventsHeight(entry.contentRect.height);
+                }
+            });
+            eventsResizeObserver.observe(eventsList);
+        }
+
+        // Preference handlers
+        chatAcompanhar.addEventListener('change', () => {
+            setPreference('acompanharChat', chatAcompanhar.checked);
         });
 
-        document.getElementById('toggle-dyevents').addEventListener('change', function () {
-            const panel = this.closest('.panel');
-            const collapseArea = panel.querySelector('.collapse-area');
-            const body = panel.querySelector('.body');
-            if (this.checked) {
-                collapseArea.classList.remove('closed');
-                body.classList.remove('collapsed');
-            } else {
-                collapseArea.classList.add('closed');
-                body.classList.add('collapsed');
+        chkShowViewCount.addEventListener('change', () => {
+            lblTwitchViewCount.style.color = chkShowViewCount.checked ? "" : "var(--bg-primary)";
+            setPreference('showViewCount', chkShowViewCount.checked);
+            updateViewCount();
+        });
+
+        // Collapse handlers
+        function setupCollapseHandler(element, sectionId) {
+            element.addEventListener('change', function () {
+                const panel = element.closest('.areas, .panel');
+                const collapseArea = panel.querySelector('.collapse-area');
+                const body = panel.querySelector('.body');
+                if (element.checked) {
+                    collapseArea.classList.remove('closed');
+                    body.classList.remove('collapsed');
+                    setSectionCollapsed(sectionId, false);
+                } else {
+                    collapseArea.classList.add('closed');
+                    body.classList.add('collapsed');
+                    setSectionCollapsed(sectionId, true);
+                }
+            });
+            element.dispatchEvent(new Event('change'));
+        }
+
+        document.querySelectorAll('.display-collapse').forEach(chk => {
+            setupCollapseHandler(chk, chk.closest('.areas').id);
+        });
+
+        setupCollapseHandler(document.getElementById('toggle-dyevents'), 'dyevents-panel');
+        setupCollapseHandler(document.getElementById('collapse-events'), 'events-panel');
+
+        chatDiv.addEventListener('scroll', () => {
+            const atBottom = chatDiv.scrollHeight - chatDiv.scrollTop <= chatDiv.clientHeight + 20;
+            chatAcompanhar.checked = atBottom;
+        });
+
+        function sendMessage() {
+            const input = document.getElementById('msg-input');
+            const text = input.value.trim();
+            if (text) {
+                w.send('send-chat-message', { text: text });
+                input.value = '';
+            }
+        }
+
+        document.getElementById('msg-input').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                sendMessage();
             }
         });
-        document.getElementById('toggle-dyevents').dispatchEvent(new Event('change'));
 
-        document.getElementById('collapse-events').addEventListener('change', function () {
-            const panel = this.closest('.panel');
-            const collapseArea = panel.querySelector('.collapse-area');
-            const body = panel.querySelector('.body');
-            if (this.checked) {
-                collapseArea.classList.remove('closed');
-                body.classList.remove('collapsed');
-            } else {
-                collapseArea.classList.add('closed');
-                body.classList.add('collapsed');
-            }
+        document.getElementById('btn-mandar-msg').addEventListener('click', (e) => {
+            e.preventDefault();
+            sendMessage();
         });
-        document.getElementById('collapse-events').dispatchEvent(new Event('change'));
 
-        let twitchData = null, youtubeData = null;
+        const streams = {
+            // twitch data is reflection of /globals/state.go/TwitchUser
+            twitch: { data: null },
+            youtube: { data: null, streams: {}, offlineTimers: {}, previewStreams: {} },
+            kick: { connectedAs: null }
+        };
+
+        window.streams = streams;
 
         w.on('init', (data) => {
             if (data.twitch_connected_chat?.length > 0) {
@@ -233,22 +406,35 @@
             if (data.kick_connected_chat?.length > 0) {
                 data.kick_connected_chat.forEach(c => w.exec('kick-chat-connection', { id: c.ID, name: c.Slug }));
             }
-            updateTwitchConnectionDetails(data.twitch);
-            updateYouTubeConnectionDetails(data.youtube);
+
+            if (data.twitch) {
+                streams.twitch.data = data.twitch;
+            }
+
+            if (data.youtube) {
+                streams.youtube.data = data.youtube;
+            }
+
+            updateTwitchConnectionDetails();
+            updateTwitchGameData();
+
+            updateYouTubeConnectionDetails();
+            updateYouTubeStreamStatus();
+            syncYouTubeChatConnections(data.youtube_connected_chat);
+
             updateKickConnectionDetails(data.kick?.connected_as);
-            updateYouTubeChatConnectiongDetails(data.youtube_connected_chat);
             loadDyModules(data.custom_events_modules);
             if (data.interface_config) {
                 try {
                     const config = JSON.parse(data.interface_config);
                     if (config.ignoreKick) {
-                        document.getElementById('kick').style.display = 'none';
+                        kickDiv.style.display = 'none';
                     }
                     if (config.ignoreYoutube) {
-                        document.getElementById('youtube').style.display = 'none';
+                        youtubeDiv.style.display = 'none';
                     }
                     if (config.ignoreTwitch) {
-                        document.getElementById('twitch').style.display = 'none';
+                        twitchDiv.style.display = 'none';
                     }
                 } catch (e) {
                     console.error('Failed to parse interface_config:', e);
@@ -258,8 +444,16 @@
             w.send("get-streamer-data", {});
         });
 
-        w.on('twitch-connection', updateTwitchConnectionDetails);
-        w.on('youtube-connection', updateYouTubeConnectionDetails);
+        w.on('twitch-connection', (data) => {
+            streams.twitch.data.stream_details = data;
+            updateTwitchConnectionDetails();
+            updateTwitchGameData();
+        });
+        w.on('youtube-connection', (data) => {
+            streams.youtube.data = data;
+            updateYouTubeConnectionDetails();
+            updateYouTubeStreamStatus();
+        });
         w.on('kick-connection', updateKickConnectionDetails);
         w.on('twitch-chat-connection', (data) => {
             const li = document.createElement('li');
@@ -292,34 +486,76 @@
                 twitchLastEventsub.textContent = `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}:${date.getSeconds().toString().padStart(2, '0')}`;
             }
         });
-        w.on('result-connect-chat-youtube', updateYouTubeChatConnectiongDetails);
+        w.on('result-connect-chat-youtube', (data) => syncYouTubeChatConnections(data));
+        w.on('result-get-next-streams-youtube', (data) => {
+            data.forEach(item => {
+                if (!streams.youtube.previewStreams[item.id]) {
+                    streams.youtube.previewStreams[item.id] = {
+                        channelId: "",
+                        description: "",
+                        liveChatId: "",
+                        publishedAt: "",
+                        thumbnail: "",
+                        title: "",
+                    };
+                }
+                const current = streams.youtube.previewStreams[item.id];
+                current.channelId = item.snippet.channelId;
+                current.title = item.snippet.title;
+                current.description = item.snippet.description;
+                current.liveChatId = item.snippet.liveChatId;
+                current.publishedAt = item.snippet.publishedAt;
+                current.thumbnail = item.snippet.thumbnails?.medium?.url || item.snippet.thumbnails?.default?.url || "";
+            });
+            updateYouTubeConnectionDetails();
+        });
         w.on('youtube-live-offline', (data) => {
             const item = document.querySelector(`#chat-connection-youtube [data-live-id="${data?.liveId}"]`);
             if (item) item.classList.add('live-off');
+
+            if (data?.liveId) {
+                if (streams.youtube.streams[data.liveId]) {
+                    streams.youtube.streams[data.liveId].actualEndTime = data.offlineAt || new Date().toISOString();
+                }
+                if (streams.youtube.offlineTimers[data.liveId]) {
+                    clearTimeout(streams.youtube.offlineTimers[data.liveId]);
+                }
+                streams.youtube.offlineTimers[data.liveId] = setTimeout(() => {
+                    delete streams.youtube.streams[data.liveId];
+                    delete streams.youtube.offlineTimers[data.liveId];
+                    updateViewCount();
+                    updateYouTubeStreamStatus();
+                }, 5 * 60 * 1000);
+            }
+            updateYouTubeStreamStatus();
         });
 
         w.onTwitch('channel.update', (data) => {
             const e = data?.payload?.event;
             if (e) {
-                if (!twitchData.stream_details) twitchData.stream_details = {};
-                twitchData.stream_details.title = e.title;
-                twitchData.stream_details.language = e.language;
-                twitchData.stream_details.game_id = e.category_id;
-                twitchData.stream_details.game_name = e.category_name;
-                updateTwitchConnectionDetails();
+
+                if (!streams.twitch.data.stream_details)
+                    streams.twitch.data.stream_details = {};
+                const sd = streams.twitch.data.stream_details;
+                sd.title = e.title;
+                sd.language = e.language;
+                sd.game_id = e.category_id;
+                sd.game_name = e.category_name;
+                updateTwitchGameData();
             }
         });
         w.onTwitch("stream.online", (data) => {
             const e = data?.payload?.event;
             if (e) {
-                if (!twitchData.stream_details) twitchData.stream_details = {};
-                twitchData.stream_details.started_at = e.started_at;
+                if (!streams.twitch.data.stream_details)
+                    streams.twitch.data.stream_details = {};
+                streams.twitch.data.stream_details.started_at = e.started_at;
                 updateTwitchConnectionDetails();
             }
         });
         w.onTwitch("stream.offline", () => {
-            if (twitchData?.stream_details) {
-                twitchData.stream_details.started_at = '';
+            if (streams.twitch.stream_details.started_at) {
+                streams.twitch.stream_details.started_at = '';
                 updateTwitchConnectionDetails();
             }
         });
@@ -336,7 +572,7 @@
 
             const source = document.createElement("span");
             source.className = 'chat-source';
-            source.innerHTML = `<img src="https://assets.twitch.tv/assets/favicon-32-e29e246c157142c94346.png" alt="twitch" />`;
+            source.innerHTML = `<img src="${CONSTANTS.ICONS.twitch}" alt="twitch" />`;
 
             const channel = document.createElement("span");
             channel.className = 'chat-channel';
@@ -367,15 +603,14 @@
             allowBtn.onclick = automodTwitchUser;
 
             div.append(source, channel, badges, user, message, allowBtn);
-            chatDiv.appendChild(div);
-            if (chatAcompanhar.checked) chatDiv.scrollTop = chatDiv.scrollHeight;
+            addChatMessage(div);
         });
         w.onTwitch("channel.follow", (data) => {
             const el = document.createElement('div');
             el.className = 'event';
             const userName = data?.payload?.event?.user_name;
-            const broadcaster = twitchData?.userId == data?.payload?.event?.broadcaster_user_id 
-                ? data?.payload?.event?.broadcaster_user_name 
+            const broadcaster = streams.twitch.data?.userId == data?.payload?.event?.broadcaster_user_id
+                ? data?.payload?.event?.broadcaster_user_name
                 : 'você';
             el.innerHTML = `<span><span class="user">${userName}</span> seguiu ${broadcaster}!</span>`;
             eventDiv.appendChild(el);
@@ -384,18 +619,42 @@
             const el = document.createElement('div');
             el.className = 'event';
             const fromName = data?.payload?.event?.from_broadcaster_user_name;
-            const toName = twitchData?.userId == data?.payload?.event?.to_broadcaster_user_id 
-                ? data?.payload?.event?.to_broadcaster_user_name 
+            const toName = streams.twitch.data?.userId == data?.payload?.event?.to_broadcaster_user_id
+                ? data?.payload?.event?.to_broadcaster_user_name
                 : 'você';
             const viewers = data?.payload?.event?.viewers || 0;
             el.innerHTML = `<span><span class="user">${fromName}</span> está raidando ${toName} com ${viewers} viewers!</span>`;
             eventDiv.appendChild(el);
         });
         w.on('result-get-streamer-data', (data) => {
-            if (data && twitchData?.stream_details) {
-                if (data.viewer_count) twitchData.stream_details.viewer_count = data.viewer_count;
-                if (data.started_at) twitchData.stream_details.started_at = data.started_at;
+            if (!data) return;
+            const { twitch, youtube } = data;
+
+            if (twitch) {
+                if (!streams.twitch.data.stream_details) streams.twitch.data.stream_details = {};
+                const sd = streams.twitch.data.stream_details;
+                if (twitch.viewer_count) sd.viewer_count = twitch.viewer_count;
+                if (twitch.started_at) sd.started_at = twitch.started_at;
+                updateTwitchStreamOnlineStatus();
             }
+            if (youtube && Array.isArray(youtube)) {
+                youtube.forEach(yt => {
+                    if (yt.video_id) {
+                        if (streams.youtube.offlineTimers[yt.video_id]) {
+                            clearTimeout(streams.youtube.offlineTimers[yt.video_id]);
+                            delete streams.youtube.offlineTimers[yt.video_id];
+                        }
+                        streams.youtube.streams[yt.video_id] = {
+                            viewer_count: parseInt(yt.concurrent_viewers) || 0,
+                            title: yt.title,
+                            actualStartTime: yt.actual_start_time,
+                            actualEndTime: yt.actual_end_time
+                        };
+                    }
+                });
+            }
+
+            updateViewCount();
         });
 
         try {
@@ -404,57 +663,28 @@
             window.onerror?.(`Socket connection error: ${e.message}`, '', 0, 0, e);
         }
 
-        function isValidLatinString(str) {
-            return /^[\p{L}\p{N}!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?~`\s]+$/u.test(str);
-        }
-
-        function getDateDiff(date1, date2) {
-            const diff = Math.abs(date2.getTime() - date1.getTime());
-            const hours = Math.floor(diff / 3600000);
-            const minutes = Math.floor((diff % 3600000) / 60000);
-            const seconds = Math.floor((diff % 60000) / 1000);
-            const pad = (n) => n.toString().padStart(2, '0');
-            return { hours, minutes, seconds, toString: () => `${pad(hours)}:${pad(minutes)}:${pad(seconds)}` };
-        }
-
-        function parseTimeZone(date) {
-            return new Date(date.getTime() - date.getTimezoneOffset() * 60000);
-        }
-
-        let timeToUpdateTwitchData = 0;
+        let timeToUpdateData = 0;
         setInterval(() => {
-            if (twitchData?.stream_details) {
-                lblTwitchViewCount.textContent = twitchData.stream_details.viewer_count?.toString() || '0';
-                if (twitchData.stream_details.started_at) {
-                    const start = parseTimeZone(new Date(twitchData.stream_details.started_at));
-                    twitchDiv.querySelector('.stream-time').textContent = getDateDiff(parseTimeZone(new Date()), start).toString();
-                    if (++timeToUpdateTwitchData >= 60) {
-                        timeToUpdateTwitchData = 0;
-                        w.send("get-streamer-data", {});
-                    }
-                }
+            if (++timeToUpdateData >= 60) {
+                timeToUpdateData = 0;
+                w.send("get-streamer-data", {});
             }
+            updateViewCount();
         }, 1000);
 
-        chkShowViewCount.addEventListener('change', () => {
-            lblTwitchViewCount.style.color = chkShowViewCount.checked ? "" : "var(--bg-primary)";
-        });
-
         function checkuserReference(text) {
-            const t1 = `@${twitchData?.userLogin || ''}`;
-            const t2 = `@${twitchData?.display_name || ''}`;
+            const t1 = `@${streams.twitch.data?.userLogin || ''}`;
+            const t2 = `@${streams.twitch.data?.display_name || ''}`;
             const highlight = (s) => `<span class="streamer-ref">${s}</span>`;
             if (t1 === t2) return text.replaceAll(t1, highlight(t1));
             return text.replaceAll(t1, highlight(t1)).replaceAll(t2, highlight(t2));
         }
 
-        function connectToTwitchChat(slug) {
-            w.send('connect-chat-twitch', { channel: slug });
-        }
+        function connectToTwitchChat(slug) { w.send('connect-chat-twitch', { channel: slug }); }
 
-        function connectToYouTubeChat(id) {
-            w.send('connect-chat-youtube', { channel: id });
-        }
+        function connectToYouTubeChat(id) { w.send('connect-chat-youtube', { channel: id }); }
+
+        function getNextYouTubeStreams(id) { w.send('get-next-streams-youtube', { channel: id }); }
 
         function deleteTwitchMessage(e) {
             e.preventDefault();
@@ -487,10 +717,10 @@
             fetch("/admin/automod/twitch", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ 
-                    userId: msgDiv.dataset.userId, 
-                    msgId: msgDiv.dataset.messageId, 
-                    action: "ALLOW" 
+                body: JSON.stringify({
+                    userId: msgDiv.dataset.userId,
+                    msgId: msgDiv.dataset.messageId,
+                    action: "ALLOW"
                 })
             }).then(() => {
                 if (!e.target.closest('.message').classList.contains('message-deleted')) {
@@ -522,31 +752,6 @@
             });
         }
 
-        chatDiv.addEventListener('scroll', () => {
-            const atBottom = chatDiv.scrollHeight - chatDiv.scrollTop <= chatDiv.clientHeight + 20;
-            chatAcompanhar.checked = atBottom;
-        });
-
-        function sendMessage() {
-            const input = document.getElementById('msg-input');
-            const text = input.value.trim();
-            if (text) {
-                w.send('send-chat-message', { text: text });
-                input.value = '';
-            }
-        }
-
-        document.getElementById('msg-input').addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                sendMessage();
-            }
-        });
-
-        document.getElementById('btn-mandar-msg').addEventListener('click', (e) => {
-            e.preventDefault();
-            sendMessage();
-        });
-
         function updateMessageDelete(messageId) {
             const msg = document.querySelector(`[data-message-id="${messageId}"]`);
             if (msg) {
@@ -555,44 +760,19 @@
             }
         }
 
-        function updateTwitchConnectionDetails(data) {
-            if (data) twitchData = data;
+        function updateTwitchConnectionDetails() {
             const loginEl = logins.querySelector('#login-twitch');
-            
-            if (!twitchData?.userLogin) {
+            const data = streams.twitch.data;
+            const sd = data?.stream_details;
+            if (!data?.userLogin) {
                 loginEl.innerHTML = '<a href="/twitch/login" target="_blank" class="login-link">Logar Twitch</a>';
                 twitchConnections.style.display = 'none';
                 return;
             }
 
-            loginEl.innerHTML = `Twitch: <img src="${twitchData.profile_image_url}" /> ${twitchData.userLogin}`;
+            loginEl.innerHTML = `Twitch: <img src="${streams.twitch.data.profile_image_url}" /> ${streams.twitch.data.userLogin}`;
 
-            const streamStatus = twitchDiv.querySelector('.stream-status');
-            const sd = twitchData.stream_details;
-            
-            if (sd?.started_at) {
-                streamStatus.textContent = "online";
-                streamStatus.className = 'stream-status live-on';
-            } else {
-                streamStatus.textContent = "offline";
-                streamStatus.className = 'stream-status live-off';
-            }
-
-            if (sd) {
-                lblTwitchViewCount.textContent = sd.viewer_count?.toString() || '0';
-                twitchGameIdLabel.textContent = sd.game_id || '';
-                document.getElementById('twitch-title').value = sd.title || '';
-                if (twitchDiv.querySelectorAll(`#twitch-game-list option[data-id="${sd.game_id}"]`).length === 0) {
-                    const gameoption = document.createElement("option");
-                    gameoption.textContent = sd.game_id;
-                    gameoption.value = sd.game_name;
-                    gameoption.dataset.id = sd.game_id;
-                    document.getElementById('twitch-game-list').appendChild(gameoption);
-                }
-                document.getElementById('twitch-game').value = sd.game_name || '';
-                document.getElementById('twitch-lang').value = sd.language || '';
-                document.getElementById('twitch-tags').innerHTML = (sd.tags || []).map(t => `<li>${t}</li>`).join('');
-            }
+            updateTwitchStreamOnlineStatus();
 
             twitchConnections.style.display = 'inline-block';
             twitchConnections.querySelector('.btn-novo-chat').onclick = () => {
@@ -601,51 +781,233 @@
             };
         }
 
-        function updateYouTubeConnectionDetails(data) {
-            youtubeData = data;
+        function updateTwitchGameData() {
+            const data = streams.twitch.data;
+            const sd = data?.stream_details;
+
+            if (!data || !sd) return;
+
+            twitchGameIdLabel.textContent = sd.game_id || '';
+            document.getElementById('twitch-title').value = sd.title || '';
+            if (twitchDiv.querySelectorAll(`#twitch-game-list option[data-id="${sd.game_id}"]`).length === 0) {
+                const gameoption = document.createElement("option");
+                gameoption.textContent = sd.game_id;
+                gameoption.value = sd.game_name;
+                gameoption.dataset.id = sd.game_id;
+                document.getElementById('twitch-game-list').appendChild(gameoption);
+            }
+            document.getElementById('twitch-game').value = sd.game_name || '';
+            document.getElementById('twitch-lang').value = sd.language || '';
+            document.getElementById('twitch-tags').innerHTML = (sd.tags || []).map(t => `<li>${t}</li>`).join('');
+        }
+
+        // function updateTwitchLiveTimer() {
+        //     if (!streams.twitch?.data?.stream_details?.started_at) return;
+        //     const start = parseTimeZone(new Date(streams.twitch.data.stream_details.started_at));
+        //     twitchDiv.querySelector('.stream-time').textContent = getDateDiff(parseTimeZone(new Date()), start).toString();
+        // }
+
+        function updateTwitchStreamOnlineStatus() {
+            const data = streams.twitch.data;
+            const sd = data?.stream_details;
+
+            if (!data || !sd) return;
+
+            const streamStatus = twitchDiv.querySelector('.stream-status');
+            streamStatus.className = 'stream-status live-off';
+            streamStatus.textContent = "offline";
+
+            if (sd?.started_at) {
+                const start = parseTimeZone(new Date(sd.started_at));
+                streamStatus.textContent = `online ${getDateDiff(parseTimeZone(new Date()), start).toString()}`;
+                streamStatus.className = 'stream-status live-on';
+            }
+        }
+
+        function updateViewCount() {
+            if (streams.twitch.data) {
+                //const data = streams.twitch.data;
+                //const sd = data.stream_details;
+                //lblTwitchViewCount.textContent = sd?.viewer_count?.toString() || '0';
+                updateTwitchStreamOnlineStatus();
+            }
+
+            if (streams.youtube.streams) {
+                const wrapper = document.getElementById('youtube-view-counts-wrapper');
+                if (!wrapper) return;
+
+                wrapper.innerHTML = '';
+                const showCount = chkShowViewCount.checked;
+
+                Object.entries(streams.youtube.streams).forEach(([liveId, data]) => {
+                    const span = document.createElement('span');
+                    span.dataset.liveId = liveId;
+                    span.style.marginLeft = '10px';
+                    span.style.color = showCount ? '' : 'var(--bg-primary)';
+                    span.innerHTML = `<img src="${CONSTANTS.ICONS.youtube}" alt="YouTube" style="height: 20px;" /> ${data.viewer_count || 0}`;
+                    wrapper.appendChild(span);
+                });
+                updateYouTubeStreamStatus();
+            }
+        }
+
+        function updateYouTubeConnectionDetails() {
             const loginEl = logins.querySelector('#login-youtube');
-            
+            const data = streams.youtube.data;
+            loginEl.textContent = '';
+
             if (!data?.Channels?.length) {
                 loginEl.innerHTML = '<a href="/youtube/login" target="_blank" class="login-link">Logar YouTube</a>';
                 youtubeConnections.style.display = 'none';
+                const streamStatus = youtubeDiv.querySelector('.stream-status');
+                const streamTime = youtubeDiv.querySelector('.stream-time');
+                if (streamStatus) {
+                    streamStatus.textContent = "offline";
+                    streamStatus.className = 'stream-status live-off';
+                }
+                if (streamTime) streamTime.textContent = '';
                 return;
             }
 
-            loginEl.innerHTML = `YouTube: ${data.Channels.map(x => `<img src="${x.thumbnail}" /> ${x.title}`).join('')}`;
-            
-            const formDiv = youtubeConnections.querySelector('.form');
-            formDiv.innerHTML = data.Channels.map(x => 
-                `<button type="button" data-id="${x.id}" class="btn-youtube-chat-connect">Connectar ao Chat: ${x.title}</button>`
-            ).join('');
-            
-            youtubeConnections.querySelectorAll('.btn-youtube-chat-connect').forEach(btn => {
-                btn.onclick = () => connectToYouTubeChat(btn.dataset.id);
+            data.Channels.forEach(c => {
+                const span = document.createElement('span');
+                span.innerHTML = `<img src="${c.thumbnail}" /> ${c.title}`;
+                loginEl.appendChild(span);
             });
+
+            const formDiv = youtubeDiv.querySelector('.form');
+            formDiv.innerHTML = '';
+
+            const buttons = [];
+            const buttonsNext = [];
+            data.Channels.forEach(c => {
+                const div = document.createElement('div');
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.dataset.id = c.id;
+                btn.className = 'btn-youtube-chat-connect';
+                btn.textContent = `Conectar ao Chat: ${c.title}`;
+                buttons.push(btn);
+
+                const btnNext = document.createElement('button');
+                btnNext.type = 'button';
+                btnNext.dataset.id = c.id;
+                btnNext.className = 'btn-youtube-next';
+                btnNext.textContent = `Buscar Próximas Transmissões: ${c.title}`;
+
+                div.appendChild(btn);
+                div.appendChild(btnNext);
+                formDiv.appendChild(div);
+                buttonsNext.push(btnNext);
+            });
+            buttons.forEach(btn => { btn.onclick = () => connectToYouTubeChat(btn.dataset.id); });
+
+            buttonsNext.forEach(btn => { btn.onclick = () => getNextYouTubeStreams(btn.dataset.id); });
+
+            const previewLives = document.createElement('div');
+            Object.entries(streams.youtube.previewStreams).forEach(([liveId, data]) => {
+                const activeStream = streams.youtube.streams[liveId];
+
+                const div = document.createElement('div');
+                const span = document.createElement('span');
+                div.dataset.liveId = liveId;
+                div.style.marginLeft = '10px';
+                if (activeStream) {
+                    div.classList.add("live-on");
+                }
+                span.innerHTML = `<img src="${data.thumbnail || CONSTANTS.ICONS.youtube}" alt="${data.title || 'YouTube'}" style="height: 20px;" /> ${data.title || liveId}`;
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.classList.add("btn-sm");
+                btn.textContent = "Chat Conectado";
+                btn.style.width = "120px";
+                if (!activeStream) {
+                    btn.textContent = 'Conectar ao Chat';
+                    btn.onclick = () => { w.send('connect-to-preview-youtube', { liveChatId: data.liveChatId }) };
+                }
+                div.appendChild(btn);
+                div.appendChild(span);
+                previewLives.appendChild(div);
+            });
+            formDiv.appendChild(previewLives);
+
             youtubeConnections.style.display = 'block';
         }
 
-        function updateKickConnectionDetails(user) {
+        function updateYouTubeStreamStatus() {
+            const streamStatus = youtubeDiv.querySelector('.stream-status');
+            const streamTime = youtubeDiv.querySelector('.stream-time');
+            if (!streamStatus || !streamTime) return;
+
+            if (!streamTime) return;
+
+            const activeStreams = Object.entries(streams.youtube.streams).filter(([_, d]) => !d.actualEndTime && d.actualStartTime);
+
+            if (activeStreams.length > 0) {
+                const [_, firstStream] = activeStreams[0];
+                let time = "";
+                if (firstStream.actualStartTime) {
+                    const start = parseTimeZone(new Date(firstStream.actualStartTime));
+                    time = getDateDiff(parseTimeZone(new Date()), start).toString();
+                }
+                streamStatus.textContent = `${firstStream.title || 'YouTube'} (online) ${time}`;
+                streamStatus.className = 'stream-status live-on';
+                //streamTime.textContent = time;
+                return;
+            }
+            streamStatus.textContent = "offline";
+            streamStatus.className = 'stream-status live-off';
+            streamTime.textContent = '';
+        }
+
+        function updateKickConnectionDetails(connectedAs) {
+            streams.kick.connectedAs = connectedAs;
             const loginEl = logins.querySelector('#login-kick');
-            
-            if (!user) {
+
+            if (!connectedAs) {
                 loginEl.innerHTML = '<a href="/kick/login" target="_blank" class="login-link">Logar Kick</a>';
                 kickConnections.style.display = "none";
                 return;
             }
 
-            loginEl.textContent = `Kick: ${user}`;
-            if (!kickConnections.querySelectorAll('.list li').length) connectToKickChat(user);
+            loginEl.textContent = `Kick: ${connectedAs}`;
+            if (!kickConnections.querySelectorAll('.list li').length) connectToKickChat(connectedAs);
             kickConnections.style.display = "block";
-            kickConnections.querySelector('.btn-novo-chat').onclick = () => {
-                const t = prompt('Informe o usuário Kick');
-                if (t) connectToKickChat(t);
-            };
         }
 
-        function updateYouTubeChatConnectiongDetails(data) {
+        function syncYouTubeChatConnections(data) {
+            if (!data || !Array.isArray(data)) return;
+            data.forEach(c => {
+                if (c.id) {
+                    if (!streams.youtube.streams[c.id]) {
+                        streams.youtube.streams[c.id] = {
+                            viewer_count: 0,
+                            actualStartTime: null,
+                            actualEndTime: null,
+                            title: "",
+                            liveChatId: ""
+                        };
+                    }
+                    streams.youtube.streams[c.id].title = c.snippet?.title || streams.youtube.streams[c.id].title;
+                    streams.youtube.streams[c.id].liveChatId = c.snippet?.liveChatId;
+                    streams.youtube.streams[c.id].thumbnail = c.snippet?.thumbnails.medium?.url || c.snippet?.thumbnails.default?.url;
+
+                }
+            });
+            console.log(data);
+            updateYouTubeStreamStatus();
+            updateYouTubeConnectionDetails();
+            updateYouTubeChatConnectiongDetails();
+        }
+
+        function updateYouTubeChatConnectiongDetails() {
             const chat = document.querySelector('#chat-connection-youtube .list');
-            if (chat && data) {
-                chat.innerHTML = data.map(x => `<li data-live-id="${x.id}">${x.snippet?.title || x.id}</li>`).join('');
+            if (chat) {
+                console.log(streams.youtube.streams);
+                chat.innerHTML = Object.entries(streams.youtube.streams).map(([id, data]) => {
+                    console.log(data);
+                    return `<li data-live-id="${id}"><img src="${data.thumbnail}" alt="${data.title || id}" />${data.title || id}</li>`;
+                }).join('');
             }
         }
 
@@ -667,7 +1029,7 @@
                     const [start, end] = positions.split('-').map(Number);
                     return {
                         id,
-                        url: `https://static-cdn.jtvnw.net/emoticons/v2/${id}/default/light/1.0`,
+                        url: CONSTANTS.EMOTE_URL.replace('{id}', id),
                         name: (data.message || '').slice(start, end + 1),
                     };
                 });
@@ -681,7 +1043,7 @@
 
         function parseMessageWithEmotes(message) {
             const emoteMap = w.getEmotes();
-            return (message || '')
+            return (message.replace(/\\s|\s/g, ' ').replace(/\n/g, '') || '')
                 .split(/\s+/)
                 .map(word => {
                     const url = emoteMap[word];
@@ -718,12 +1080,8 @@
             message.className = 'chat-message';
 
             // Platform icon
-            const platformIcons = {
-                twitch: `<img src="https://assets.twitch.tv/assets/favicon-32-e29e246c157142c94346.png" alt="twitch" />`,
-                kick: `<img src="https://kick.com/favicon.ico" alt="kick" />`,
-                youtube: `<img src="https://www.youtube.com/s/desktop/d0c6b06b/img/favicon.ico" alt="YouTube" />`
-            };
-            source.innerHTML = platformIcons[msg.source] || msg.source;
+            const iconHtml = (platform) => `<img src="${CONSTANTS.ICONS[platform]}" alt="${platform}" />`;
+            source.innerHTML = iconHtml(msg.source) || msg.source;
 
             // Parse message with emotes
             if (msg.source === "twitch") {
@@ -775,7 +1133,7 @@
                     replyDiv.className = 'reply-message';
                     const parentUser = `@${msg.metadata['reply-parent-display-name'] || ''}`;
                     const parentText = parseMessageWithEmotes(msg.metadata['reply-parent-msg-body']);
-                    replyDiv.innerHTML = checkuserReference(`Respondendo a <span>${parentUser}</span>: ${parentText}`).replace(/\s/g, '&nbsp;').replace(/\n/g, '');
+                    replyDiv.innerHTML = checkuserReference(`Respondendo a <span>${parentUser}</span>: ${parentText}`);
                     div.prepend(replyDiv);
                 }
             }
@@ -801,18 +1159,54 @@
                 div.append(source, channel, badges, user, message);
             }
 
-            chatDiv.appendChild(div);
+            addChatMessage(div);
+        }
+
+        function addChatMessage(element) {
+            if (!element) return;
+            if (typeof element === 'string') {
+                const div = document.createElement('div');
+                div.innerHTML = element;
+                element = div;
+            }
+
+            if (!element.classList.contains('message')) {
+                element.classList.add('message');
+            }
+
+            chatDiv.appendChild(element);
+            if (chatDiv.querySelectorAll('.message').length >= 300) {
+                chatDiv.removeChild(chatDiv.querySelector('.message'));
+            }
             if (chatAcompanhar.checked) chatDiv.scrollTop = chatDiv.scrollHeight;
+        }
+
+        function isValidLatinString(str) {
+            return /^[\p{L}\p{N}!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?~`\s]+$/u.test(str);
+        }
+
+        function getDateDiff(date1, date2) {
+            const diff = Math.abs(date2.getTime() - date1.getTime());
+            const hours = Math.floor(diff / 3600000);
+            const minutes = Math.floor((diff % 3600000) / 60000);
+            const seconds = Math.floor((diff % 60000) / 1000);
+            const pad = (n) => n.toString().padStart(2, '0');
+            return { hours, minutes, seconds, toString: () => `${pad(hours)}:${pad(minutes)}:${pad(seconds)}` };
+        }
+
+        function parseTimeZone(date) {
+            return new Date(date.getTime() - date.getTimezoneOffset() * 60000);
         }
 
         function loadDyModules(modules) {
             if (!modules?.length) {
                 document.getElementById('dyevents-panel').style.display = 'none';
-                dyEventsDiv.style.display = 'none';
+                document.getElementById('dyevents-list').style.display = 'none';
                 return;
             }
 
             const sidebar = document.getElementById('dyevents-sidebar');
+            const dyEventsDiv = document.getElementById('dyevents-list');
 
             modules.forEach(m => {
                 const sidebarItem = document.createElement('div');
@@ -825,10 +1219,10 @@
                 div.id = m.name;
                 div.className = 'dyevent-content';
                 div.innerHTML = `
-                    <h3>${m.name}</h3>
-                    <div><label>${m.paused ? 'Paused' : 'Running'}</label></div>
-                    <div class="content-body"></div>
-                `;
+<h3>${m.name}</h3>
+<div><label>${m.paused ? 'Paused' : 'Running'}</label></div>
+<div class="content-body"></div>
+`;
 
                 import(`./customevents/${m.name}.js?t=${Date.now()}`)
                     .then(module => module.default?.())
@@ -843,13 +1237,11 @@
         }
 
         function selectDyEvent(name) {
-            document.querySelectorAll('.sidebar-item').forEach(item => {
-                item.classList.toggle('active', item.textContent === name);
-            });
-            document.querySelectorAll('.dyevent-content').forEach(content => {
-                content.style.display = content.id === name ? 'block' : 'none';
-            });
+            document.querySelectorAll('.sidebar-item').forEach(item => { item.classList.toggle('active', item.textContent === name); });
+            document.querySelectorAll('.dyevent-content').forEach(content => { content.style.display = content.id === name ? 'block' : 'none'; });
         }
+
+
     </script>
 </body>
 

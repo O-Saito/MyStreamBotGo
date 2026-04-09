@@ -342,9 +342,11 @@ func subscribeToEvents() {
 
 	oldSubs, _ := GetEventSubscriptions()
 
-	for _, sub := range oldSubs.Data {
-		if sub.Transport.Method == "websocket" && sub.Condition.BroadcasterUserId == data.Condition.BroadcasterUserId && sub.Transport.SessionId != data.Transport.SessionId {
-			DeleteEventSubscriptions(sub.Id)
+	if oldSubs != nil && oldSubs.Data != nil {
+		for _, sub := range oldSubs.Data {
+			if sub.Transport.Method == "websocket" && sub.Condition.BroadcasterUserId == data.Condition.BroadcasterUserId && sub.Transport.SessionId != data.Transport.SessionId {
+				DeleteEventSubscriptions(sub.Id)
+			}
 		}
 	}
 	subTypes := globals.GetConfig().GetTwitchSubTypes()
@@ -356,8 +358,7 @@ func subscribeToEvents() {
 		}
 		jsonData, _ := json.Marshal(data)
 		req, _ := http.NewRequest("POST", urlAPIEventSub, bytes.NewBuffer(jsonData))
-		req.Header.Set("Authorization", "Bearer "+globals.GetState().GetTwitchUser().Token)
-		req.Header.Set("Client-ID", globals.GetConfig().TwitchClientID)
+		AddAuthHeaders(req)
 		req.Header.Set("Content-Type", "application/json")
 		resp, err := http.DefaultClient.Do(req)
 		if err != nil {
@@ -386,9 +387,6 @@ func subscribeToEvents() {
 			if cd["max_total_cost"] != nil && cd["total_cost"] != nil && cd["max_total_cost"].(float64) < cd["total_cost"].(float64) {
 				helpers.Logf(helpers.ERROR, "Twitch max cost reached!")
 			}
-			//helpers.Logf(helpers.INFO, "TWITCH COST FOR %s: (Total Cost: %d / Max Total Cost: %d)", name, int(cd["total_cost"].(float64)), int(cd["max_total_cost"].(float64)))
-
-			//return fmt.Errorf("erro ao excluir mensagem: %s", body)
 		}
 		globals.GetState().SetData("TwitchSubEventsConnectedEvents", events)
 	}

@@ -32,8 +32,8 @@ func ProcessDyEventQueue() {
 				wait.Done()
 			}()
 		}
-		helpers.Logf(helpers.DEBUG, "WAINTING DY PROCESSOR")
+		helpers.Logf(helpers.DEBUG, "WAINTING DY PROCESSOR (%d events)", len(events))
 		wait.Wait()
-		helpers.Logf(helpers.DEBUG, "WAINTED DY PROCESSOR")
+		helpers.Logf(helpers.DEBUG, "DONE DY PROCESSOR")
 	}
 }

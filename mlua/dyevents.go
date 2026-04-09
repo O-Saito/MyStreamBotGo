@@ -338,68 +338,8 @@ func LoadDyEvents(baseDir string) {
 		if filepath.Ext(file.Name()) != ".lua" {
 			continue
 		}
-		fullPath := filepath.Join(baseDir, file.Name())
 		name := file.Name()
-
-		L := lua.NewState()
-		L.DoString(fmt.Sprintf(`package.path = package.path .. ";%s/modules/?.lua;"`, baseDir))
-		RegisterGlobalState(L)
-
-		dynamicEventsMutex.RLock()
-		for _, f := range globalRegister {
-			f(L)
-		}
-		dynamicEventsMutex.RUnlock()
-
-		eventTable := L.NewTable()
-		L.SetGlobal("ev", eventTable)
-
-		fn, err := L.LoadFile(fullPath)
-		if err != nil {
-			helpers.Logf(helpers.ERROR, "[DYNAMIC] Erro ao carregar %s: %v", name, err)
-			continue
-		}
-
-		if err := L.CallByParam(lua.P{Fn: fn, NRet: 0, Protect: true}); err != nil {
-			helpers.Logf(helpers.ERROR, "[DYNAMIC] Erro executando %s: %v", name, err)
-			continue
-		}
-
-		ev := &DynamicEvent{
-			Name: name,
-			Path: fullPath,
-			Lua: DynamicEventLua{
-				LState:    L,
-				OnStart:   getGlobalFunction(L, "on_start"),
-				OnTick:    getGlobalFunction(L, "on_tick"),
-				OnEvent:   getGlobalFunction(L, "on_event"),
-				OnMessage: getGlobalFunction(L, "on_message"),
-				OnCommand: getGlobalFunction(L, "on_command"),
-				OnRequest: getGlobalFunction(L, "on_request"),
-			},
-			State: DynamicEventState{
-				NextTick: time.Now().Add(time.Second),
-				Interval: time.Second, // padrão
-				Paused:   true,        // padrão
-				db:       nil,
-			},
-		}
-
-		setFunctionOnTable(ev, eventTable)
-
-		oldEvent := dynamicEvents[name]
-		if oldEvent != nil {
-			oldEvent.Transfer(ev)
-			oldEvent.Close()
-		}
-
-		dynamicEventsMutex.Lock()
-		dynamicEvents[name] = ev
-		dynamicEventsMutex.Unlock()
-
-		helpers.Logf(helpers.DEBUG, "[DYNAMIC] Evento carregado: %s", name)
-
-		ev.ProcessStart()
+		LoadDyEventModule(baseDir, name)
 	}
 
 	// Inicia o loop global apenas uma vez
@@ -411,6 +351,70 @@ func LoadDyEvents(baseDir string) {
 			go globalEventLoop()
 		})
 	}
+}
+
+func LoadDyEventModule(folder, fileName string) {
+	fullPath := filepath.Join(folder, fileName)
+	helpers.Logf(helpers.INFO, "LoadDyEventModule %s %s [%s]", folder, fileName, fullPath)
+	L := lua.NewState()
+	L.DoString(fmt.Sprintf(`package.path = package.path .. ";%s/modules/?.lua;"`, folder))
+	RegisterGlobalState(L)
+
+	dynamicEventsMutex.RLock()
+	for _, f := range globalRegister {
+		f(L)
+	}
+	dynamicEventsMutex.RUnlock()
+
+	eventTable := L.NewTable()
+	L.SetGlobal("ev", eventTable)
+
+	fn, err := L.LoadFile(fullPath)
+	if err != nil {
+		helpers.Logf(helpers.ERROR, "[DYNAMIC] Erro ao carregar %s: %v", fileName, err)
+		return
+	}
+
+	if err := L.CallByParam(lua.P{Fn: fn, NRet: 0, Protect: true}); err != nil {
+		helpers.Logf(helpers.ERROR, "[DYNAMIC] Erro executando %s: %v", fileName, err)
+		return
+	}
+
+	ev := &DynamicEvent{
+		Name: fileName,
+		Path: fullPath,
+		Lua: DynamicEventLua{
+			LState:    L,
+			OnStart:   getGlobalFunction(L, "on_start"),
+			OnTick:    getGlobalFunction(L, "on_tick"),
+			OnEvent:   getGlobalFunction(L, "on_event"),
+			OnMessage: getGlobalFunction(L, "on_message"),
+			OnCommand: getGlobalFunction(L, "on_command"),
+			OnRequest: getGlobalFunction(L, "on_request"),
+		},
+		State: DynamicEventState{
+			NextTick: time.Now().Add(time.Second),
+			Interval: time.Second, // padrão
+			Paused:   true,        // padrão
+			db:       nil,
+		},
+	}
+
+	setFunctionOnTable(ev, eventTable)
+
+	oldEvent := dynamicEvents[fileName]
+	if oldEvent != nil {
+		oldEvent.Transfer(ev)
+		oldEvent.Close()
+	}
+
+	dynamicEventsMutex.Lock()
+	dynamicEvents[fileName] = ev
+	dynamicEventsMutex.Unlock()
+
+	helpers.Logf(helpers.DEBUG, "[DYNAMIC] Evento carregado: %s", fileName)
+
+	ev.ProcessStart()
 }
 
 func setFunctionOnTable(ev *DynamicEvent, tbl *lua.LTable) {

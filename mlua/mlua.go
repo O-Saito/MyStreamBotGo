@@ -1,6 +1,7 @@
 package mlua
 
 import (
+	"fmt"
 	"io/fs"
 	"log"
 	"os"
@@ -38,6 +39,13 @@ const (
 	DyEventCommand = 1
 	DyEventEvent   = 2
 	DyEventRequest = 3
+)
+
+const (
+	folderPathCommands = "./modules/commands"
+	folderPathChat     = "./modules/chat"
+	folderPathEvents   = "./modules/events"
+	folderPathCustom   = "./modules/customevents"
 )
 
 var (
@@ -97,16 +105,15 @@ func createIfNotExists(path string) {
 
 // Load/Reload all modules
 func LoadAllModules() {
+	createIfNotExists(folderPathCommands)
+	createIfNotExists(folderPathChat)
+	createIfNotExists(folderPathEvents)
+	createIfNotExists(folderPathCustom)
 
-	createIfNotExists("./modules/commands")
-	createIfNotExists("./modules/chat")
-	createIfNotExists("./modules/events")
-	createIfNotExists("./modules/customevents")
-
-	loadDir(LCommands, "./modules/commands", "command")
-	loadDir(LChat, "./modules/chat", "chat")
-	loadEvents(LEvents, "./modules/events")
-	LoadDyEvents("./modules/customevents")
+	loadDir(LCommands, folderPathCommands, "command")
+	loadDir(LChat, folderPathChat, "chat")
+	loadEvents(LEvents, folderPathEvents)
+	LoadDyEvents(folderPathCustom)
 }
 
 func loadDir(L *lua.LState, dir string, modType string) {
@@ -316,9 +323,27 @@ func StartWatcher() {
 				if filepath.Ext(ev.Name) != ".lua" {
 					continue
 				}
-				log.Printf("[FS EVENT] %s %s", ev.Name, ev.Op)
+				folder := strings.ReplaceAll(fmt.Sprintf(".\\%s", filepath.Dir(ev.Name)), "\\", "/")
+				log.Printf("[FS EVENT] %s %s %s", folder, ev.Name, ev.Op)
 				time.Sleep(50 * time.Millisecond)
-				LoadAllModules()
+				//LoadAllModules()
+
+				if strings.Contains(folder, folderPathCustom) {
+					LoadDyEventModule(folder, strings.Replace(ev.Name, fmt.Sprintf("%s\\", filepath.Dir(ev.Name)), "", 1))
+					continue
+				}
+				if strings.Contains(folder, folderPathCommands) {
+					loadModule(LCommands, ev.Name, "command")
+					continue
+				}
+				if strings.Contains(folder, folderPathChat) {
+					loadModule(LChat, ev.Name, "chat")
+					continue
+				}
+				if strings.Contains(folder, folderPathEvents) {
+					loadEvents(LEvents, folderPathEvents)
+					continue
+				}
 			case err, ok := <-watcher.Errors:
 				if !ok {
 					return

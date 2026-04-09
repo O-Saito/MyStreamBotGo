@@ -576,6 +576,7 @@ func ProcessDyEventQueue() {
 		wait.Add(len(events))
 		for _, dev := range events {
 			go func() {
+				start := time.Now()
 				switch deq.Type {
 				case DyEventChat:
 					dev.ProcessChat(&deq.MessageFromStream)
@@ -587,6 +588,8 @@ func ProcessDyEventQueue() {
 					dev.ProcessRequest(&deq.SocketMessage)
 				default:
 				}
+				elapsed := time.Since(start)
+				helpers.Logf(helpers.DEBUG, "PROCESSED DY EVENT %s[%d] IN %v", dev.Name, deq.Type, elapsed)
 				wait.Done()
 			}()
 		}

@@ -13,6 +13,31 @@ import (
 	lua "github.com/yuin/gopher-lua"
 )
 
+type TwitchStateLuaData struct {
+	UserID                 string `json:"user_id"`
+	UserLogin              string `json:"user_login"`
+	DisplayName            string `json:"display_name"`
+	Type                   string `json:"type"`
+	BroadcasterType        string `json:"broadcaster_type"`
+	Description            string `json:"description"`
+	ProfileImageURL        string `json:"profile_image_url"`
+	ProfileOfflineImageURL string `json:"offline_image_url"`
+}
+
+type TwitchStreamLuaData struct {
+	ID           string   `json:"id"`
+	GameId       string   `json:"game_id"`
+	GameName     string   `json:"game_name"`
+	Type         string   `json:"type"`
+	Title        string   `json:"title"`
+	Tags         []string `json:"tags"`
+	ViewerCount  int32    `json:"viewer_count"`
+	StartedAt    string   `json:"started_at"`
+	Language     string   `json:"language"`
+	ThumbnailURL string   `json:"thumbnail_url"`
+	IsMature     bool     `json:"is_mature"`
+}
+
 var KickFunctionList = []services.LuaFunction{
 	{Name: "get_user", Fn: kick.GetUser},
 	{Name: "get_channel", Fn: kick.GetChannel},
@@ -25,6 +50,38 @@ var YouTubeFunctionList = []services.LuaFunction{
 }
 
 var TwitchFunctionList = []services.LuaFunction{
+	{Name: "get_state", Fn: func() TwitchStateLuaData {
+		state := globals.GetState().GetTwitchUser()
+		return TwitchStateLuaData{
+			UserID:                 state.UserID,
+			UserLogin:              state.UserLogin,
+			DisplayName:            state.DisplayName,
+			Type:                   state.Type,
+			BroadcasterType:        state.BroadcasterType,
+			Description:            state.Description,
+			ProfileImageURL:        state.ProfileImageURL,
+			ProfileOfflineImageURL: state.ProfileOfflineImageURL,
+		}
+	}},
+	{Name: "get_cache_stream", Fn: func() TwitchStreamLuaData {
+		stream := globals.GetState().GetTwitchUser().StreamDetails
+		if stream == nil {
+			return TwitchStreamLuaData{}
+		}
+		return TwitchStreamLuaData{
+			ID:           stream.ID,
+			GameId:       stream.GameId,
+			GameName:     stream.GameName,
+			Type:         stream.Type,
+			Title:        stream.Title,
+			Tags:         stream.Tags,
+			ViewerCount:  stream.ViewerCount,
+			StartedAt:    stream.StartedAt,
+			Language:     stream.Language,
+			ThumbnailURL: stream.ThumbnailURL,
+			IsMature:     stream.IsMature,
+		}
+	}},
 	{Name: "get_cache_user_chat_color", Fn: twitch.GetCacheUserChatColor},
 	{Name: "get_user_data", Fn: twitch.GetUserData},
 	{Name: "get_user_data_by_id", Fn: twitch.GetUserDataById},

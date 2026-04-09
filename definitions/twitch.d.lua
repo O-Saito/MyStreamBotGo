@@ -1,38 +1,69 @@
+---@class TwitchState
+---@field UserID string
+---@field UserLogin string
+---@field DisplayName string
+---@field Type string
+---@field BroadcasterType string
+---@field Description string
+---@field ProfileImageURL string
+---@field ProfileOfflineImageURL string
+
+---@class TwitchStream
+---@field ID string
+---@field GameId string
+---@field GameName string
+---@field Type string
+---@field Title string
+---@field Tags string[]
+---@field ViewerCount number
+---@field StartedAt string
+---@field Language string
+---@field ThumbnailURL string
+---@field IsMature boolean
+
 ---@class UserData
----@field ID                     string
----@field Login                  string
----@field DisplayName            string 
----@field Type                   string 
----@field BroadcasterType        string 
----@field Description            string
----@field ProfileImageURL        string 
----@field ProfileOfflineImageURL string 
----@field ViewCount              number    
----@field Email                  string 
----@field CreatedAt              string 
+---@field ID string
+---@field Login string
+---@field DisplayName string
+---@field Type string
+---@field BroadcasterType string
+---@field Description string
+---@field ProfileImageURL string
+---@field ProfileOfflineImageURL string
+---@field ViewCount number
+---@field Email string
+---@field CreatedAt string
 
 ---@class TwitchViewerData
----@field UserId     string
----@field UserName   string
----@field UserLogin  string
+---@field UserId string
+---@field UserName string
+---@field UserLogin string
 ---@field FollowedAt string
 
 ---@class StreamData
----@field BroadcasterId               string  
----@field BroadcasterLogin            string   
----@field BroadcasterName             string  
----@field BroadcasterLanguage         string  
----@field GameID                      string  
----@field GameName                    string   
----@field Title                       string   
----@field Delay                       number      
----@field Tags                        string[] 
----@field ContentClassificationLabels string[] 
----@field IsBrandedContent            boolean   
+---@field BroadcasterId string
+---@field BroadcasterLogin string
+---@field BroadcasterName string
+---@field BroadcasterLanguage string
+---@field GameID string
+---@field GameName string
+---@field Title string
+---@field Delay number
+---@field Tags string[]
+---@field ContentClassificationLabels string[]
+---@field IsBrandedContent boolean
 
 ---@meta
 ---@class twitch
 local g = {}
+
+---Get cached Twitch user state
+---@return TwitchState
+function g.get_state() end
+
+---Get cached stream data
+---@return TwitchStream
+function g.get_cache_stream() end
 
 ---Get color of user's chat messages
 ---@param username string
@@ -47,20 +78,20 @@ function g.get_user_data(username) end
 ---Get user data by user ID
 ---@param userid string
 ---@return UserData|nil
-function g.get_user_data_by_id(userid)end
+function g.get_user_data_by_id(userid) end
 
 ---Get followers data of logged streamer by user ID
 ---@param userid string
 ---@return TwitchViewerData[]|nil
-function g.get_follower_data(userid)end
+function g.get_follower_data(userid) end
 
---- Get followers data of logged streamer
+---Get followers data of logged streamer
 ---@return TwitchViewerData[]|nil
-function g.get_followers_data()end
+function g.get_followers_data() end
 
---- Get stream data of logged streamer
----@return StreamData|nil 
-function g.get_channel_stream_data()end
+---Get stream data of logged streamer
+---@return StreamData|nil
+function g.get_channel_stream_data() end
 
 -- declare global
 _G.twitch = g

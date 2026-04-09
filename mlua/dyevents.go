@@ -60,6 +60,12 @@ var (
 	stopGlobalLoop chan struct{}
 )
 
+func GetDyEvents() map[string]*DynamicEvent {
+	dynamicEventsMutex.RLock()
+	defer dynamicEventsMutex.RUnlock()
+	return dynamicEvents
+}
+
 func (dev *DynamicEvent) Transfer(new *DynamicEvent) {
 	dev.mu.Lock()
 	defer new.mu.Unlock()
@@ -567,39 +573,6 @@ func HandleDyEventWebsocket(msg any) {
 
 	for _, ev := range dynamicEvents {
 		ev.ProcessWebsocketEvent(msg)
-	}
-}
-
-func ProcessDyEventQueue() {
-	helpers.Log(helpers.INFO, "Started dyevents processor!")
-	for deq := range DyEventQueue {
-		dynamicEventsMutex.RLock()
-		events := dynamicEvents
-		dynamicEventsMutex.RUnlock()
-		wait := sync.WaitGroup{}
-		wait.Add(len(events))
-		for _, dev := range events {
-			go func() {
-				start := time.Now()
-				switch deq.Type {
-				case DyEventChat:
-					dev.ProcessChat(&deq.MessageFromStream)
-				case DyEventCommand:
-					dev.ProcessCommand(&deq.LuaCommand)
-				case DyEventEvent:
-					dev.ProcessEvent(&deq.LuaEvent)
-				case DyEventRequest:
-					dev.ProcessRequest(&deq.SocketMessage)
-				default:
-				}
-				elapsed := time.Since(start)
-				helpers.Logf(helpers.DEBUG, "PROCESSED DY EVENT %s[%d] IN %v", dev.Name, deq.Type, elapsed)
-				wait.Done()
-			}()
-		}
-		helpers.Logf(helpers.DEBUG, "WAINTING DY PROCESSOR")
-		wait.Wait()
-		helpers.Logf(helpers.DEBUG, "WAINTED DY PROCESSOR")
 	}
 }
 

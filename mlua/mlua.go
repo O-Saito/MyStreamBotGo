@@ -359,18 +359,3 @@ func StartWatcher() {
 		return nil
 	})
 }
-
-func ProcessLuaRequest() {
-	helpers.Log(helpers.INFO, "Started lua requests queue!")
-	defer func() {
-		if r := recover(); r != nil {
-			helpers.Logf(helpers.ERROR, "[LuaRequest] panic: %v", r)
-		}
-	}()
-	for ev := range globals.LuaRequest {
-		DyEventQueue <- DyEventQueueData{
-			Type:          DyEventRequest,
-			SocketMessage: ev,
-		}
-	}
-}

@@ -46,8 +46,8 @@ func main() {
 	go processors.ProcessChatQueue()
 	go processors.ProcessCommandQueue()
 	go processors.ProcessEventQueue()
-	go mlua.ProcessDyEventQueue()
-	go mlua.ProcessLuaRequest()
+	go processors.ProcessDyEventQueue()
+	go processors.ProcessLuaRequest()
 
 	// iniciar servidor web
 	goweb.StartHTTPServer()

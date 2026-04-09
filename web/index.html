@@ -301,7 +301,7 @@
             chatAcompanhar.checked = uiState.preferences.acompanharChat;
             chkShowViewCount.checked = uiState.preferences.showViewCount;
             lblTwitchViewCount.style.color = uiState.preferences.showViewCount ? "" : "var(--bg-primary)";
-            chatContent.style.height = uiState.preferences.chatHeight + 'px';
+            chatContent.style.height = (uiState.preferences.chatHeight + 20) + 'px';
             eventsList.style.height = uiState.preferences.eventsHeight + 'px';
         }
 

@@ -556,6 +556,41 @@ func setFunctionOnTable(ev *DynamicEvent, tbl *lua.LTable) {
 
 }
 
+// Permite eventos do websocket interno
+func HandleDyEventWebsocket(msg any) {
+	dynamicEventsMutex.RLock()
+	defer dynamicEventsMutex.RUnlock()
+
+	for _, ev := range dynamicEvents {
+		ev.ProcessWebsocketEvent(msg)
+	}
+}
+
+func ProcessDyEventQueue() {
+	helpers.Log(helpers.INFO, "Started dyevents processor!")
+	for deq := range DyEventQueue {
+		dynamicEventsMutex.RLock()
+		events := dynamicEvents
+		dynamicEventsMutex.RUnlock()
+		for _, dev := range events {
+			if deq.Type == DyEventChat {
+				dev.ProcessChat(&deq.MessageFromStream)
+				continue
+			} else if deq.Type == DyEventCommand {
+				dev.ProcessCommand(&deq.LuaCommand)
+				continue
+			} else if deq.Type == DyEventEvent {
+				dev.ProcessEvent(&deq.LuaEvent)
+				continue
+			} else if deq.Type == DyEventRequest {
+				dev.ProcessRequest(&deq.SocketMessage)
+				continue
+			}
+
+		}
+	}
+}
+
 // Loop único para todos os eventos
 func globalEventLoop() {
 	helpers.Log(helpers.INFO, "Started dyevent global event loop!")
@@ -592,16 +627,6 @@ func globalEventLoop() {
 			}
 			dynamicEventsMutex.RUnlock()
 		}
-	}
-}
-
-// Permite eventos do websocket interno
-func HandleDyEventWebsocket(msg any) {
-	dynamicEventsMutex.RLock()
-	defer dynamicEventsMutex.RUnlock()
-
-	for _, ev := range dynamicEvents {
-		ev.ProcessWebsocketEvent(msg)
 	}
 }
 

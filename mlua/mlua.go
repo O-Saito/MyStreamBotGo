@@ -350,28 +350,3 @@ func ProcessLuaRequest() {
 		}
 	}
 }
-
-func ProcessDyEventQueue() {
-	helpers.Log(helpers.INFO, "Started dyevents processor!")
-	for deq := range DyEventQueue {
-		dynamicEventsMutex.RLock()
-		events := dynamicEvents
-		dynamicEventsMutex.RUnlock()
-		for _, dev := range events {
-			if deq.Type == DyEventChat {
-				dev.ProcessChat(&deq.MessageFromStream)
-				continue
-			} else if deq.Type == DyEventCommand {
-				dev.ProcessCommand(&deq.LuaCommand)
-				continue
-			} else if deq.Type == DyEventEvent {
-				dev.ProcessEvent(&deq.LuaEvent)
-				continue
-			} else if deq.Type == DyEventRequest {
-				dev.ProcessRequest(&deq.SocketMessage)
-				continue
-			}
-
-		}
-	}
-}

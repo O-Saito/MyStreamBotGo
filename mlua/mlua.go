@@ -326,7 +326,6 @@ func StartWatcher() {
 				folder := strings.ReplaceAll(fmt.Sprintf(".\\%s", filepath.Dir(ev.Name)), "\\", "/")
 				log.Printf("[FS EVENT] %s %s %s", folder, ev.Name, ev.Op)
 				time.Sleep(50 * time.Millisecond)
-				//LoadAllModules()
 
 				if strings.Contains(folder, folderPathCustom) {
 					LoadDyEventModule(folder, strings.Replace(ev.Name, fmt.Sprintf("%s\\", filepath.Dir(ev.Name)), "", 1))

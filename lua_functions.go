@@ -14,28 +14,28 @@ import (
 )
 
 type TwitchStateLuaData struct {
-	UserID                 string `json:"user_id"`
-	UserLogin              string `json:"user_login"`
-	DisplayName            string `json:"display_name"`
-	Type                   string `json:"type"`
-	BroadcasterType        string `json:"broadcaster_type"`
-	Description            string `json:"description"`
-	ProfileImageURL        string `json:"profile_image_url"`
-	ProfileOfflineImageURL string `json:"offline_image_url"`
+	UserID                 string
+	UserLogin              string
+	DisplayName            string
+	Type                   string
+	BroadcasterType        string
+	Description            string
+	ProfileImageURL        string
+	ProfileOfflineImageURL string
 }
 
 type TwitchStreamLuaData struct {
-	ID           string   `json:"id"`
-	GameId       string   `json:"game_id"`
-	GameName     string   `json:"game_name"`
-	Type         string   `json:"type"`
-	Title        string   `json:"title"`
-	Tags         []string `json:"tags"`
-	ViewerCount  int32    `json:"viewer_count"`
-	StartedAt    string   `json:"started_at"`
-	Language     string   `json:"language"`
-	ThumbnailURL string   `json:"thumbnail_url"`
-	IsMature     bool     `json:"is_mature"`
+	ID           string
+	GameId       string
+	GameName     string
+	Type         string
+	Title        string
+	Tags         []string
+	ViewerCount  int32
+	StartedAt    string
+	Language     string
+	ThumbnailURL string
+	IsMature     bool
 }
 
 var KickFunctionList = []services.LuaFunction{

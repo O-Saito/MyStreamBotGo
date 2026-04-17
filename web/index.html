@@ -9,76 +9,74 @@
 </head>
 
 <body>
-    <div id="logins">
-        <div id="twitch" class="areas">
-            <div class="header">
-                <label><input type="checkbox" class="display-collapse" /></label>
-                <span id="login-twitch"></span>
-                <span class="stream-time"></span>
-                <span class="stream-status"></span>
-            </div>
-            <div class="body collapse-area">
-                <div class="platform-grid">
-                    <div class="form">
-                        <div class="form-row">
-                            <label for="twitch-title">Title:</label>
-                            <input type="text" id="twitch-title" />
-                        </div>
-                        <div class="form-row">
-                            <label for="twitch-game">Game:</label>
-                            <input type="text" id="twitch-game" list="twitch-game-list" />
-                            <datalist id="twitch-game-list"></datalist>
-                        </div>
-                        <div class="form-row">
-                            <label for="twitch-lang">Idioma:</label>
-                            <input type="text" id="twitch-lang" />
-                        </div>
-                        <div class="form-row">
-                            <span class="form-label">Tags:</span>
-                            <ul id="twitch-tags" class="inline-list"></ul>
-                        </div>
+    <section id="twitch" class="areas login">
+        <div class="header">
+            <label><input type="checkbox" class="display-collapse" /></label>
+            <span id="login-twitch"></span>
+            <span class="stream-time"></span>
+            <span class="stream-status"></span>
+        </div>
+        <div class="body collapse-area">
+            <div class="platform-grid">
+                <div class="form">
+                    <div class="form-row">
+                        <label for="twitch-title">Title:</label>
+                        <input type="text" id="twitch-title" />
                     </div>
-                    <div id="chat-connection-twitch" class="chat-list" style="display: inline-block;">
-                        <button type="button" class="btn-secondary btn-novo-chat" style="display: none;">Conectar a um
-                            chat Twitch</button>
-                        <ul class="list"></ul>
+                    <div class="form-row">
+                        <label for="twitch-game">Game:</label>
+                        <input type="text" id="twitch-game" list="twitch-game-list" />
+                        <datalist id="twitch-game-list"></datalist>
                     </div>
+                    <div class="form-row">
+                        <label for="twitch-lang">Idioma:</label>
+                        <input type="text" id="twitch-lang" />
+                    </div>
+                    <div class="form-row">
+                        <span class="form-label">Tags:</span>
+                        <ul id="twitch-tags" class="inline-list"></ul>
+                    </div>
+                </div>
+                <div id="chat-connection-twitch" class="chat-list" style="display: inline-block;">
+                    <button type="button" class="btn-secondary btn-novo-chat" style="display: none;">Conectar a um
+                        chat Twitch</button>
+                    <ul class="list"></ul>
                 </div>
             </div>
         </div>
-        <div id="kick" class="areas">
-            <div class="header">
-                <label><input type="checkbox" class="display-collapse" /></label>
-                <span id="login-kick"></span>
-            </div>
-            <div class="body collapse-area">
-                <div class="platform-grid">
-                    <div class="form">
-                        <button type="button" class="btn-secondary btn-novo-chat">Conectar a um chat Kick</button>
-                    </div>
-                    <div id="chat-connection-kick" class="chat-list">
-                        <ul class="list"></ul>
-                    </div>
+    </section>
+    <section id="kick" class="areas login">
+        <div class="header">
+            <label><input type="checkbox" class="display-collapse" /></label>
+            <span id="login-kick"></span>
+        </div>
+        <div class="body collapse-area">
+            <div class="platform-grid">
+                <div class="form">
+                    <button type="button" class="btn-secondary btn-novo-chat">Conectar a um chat Kick</button>
+                </div>
+                <div id="chat-connection-kick" class="chat-list">
+                    <ul class="list"></ul>
                 </div>
             </div>
         </div>
-        <div id="youtube" class="areas">
-            <div class="header">
-                <label><input type="checkbox" class="display-collapse" /></label>
-                <span id="login-youtube"><a href="/youtube/login" target="_blank">Logar Youtube</a></span>
-                <span class="stream-time"></span>
-                <span class="stream-status"></span>
-            </div>
-            <div class="body collapse-area">
-                <div class="platform-grid">
-                    <div class="form"></div>
-                    <div id="chat-connection-youtube" class="chat-list">
-                        <ul class="list"></ul>
-                    </div>
+    </section>
+    <section id="youtube" class="areas login">
+        <div class="header">
+            <label><input type="checkbox" class="display-collapse" /></label>
+            <span id="login-youtube"><a href="/youtube/login" target="_blank">Logar Youtube</a></span>
+            <span class="stream-time"></span>
+            <span class="stream-status"></span>
+        </div>
+        <div class="body collapse-area">
+            <div class="platform-grid">
+                <div class="form"></div>
+                <div id="chat-connection-youtube" class="chat-list">
+                    <ul class="list"></ul>
                 </div>
             </div>
         </div>
-    </div>
+    </section>
 
     <section id="chat-section">
         <h1 style="display: inline-block;">Chat Live</h1>
@@ -107,7 +105,7 @@
         </div>
     </section>
 
-    <div id="events-panel" class="areas panel">
+    <section id="events-panel" class="areas panel">
         <div class="header">
             <label><input type="checkbox" id="collapse-events" /></label>
             <span>Eventos</span>
@@ -115,9 +113,9 @@
         <div class="body collapse-area">
             <div id="events-list"></div>
         </div>
-    </div>
+    </section>
 
-    <div id="dyevents-panel" class="areas panel">
+    <section id="dyevents-panel" class="areas panel">
         <div class="header">
             <label><input type="checkbox" id="toggle-dyevents" /></label>
             <span>Custom Events</span>
@@ -126,9 +124,9 @@
             <div id="dyevents-sidebar"></div>
             <div id="dyevents-list"></div>
         </div>
-    </div>
+    </section>
 
-    <div id="system" class="areas">
+    <section id="system" class="areas">
         <div class="header">
             <label><input type="checkbox" class="display-collapse" /></label>
             <span>System</span>
@@ -148,7 +146,7 @@
                 <div id="ui-errors-list"></div>
             </div>
         </div>
-    </div>
+    </section>
 
     <script type="module">
         const uiErrorsList = document.getElementById('ui-errors-list');
@@ -194,7 +192,6 @@
         const youtubeDiv = document.getElementById('youtube');
         const kickDiv = document.getElementById('kick');
 
-        const logins = document.getElementById('logins');
         const kickConnections = document.querySelector('#chat-connection-kick');
         const twitchConnections = document.querySelector('#chat-connection-twitch');
         const youtubeConnections = document.querySelector('#chat-connection-youtube');
@@ -229,7 +226,8 @@
                 acompanharChat: true,
                 showViewCount: true,
                 chatHeight: 400,
-                eventsHeight: 100
+                eventsHeight: 100,
+                sectionOrder: ['twitch', 'youtube', 'kick', 'chat-section', 'events-panel', 'dyevents-panel', 'system']
             }
         };
 
@@ -238,12 +236,14 @@
         function loadUIState() {
             try {
                 const saved = localStorage.getItem(CONSTANTS.STORAGE_KEY);
+                console.log('Loaded from localStorage:', saved);
                 if (saved) {
                     const parsed = JSON.parse(saved);
                     uiState = {
                         sections: { ...defaultState.sections, ...parsed.sections },
                         preferences: { ...defaultState.preferences, ...parsed.preferences }
                     };
+                    console.log('Parsed uiState:', uiState);
                 }
             } catch (e) {
                 console.error('Failed to load UI state:', e);
@@ -253,7 +253,9 @@
 
         function saveUIState() {
             try {
+                console.log('Saving to localStorage:', JSON.stringify(uiState));
                 localStorage.setItem(CONSTANTS.STORAGE_KEY, JSON.stringify(uiState));
+                console.log('Saved to localStorage successfully');
             } catch (e) {
                 console.error('Failed to save UI state:', e);
             }
@@ -307,6 +309,22 @@
             lblTwitchViewCount.style.color = uiState.preferences.showViewCount ? "" : "var(--bg-primary)";
             chatContent.style.height = (uiState.preferences.chatHeight + 20) + 'px';
             eventsList.style.height = uiState.preferences.eventsHeight + 'px';
+
+            applySectionOrder();
+        }
+
+        function applySectionOrder() {
+            const order = uiState.preferences.sectionOrder;
+            if (!order || !Array.isArray(order)) return;
+            const container = document.body;
+            const validIds = ['twitch', 'kick', 'youtube', 'chat-section', 'events-panel', 'dyevents-panel', 'system'];
+            const orderedIds = order.filter(id => validIds.includes(id));
+            orderedIds.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) {
+                    container.appendChild(el);
+                }
+            });
         }
 
         loadUIState();
@@ -368,6 +386,103 @@
 
         setupCollapseHandler(document.getElementById('toggle-dyevents'), 'dyevents-panel');
         setupCollapseHandler(document.getElementById('collapse-events'), 'events-panel');
+
+        // Drag and Drop
+        let draggedElement = null;
+        let dragContainer = null;
+
+        function isClickableElement(target) {
+            return target.matches('input, a, button, label') || target.closest('label:has(input)');
+        }
+
+        function handleDragStart(e) {
+            if (isClickableElement(e.target)) return;
+            const header = e.target.closest('.header, h1');
+            if (!header) return;
+            draggedElement = header.parentElement;
+            if (!draggedElement.id) return;
+            dragContainer = document.body;
+            draggedElement.classList.add('dragging');
+            e.preventDefault();
+        }
+
+        function handleDragMove(e) {
+            if (!draggedElement) return;
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            document.querySelectorAll('.drag-over-above, .drag-over-below').forEach(el => {
+                el.classList.remove('drag-over-above', 'drag-over-below');
+            });
+            const elements = Array.from(dragContainer.children).filter(el => el !== draggedElement && el.id);
+            for (const el of elements) {
+                const rect = el.getBoundingClientRect();
+                const midY = rect.top + rect.height / 2;
+                if (clientY < midY) {
+                    el.classList.add('drag-over-above');
+                    break;
+                } else if (clientY < rect.bottom) {
+                    el.classList.add('drag-over-below');
+                    break;
+                }
+            }
+            if (e.touches) e.preventDefault();
+        }
+
+        function handleDragEnd(e) {
+            if (!draggedElement) return;
+            draggedElement.classList.remove('dragging');
+            document.querySelectorAll('.drag-over-above, .drag-over-below').forEach(el => {
+                el.classList.remove('drag-over-above', 'drag-over-below');
+            });
+            const target = document.elementFromPoint(e.changedTouches ? e.changedTouches[0].clientX : e.clientX, e.changedTouches ? e.changedTouches[0].clientY : e.clientY);
+            const targetSection = target?.closest('[id]');
+            console.log('Drag end:', { targetSection: targetSection?.id, draggedElement: draggedElement.id, parentMatch: targetSection?.parentElement === dragContainer });
+            if (targetSection && targetSection !== draggedElement && targetSection.parentElement === dragContainer) {
+                const rect = targetSection.getBoundingClientRect();
+                const clientY = e.changedTouches ? e.changedTouches[0].clientY : e.clientY;
+                const midY = rect.top + rect.height / 2;
+                if (clientY < midY) {
+                    dragContainer.insertBefore(draggedElement, targetSection);
+                } else {
+                    targetSection.after(draggedElement);
+                }
+                saveSectionOrder();
+            }
+            draggedElement = null;
+            dragContainer = null;
+        }
+
+        function saveSectionOrder() {
+            const sectionOrder = [];
+            document.querySelectorAll('#twitch, #kick, #youtube, #chat-section, #events-panel, #dyevents-panel, #system').forEach(el => sectionOrder.push(el.id));
+            console.log('Saving section order:', sectionOrder);
+            uiState.preferences.sectionOrder = sectionOrder;
+            saveUIState();
+            console.log('UI State saved, sectionOrder:', uiState.preferences.sectionOrder);
+        }
+
+        function setupDragHandlers(container, sectionId) {
+            const header = container.querySelector('.header, h1');
+            if (!header) return;
+            header.addEventListener('mousedown', handleDragStart);
+            header.addEventListener('touchstart', handleDragStart, { passive: false });
+            header.addEventListener('click', (e) => {
+                if (isClickableElement(e.target)) {
+                    e.stopPropagation();
+                }
+            });
+        }
+
+        document.addEventListener('mousemove', handleDragMove);
+        document.addEventListener('mouseup', handleDragEnd);
+        document.addEventListener('touchmove', handleDragMove, { passive: false });
+        document.addEventListener('touchend', handleDragEnd);
+
+        ['twitch', 'kick', 'youtube'].forEach(id => setupDragHandlers(document.getElementById(id), id));
+        setupDragHandlers(document.getElementById('chat-section'), 'chat-section');
+        setupDragHandlers(document.getElementById('events-panel'), 'events-panel');
+        setupDragHandlers(document.getElementById('dyevents-panel'), 'dyevents-panel');
+        setupDragHandlers(document.getElementById('system'), 'system');
 
         chatDiv.addEventListener('scroll', () => {
             const atBottom = chatDiv.scrollHeight - chatDiv.scrollTop <= chatDiv.clientHeight + 20;
@@ -771,7 +886,7 @@
         }
 
         function updateTwitchConnectionDetails() {
-            const loginEl = logins.querySelector('#login-twitch');
+            const loginEl = document.getElementById('login-twitch');
             const data = streams.twitch.data;
             const sd = data?.stream_details;
             if (!data?.userLogin) {
@@ -862,7 +977,7 @@
         }
 
         function updateYouTubeConnectionDetails() {
-            const loginEl = logins.querySelector('#login-youtube');
+            const loginEl = document.getElementById('login-youtube');
             const data = streams.youtube.data;
             loginEl.textContent = '';
 
@@ -972,7 +1087,7 @@
 
         function updateKickConnectionDetails(connectedAs) {
             streams.kick.connectedAs = connectedAs;
-            const loginEl = logins.querySelector('#login-kick');
+            const loginEl = document.getElementById('login-kick');
 
             if (!connectedAs) {
                 loginEl.innerHTML = '<a href="/kick/login" target="_blank" class="login-link">Logar Kick</a>';

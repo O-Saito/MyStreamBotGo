@@ -16,12 +16,13 @@ import (
 )
 
 type DynamicEvent struct {
-	mu        sync.RWMutex
-	Name      string
-	Path      string
-	Reloading bool
-	Lua       DynamicEventLua
-	State     DynamicEventState
+	mu         sync.RWMutex
+	Name       string
+	Path       string
+	Reloading  bool
+	Lua        DynamicEventLua
+	State      DynamicEventState
+	Statistics DynamicEventStats
 }
 
 type DynamicEventLua struct {
@@ -44,11 +45,25 @@ type DynamicEventState struct {
 	Interval time.Duration
 }
 
+type DynamicEventStats struct {
+	mu                 sync.RWMutex
+	ProcessedTimes     int
+	ProcessedTotalTime time.Duration
+	LastProcessedTime  time.Duration
+	HighestTime        time.Duration
+	LowestTime         time.Duration
+}
+
 type DynamicEventInfo struct {
-	Name       string         `json:"name"`
-	Paused     bool           `json:"paused"`
-	Interval   time.Duration  `json:"interval"`
-	ModuleData map[string]any `json:"moduleData"`
+	Name               string         `json:"name"`
+	Paused             bool           `json:"paused"`
+	Interval           time.Duration  `json:"interval"`
+	ModuleData         map[string]any `json:"moduleData"`
+	ProcessedTimes     int            `json:"processedTimes"`
+	ProcessedTotalTime time.Duration  `json:"ProcessedTotalTimes"`
+	LastProcessedTime  time.Duration  `json:"LastProcessedTime"`
+	HighestTime        time.Duration  `json:"highestTime"`
+	LowestTime         time.Duration  `json:"lowestTime"`
 }
 
 var (
@@ -303,19 +318,26 @@ func ListDynamicEvents() []DynamicEventInfo {
 			d = data["data"].(map[string]any)
 		}
 		val.State.mu.RLock()
+		val.Statistics.mu.RLock()
 		events = append(events, DynamicEventInfo{
-			Name:       name,
-			Paused:     val.State.Paused,
-			Interval:   val.State.Interval,
-			ModuleData: d,
+			Name:               name,
+			Paused:             val.State.Paused,
+			Interval:           val.State.Interval,
+			ModuleData:         d,
+			ProcessedTimes:     val.Statistics.ProcessedTimes,
+			ProcessedTotalTime: val.Statistics.ProcessedTotalTime,
+			LastProcessedTime:  val.Statistics.LastProcessedTime,
+			HighestTime:        val.Statistics.HighestTime,
+			LowestTime:         val.Statistics.LowestTime,
 		})
 		val.State.mu.RUnlock()
+		val.Statistics.mu.RUnlock()
 	}
 
 	return events
 }
 
-func UpdateDynamicEvent(event DynamicEventInfo) error {
+func UpdateDynamicEvent(event *DynamicEventInfo) error {
 	dynamicEventsMutex.Lock()
 	defer dynamicEventsMutex.Unlock()
 	if ev, exists := dynamicEvents[event.Name]; exists {
@@ -328,6 +350,20 @@ func UpdateDynamicEvent(event DynamicEventInfo) error {
 		return nil
 	}
 	return os.ErrNotExist
+}
+
+func (des *DynamicEventStats) AddTiming(elapsed time.Duration) {
+	des.mu.Lock()
+	des.ProcessedTimes++
+	des.ProcessedTotalTime += elapsed
+	des.LastProcessedTime = elapsed
+	if elapsed > des.HighestTime {
+		des.HighestTime = elapsed
+	}
+	if des.LowestTime == 0 || elapsed < des.LowestTime {
+		des.LowestTime = elapsed
+	}
+	des.mu.Unlock()
 }
 
 // Chamado de loadAllModules

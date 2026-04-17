@@ -139,6 +139,10 @@
                 <div>Twitch Last Keepalive: <label id="twitch-last-eventsub"></label></div>
                 <div>Twitch GameID: <label id="twitch-game-id"></label></div>
             </div>
+            <div class="dy-statistics-overview">
+                <div><strong>Dy Events:</strong></div>
+                <div id="dy-statistics-list"></div>
+            </div>
             <div class="ui-errors-section">
                 <div><strong>UI Errors:</strong></div>
                 <div id="ui-errors-list"></div>
@@ -424,6 +428,7 @@
 
             updateKickConnectionDetails(data.kick?.connected_as);
             loadDyModules(data.custom_events_modules);
+            w.send("get-dy-statistics", {});
             if (data.interface_config) {
                 try {
                     const config = JSON.parse(data.interface_config);
@@ -657,6 +662,10 @@
             updateViewCount();
         });
 
+        w.on('result-get-dy-statistics', (data) => {
+            updateDyStatistics(data);
+        });
+
         try {
             w.connect();
         } catch (e) {
@@ -668,6 +677,7 @@
             if (++timeToUpdateData >= 60) {
                 timeToUpdateData = 0;
                 w.send("get-streamer-data", {});
+                w.send("get-dy-statistics", {});
             }
             updateViewCount();
         }, 1000);
@@ -826,9 +836,9 @@
 
         function updateViewCount() {
             if (streams.twitch.data) {
-                //const data = streams.twitch.data;
-                //const sd = data.stream_details;
-                //lblTwitchViewCount.textContent = sd?.viewer_count?.toString() || '0';
+                const data = streams.twitch.data;
+                const sd = data.stream_details;
+                lblTwitchViewCount.textContent = sd?.viewer_count?.toString() || '0';
                 updateTwitchStreamOnlineStatus();
             }
 
@@ -1220,7 +1230,7 @@
                 div.className = 'dyevent-content';
                 div.innerHTML = `
 <h3>${m.name}</h3>
-<div><label>${m.paused ? 'Paused' : 'Running'}</label></div>
+<div><label class="dy-stat-detail">${m.paused ? 'Paused' : 'Running'}</label></div>
 <div class="content-body"></div>
 `;
 
@@ -1240,6 +1250,69 @@
             document.querySelectorAll('.sidebar-item').forEach(item => { item.classList.toggle('active', item.textContent === name); });
             document.querySelectorAll('.dyevent-content').forEach(content => { content.style.display = content.id === name ? 'block' : 'none'; });
         }
+
+        function formatDuration(ns) {
+                if (!ns || ns <= 0) return 'N/A';
+                if (ns >= 1000000000) {
+                    return (ns / 1000000000).toFixed(1) + 's';
+                } else if (ns >= 1000000) {
+                    return (ns / 1000000).toFixed(1) + 'ms';
+                } else if (ns >= 1000) {
+                    return (ns / 1000).toFixed(0) + 'us';
+                } else {
+                    return Math.round(ns) + 'ns';
+                }
+            }
+
+            function updateDyStatistics(events) {
+                if (!events?.length) return;
+
+                const overview = document.getElementById('dy-statistics-list');
+                if (overview) {
+                    overview.innerHTML = events.map(ev => {
+                        const processed = ev.processedTimes || 0;
+                        const lastTime = formatDuration(ev.LastProcessedTime);
+                        const interval = ev.interval ? (ev.interval / 1000000000) + 's' : 'N/A';
+                        
+                        let avgTime = 'N/A';
+                        if (processed > 0 && ev.ProcessedTotalTimes > 0) {
+                            avgTime = formatDuration(ev.ProcessedTotalTimes / processed);
+                        }
+                        const hiTime = formatDuration(ev.highestTime);
+                        const loTime = formatDuration(ev.lowestTime);
+                        
+                        return `<div class="dy-stat-item">
+                            <span>${ev.name}:</span>
+                            <span>${ev.paused ? 'Paused' : 'Running'}</span>
+                            <span>Int: ${interval}</span>
+                            <span>Proc: ${processed}</span>
+                            <span>Last: ${lastTime}</span>
+                            <span>Avg: ${avgTime}</span>
+                            <span>Hi: ${hiTime}</span>
+                            <span>Lo: ${loTime}</span>
+                        </div>`;
+                    }).join('');
+                }
+
+                events.forEach(ev => {
+                    const statLabel = document.getElementById(ev.name)?.querySelector('.dy-stat-detail');
+                    if (statLabel) {
+                        const processed = ev.processedTimes || 0;
+                        const interval = ev.interval ? (ev.interval / 1000000000) + 's' : 'N/A';
+                        const lastTime = formatDuration(ev.LastProcessedTime);
+                        const totalTime = ev.ProcessedTotalTimes ? Math.round(ev.ProcessedTotalTimes / 1000000) + 'ms' : '0ms';
+                        
+                        let avgTime = 'N/A';
+                        if (processed > 0 && ev.ProcessedTotalTimes > 0) {
+                            avgTime = formatDuration(ev.ProcessedTotalTimes / processed);
+                        }
+                        const hiTime = formatDuration(ev.highestTime);
+                        const loTime = formatDuration(ev.lowestTime);
+                        
+                        statLabel.textContent = `${ev.paused ? 'Paused' : 'Running'} | Int: ${interval} | Processed: ${processed} | Last: ${lastTime} | Avg: ${avgTime} | Hi: ${hiTime} | Lo: ${loTime} | Total: ${totalTime}`;
+                    }
+                });
+            }
 
 
     </script>

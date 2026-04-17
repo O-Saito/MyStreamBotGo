@@ -4,6 +4,7 @@ import (
 	"MyStreamBot/globals"
 	"MyStreamBot/goweb"
 	"MyStreamBot/helpers"
+	"MyStreamBot/mlua"
 	"MyStreamBot/services/kick"
 	"MyStreamBot/services/twitch"
 	"MyStreamBot/services/youtube"
@@ -193,4 +194,13 @@ func RegisterSocketHandlers() {
 		}
 	}
 
+	goweb.SocketHandlers["get-dy-statistics"] = func(c *websocket.Conn, m map[string]any, tag int) {
+		events := mlua.ListDynamicEvents()
+
+		globals.WsBroadcast <- globals.SocketMessage{
+			Respond: tag,
+			Type:    "result-get-dy-statistics",
+			Data:    events,
+		}
+	}
 }

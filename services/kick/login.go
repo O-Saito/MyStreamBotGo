@@ -61,7 +61,12 @@ func HandleLogin() {
 			return
 		}
 		defer resp.Body.Close()
-		body, _ := io.ReadAll(resp.Body)
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			helpers.Logf(helpers.ERROR, "[KICK] login io.ReadAll failed: %v", err)
+			http.Error(w, "Erro ao ler resposta: "+err.Error(), 500)
+			return
+		}
 
 		helpers.Printf(helpers.Reset, "[KICK LOGIN] TOKEN: %s", body)
 		var tokenResp struct {
@@ -71,7 +76,11 @@ func HandleLogin() {
 			ExpiresIn    int    `json:"expires_in"`
 			Scope        string `json:"scope"`
 		}
-		json.Unmarshal(body, &tokenResp)
+		if err := json.Unmarshal(body, &tokenResp); err != nil {
+			helpers.Logf(helpers.ERROR, "[KICK] login json.Unmarshal failed: %v", err)
+			http.Error(w, "Erro ao processar resposta: "+err.Error(), 500)
+			return
+		}
 
 		helpers.Printf(helpers.Reset, "[KICK LOGIN] Login: access_token: %s; token_type: %s; refresh_token: %s; expires: %d; scope: %s", tokenResp.AccessToken, tokenResp.TokenType, tokenResp.RefreshToken, tokenResp.ExpiresIn, tokenResp.Scope)
 		TokenMutex.Lock()

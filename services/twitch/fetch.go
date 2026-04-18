@@ -119,6 +119,7 @@ func GetUserData(login string) (*TwitchUserData, error) {
 	req, _ := http.NewRequest("GET", urlAPI, nil)
 	resp, err := DoRequest(req)
 	if err != nil {
+		helpers.Logf(helpers.DEBUG, "[TWITCH] GetUserData: login=%v", login)
 		return nil, err
 	}
 	defer resp.Body.Close()
@@ -127,6 +128,7 @@ func GetUserData(login string) (*TwitchUserData, error) {
 	body, _ := io.ReadAll(resp.Body)
 	json.Unmarshal(body, &u)
 	if len(u.Data) == 0 {
+		helpers.Logf(helpers.DEBUG, "[TWITCH] GetUserData: login=%v", login)
 		return nil, fmt.Errorf("usuário não encontrado")
 	}
 	return &u.Data[0], nil
@@ -137,6 +139,7 @@ func GetUserDataById(id string) (*TwitchUserData, error) {
 	req, _ := http.NewRequest("GET", urlAPI, nil)
 	resp, err := DoRequest(req)
 	if err != nil {
+		helpers.Logf(helpers.DEBUG, "[TWITCH] GetUserDataById: id=%v", id)
 		return nil, err
 	}
 	defer resp.Body.Close()
@@ -145,6 +148,7 @@ func GetUserDataById(id string) (*TwitchUserData, error) {
 	body, _ := io.ReadAll(resp.Body)
 	json.Unmarshal(body, &u)
 	if len(u.Data) == 0 {
+		helpers.Logf(helpers.DEBUG, "[TWITCH] GetUserDataById: id=%v", id)
 		return nil, fmt.Errorf("usuário não encontrado")
 	}
 	return &u.Data[0], nil
@@ -163,6 +167,7 @@ func GetFollowersData(broadcaster_id, userId string) ([]TwitchViewerData, error)
 	req, _ := http.NewRequest("GET", url, nil)
 	resp, err := DoRequest(req)
 	if err != nil {
+		helpers.Logf(helpers.DEBUG, "[TWITCH] GetFollowersData: broadcaster_id=%v, userId=%v", broadcaster_id, userId)
 		return []TwitchViewerData{}, err
 	}
 	defer resp.Body.Close()
@@ -181,11 +186,13 @@ func DeleteMessage(msgID string) error {
 	req, _ := http.NewRequest("DELETE", urlAPI, nil)
 	resp, err := DoRequest(req)
 	if err != nil {
+		helpers.Logf(helpers.DEBUG, "[TWITCH] DeleteMessage: msgID=%v", msgID)
 		return err
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != 204 {
 		body, _ := io.ReadAll(resp.Body)
+		helpers.Logf(helpers.DEBUG, "[TWITCH] DeleteMessage: msgID=%v", msgID)
 		return fmt.Errorf("erro ao excluir mensagem: %s", body)
 	}
 	return nil
@@ -210,11 +217,13 @@ func BanUser(userId string, duration int32, reason string) (string, error) {
 	req.Header.Set("Content-Type", "application/json")
 	resp, err := DoRequest(req)
 	if err != nil {
+		helpers.Logf(helpers.DEBUG, "[TWITCH] BanUser: userId=%v, duration=%v, reason=%v", userId, duration, reason)
 		return "", err
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != 204 {
 		body, _ := io.ReadAll(resp.Body)
+		helpers.Logf(helpers.DEBUG, "[TWITCH] BanUser: userId=%v, duration=%v, reason=%v", userId, duration, reason)
 		return "", fmt.Errorf("erro ao banir usuario: %s", body)
 	}
 	body, _ := io.ReadAll(resp.Body)
@@ -226,12 +235,14 @@ func GetListOfGames(query string) ([]GameData, error) {
 	req, _ := http.NewRequest("GET", urlAPI, nil)
 	resp, err := DoRequest(req)
 	if err != nil {
+		helpers.Logf(helpers.DEBUG, "[TWITCH] GetListOfGames: query=%v", query)
 		helpers.Logf(helpers.ERROR, "[TWITCH FETCH] Erro ao buscar lista de jogos: %s", err.Error())
 		return nil, err
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != 200 {
 		body, _ := io.ReadAll(resp.Body)
+		helpers.Logf(helpers.DEBUG, "[TWITCH] GetListOfGames: query=%v", query)
 		helpers.Logf(helpers.ERROR, "[TWITCH FETCH] Erro ao buscar lista de jogos: (%d) %s", resp.StatusCode, body)
 		return nil, fmt.Errorf("erro ao buscar lista de jogos: %s", body)
 	}
@@ -249,6 +260,7 @@ func GetChannelStreamData(id string) (*StreamData, error) {
 	req, _ := http.NewRequest("GET", urlAPI, nil)
 	resp, err := DoRequest(req)
 	if err != nil {
+		helpers.Logf(helpers.DEBUG, "[TWITCH] GetChannelStreamData: id=%v", id)
 		helpers.Logf(helpers.ERROR, "[TWITCH] GetStreamData: %s", err.Error())
 		return nil, err
 	}
@@ -276,11 +288,13 @@ func UpdateChannelStreamData(sd *StreamData) error {
 	req, _ := http.NewRequest("PATCH", urlAPI, bytes.NewBuffer(jsonData))
 	resp, err := DoRequest(req)
 	if err != nil {
+		helpers.Logf(helpers.DEBUG, "[TWITCH] UpdateChannelStreamData: sd=%v", sd)
 		return err
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != 204 {
 		body, _ := io.ReadAll(resp.Body)
+		helpers.Logf(helpers.DEBUG, "[TWITCH] UpdateChannelStreamData: sd=%v", sd)
 		return fmt.Errorf("erro ao excluir mensagem: %s", body)
 	}
 	return nil
@@ -297,12 +311,14 @@ func GetBadges(broadcasterId ...string) (*map[string]any, error) {
 	req, _ := http.NewRequest("GET", urlAPI, nil)
 	resp, err := DoRequest(req)
 	if err != nil {
+		helpers.Logf(helpers.DEBUG, "[TWITCH] GetBadges: broadcasterId=%v", broadcasterId)
 		helpers.Logf(helpers.ERROR, "[TWITCH FETCH] Erro ao buscar lista de badges: %s", err.Error())
 		return nil, err
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != 200 {
 		body, _ := io.ReadAll(resp.Body)
+		helpers.Logf(helpers.DEBUG, "[TWITCH] GetBadges: broadcasterId=%v", broadcasterId)
 		helpers.Logf(helpers.ERROR, "[TWITCH FETCH] Erro ao buscar lista de badges: (%d) %s", resp.StatusCode, body)
 		return nil, fmt.Errorf("erro ao buscar lista de badges: %s", body)
 	}
@@ -337,12 +353,14 @@ func GetEventSubscriptions() (*EventSubData, error) {
 	req, _ := http.NewRequest("GET", urlAPIEventSub, nil)
 	resp, err := DoRequest(req)
 	if err != nil {
+		helpers.Logf(helpers.DEBUG, "[TWITCH] GetEventSubscriptions: no params")
 		helpers.Logf(helpers.ERROR, "[TWITCH FETCH] Erro ao buscar lista de event subscriptions: %s", err.Error())
 		return nil, err
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != 200 {
 		body, _ := io.ReadAll(resp.Body)
+		helpers.Logf(helpers.DEBUG, "[TWITCH] GetEventSubscriptions: no params")
 		helpers.Logf(helpers.ERROR, "[TWITCH FETCH] Erro ao buscar lsita de event subscriptions: (%d) %s", resp.StatusCode, body)
 		return nil, fmt.Errorf("erro ao buscar lista de event subscriptions: %s", body)
 	}
@@ -358,12 +376,14 @@ func DeleteEventSubscriptions(id string) error {
 	req, _ := http.NewRequest("DELETE", fmt.Sprintf("%s?id=%s", urlAPIEventSub, id), nil)
 	resp, err := DoRequest(req)
 	if err != nil {
+		helpers.Logf(helpers.DEBUG, "[TWITCH] DeleteEventSubscriptions: id=%v", id)
 		helpers.Logf(helpers.ERROR, "[TWITCH FETCH] Erro ao deletar event subscriptions (%s): %s", id, err.Error())
 		return err
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != 200 && resp.StatusCode != 204 {
 		body, _ := io.ReadAll(resp.Body)
+		helpers.Logf(helpers.DEBUG, "[TWITCH] DeleteEventSubscriptions: id=%v", id)
 		helpers.Logf(helpers.ERROR, "[TWITCH FETCH] Erro ao deletar event subscriptions: (%d) %s", resp.StatusCode, body)
 		return fmt.Errorf("erro ao deletar event subscriptions: %s", body)
 	}
@@ -384,12 +404,14 @@ func GetUserChatColor(id string) (*struct {
 	req, _ := http.NewRequest("GET", fmt.Sprintf("https://api.twitch.tv/helix/chat/color?user_id=%s", id), nil)
 	resp, err := DoRequest(req)
 	if err != nil {
+		helpers.Logf(helpers.DEBUG, "[TWITCH] GetUserChatColor: id=%v", id)
 		helpers.Logf(helpers.ERROR, "[TWITCH FETCH] Erro ao buscar cor do usuario: %s", err.Error())
 		return nil, err
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != 200 {
 		body, _ := io.ReadAll(resp.Body)
+		helpers.Logf(helpers.DEBUG, "[TWITCH] GetUserChatColor: id=%v", id)
 		helpers.Logf(helpers.ERROR, "[TWITCH FETCH] Erro ao buscar cor do usuario: (%d) %s", resp.StatusCode, body)
 		return nil, fmt.Errorf("erro ao buscar cor do usuario: %s", body)
 	}
@@ -416,6 +438,7 @@ func GetStreamData(id string) (*globals.TwitchStreamData, error) {
 	req, _ := http.NewRequest("GET", urlAPI, nil)
 	resp, err := DoRequest(req)
 	if err != nil {
+		helpers.Logf(helpers.DEBUG, "[TWITCH] GetStreamData: id=%v", id)
 		helpers.Logf(helpers.ERROR, "[TWITCH] GetStreamData: %s", err.Error())
 		return nil, err
 	}
@@ -444,11 +467,13 @@ func UpdateAutomod(userId, msgId, action string) (string, error) {
 	req.Header.Set("Content-Type", "application/json")
 	resp, err := DoRequest(req)
 	if err != nil {
+		helpers.Logf(helpers.DEBUG, "[TWITCH] UpdateAutomod: userId=%v, msgId=%v, action=%v", userId, msgId, action)
 		return "", err
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != 204 {
 		body, _ := io.ReadAll(resp.Body)
+		helpers.Logf(helpers.DEBUG, "[TWITCH] UpdateAutomod: userId=%v, msgId=%v, action=%v", userId, msgId, action)
 		return "", fmt.Errorf("erro ao atualizar automod: %s", body)
 	}
 	body, _ := io.ReadAll(resp.Body)

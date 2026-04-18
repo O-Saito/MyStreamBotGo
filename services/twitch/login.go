@@ -113,7 +113,12 @@ func HandleLogin() {
 			return
 		}
 		defer resp.Body.Close()
-		body, _ := io.ReadAll(resp.Body)
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			helpers.Logf(helpers.ERROR, "[TWITCH] login io.ReadAll failed: %v", err)
+			http.Error(w, "Erro ao ler resposta: "+err.Error(), 500)
+			return
+		}
 
 		var tokenResp struct {
 			AccessToken  string `json:"access_token"`
@@ -121,7 +126,11 @@ func HandleLogin() {
 			RefreshToken string `json:"refresh_token"`
 		}
 
-		json.Unmarshal(body, &tokenResp)
+		if err := json.Unmarshal(body, &tokenResp); err != nil {
+			helpers.Logf(helpers.ERROR, "[TWITCH] login json.Unmarshal failed: %v", err)
+			http.Error(w, "Erro ao processar resposta: "+err.Error(), 500)
+			return
+		}
 		Token := tokenResp.AccessToken
 
 		sqlErr := globals.GetGlobalDB().SaveToken("twitch", tokenResp.AccessToken, tokenResp.RefreshToken, time.Now().Add(time.Duration(tokenResp.Expires)*time.Second))
@@ -156,7 +165,11 @@ func RefreshToken(refreshToken string) (*struct {
 		return nil, err
 	}
 	defer resp.Body.Close()
-	body, _ := io.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		helpers.Logf(helpers.ERROR, "[TWITCH] login io.ReadAll failed: %v", err)
+		return nil, err
+	}
 
 	var tokenResp struct {
 		AccessToken  string `json:"access_token"`
@@ -164,7 +177,10 @@ func RefreshToken(refreshToken string) (*struct {
 		RefreshToken string `json:"refresh_token"`
 	}
 
-	json.Unmarshal(body, &tokenResp)
+	if err := json.Unmarshal(body, &tokenResp); err != nil {
+		helpers.Logf(helpers.ERROR, "[TWITCH] login json.Unmarshal failed: %v", err)
+		return nil, err
+	}
 
 	if tokenResp.AccessToken == "" {
 		return nil, fmt.Errorf("[TWITCH] token de acesso vazio")

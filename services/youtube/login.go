@@ -113,10 +113,19 @@ func HandleLogin() {
 			return
 		}
 		defer resp.Body.Close()
-		body, _ := io.ReadAll(resp.Body)
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			helpers.Logf(helpers.ERROR, "[YOUTUBE] login io.ReadAll failed: %v", err)
+			http.Error(w, "Erro ao ler resposta: "+err.Error(), 500)
+			return
+		}
 
 		var tokenResp OAuthResponse
-		json.Unmarshal(body, &tokenResp)
+		if err := json.Unmarshal(body, &tokenResp); err != nil {
+			helpers.Logf(helpers.ERROR, "[YOUTUBE] login json.Unmarshal failed: %v", err)
+			http.Error(w, "Erro ao processar resposta: "+err.Error(), 500)
+			return
+		}
 
 		user := globals.YouTubeUser{
 			Token:          tokenResp.AccessToken,

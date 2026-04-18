@@ -95,15 +95,24 @@ func RefreshToken() error {
 	defer resp.Body.Close()
 
 	var u OAuthResponse
-	body, _ := io.ReadAll(resp.Body)
-	json.Unmarshal(body, &u)
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		helpers.Logf(helpers.DEBUG, "[YOUTUBE] RefreshToken: no params")
+		helpers.Logf(helpers.ERROR, "[YOUTUBE] RefreshToken io.ReadAll failed: %v", err)
+		return err
+	}
+	if err := json.Unmarshal(body, &u); err != nil {
+		helpers.Logf(helpers.DEBUG, "[YOUTUBE] RefreshToken: no params")
+		helpers.Logf(helpers.ERROR, "[YOUTUBE] RefreshToken json.Unmarshal failed: %v", err)
+		return err
+	}
 	if u.AccessToken != "" {
 		currentuser.Token = u.AccessToken
 		currentuser.TokenExpiresIn = u.ExpiresIn
 		globals.GetState().SetYouTubeUser(currentuser)
 		return nil
 	}
-	return fmt.Errorf("falha ao executar refresh token! %s: %s", u.Error, u.ErrorDesc)
+	return fmt.Errorf("failed to execute refresh token! %s: %s", u.Error, u.ErrorDesc)
 }
 
 func GetCurrentStreamings() (*LiveBroadcastListResponse, error) {
@@ -114,10 +123,19 @@ func GetCurrentStreamings() (*LiveBroadcastListResponse, error) {
 	}
 	defer resp.Body.Close()
 
-	body, _ := io.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		helpers.Logf(helpers.DEBUG, "[YOUTUBE] GetCurrentStreamings: no params")
+		helpers.Logf(helpers.ERROR, "[YOUTUBE] GetCurrentStreamings io.ReadAll failed: %v", err)
+		return nil, err
+	}
 	helpers.Logf(helpers.DEBUG, "[YT] GetCurrentStreamings: %s", body)
 	var r LiveBroadcastListResponse
-	json.Unmarshal(body, &r)
+	if err := json.Unmarshal(body, &r); err != nil {
+		helpers.Logf(helpers.DEBUG, "[YOUTUBE] GetCurrentStreamings: no params")
+		helpers.Logf(helpers.ERROR, "[YOUTUBE] GetCurrentStreamings json.Unmarshal failed: %v", err)
+		return nil, err
+	}
 	return &r, nil
 }
 
@@ -129,10 +147,19 @@ func GetNextStreamings() (*LiveBroadcastListResponse, error) {
 	}
 	defer resp.Body.Close()
 
-	body, _ := io.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		helpers.Logf(helpers.DEBUG, "[YOUTUBE] GetNextStreamings: no params")
+		helpers.Logf(helpers.ERROR, "[YOUTUBE] GetNextStreamings io.ReadAll failed: %v", err)
+		return nil, err
+	}
 	helpers.Logf(helpers.DEBUG, "[YT] GetCurrentStreamings: %s", body)
 	var r LiveBroadcastListResponse
-	json.Unmarshal(body, &r)
+	if err := json.Unmarshal(body, &r); err != nil {
+		helpers.Logf(helpers.DEBUG, "[YOUTUBE] GetNextStreamings: no params")
+		helpers.Logf(helpers.ERROR, "[YOUTUBE] GetNextStreamings json.Unmarshal failed: %v", err)
+		return nil, err
+	}
 	return &r, nil
 }
 
@@ -144,9 +171,18 @@ func GetCurrentYouTubeChannel() (*YouTubeChannelListResponse, error) {
 	}
 	defer resp.Body.Close()
 
-	body, _ := io.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		helpers.Logf(helpers.DEBUG, "[YOUTUBE] GetCurrentYouTubeChannel: no params")
+		helpers.Logf(helpers.ERROR, "[YOUTUBE] GetCurrentYouTubeChannel io.ReadAll failed: %v", err)
+		return nil, err
+	}
 	var r YouTubeChannelListResponse
-	json.Unmarshal(body, &r)
+	if err := json.Unmarshal(body, &r); err != nil {
+		helpers.Logf(helpers.DEBUG, "[YOUTUBE] GetCurrentYouTubeChannel: no params")
+		helpers.Logf(helpers.ERROR, "[YOUTUBE] GetCurrentYouTubeChannel json.Unmarshal failed: %v", err)
+		return nil, err
+	}
 	return &r, nil
 }
 
@@ -198,8 +234,17 @@ func GetStreamData(videoID string) (*StreamData, error) {
 	defer resp.Body.Close()
 
 	var videoResp VideoListResponse
-	body, _ := io.ReadAll(resp.Body)
-	json.Unmarshal(body, &videoResp)
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		helpers.Logf(helpers.DEBUG, "[YOUTUBE] GetStreamData: videoID=%v", videoID)
+		helpers.Logf(helpers.ERROR, "[YOUTUBE] GetStreamData io.ReadAll failed: %v", err)
+		return nil, err
+	}
+	if err := json.Unmarshal(body, &videoResp); err != nil {
+		helpers.Logf(helpers.DEBUG, "[YOUTUBE] GetStreamData: videoID=%v", videoID)
+		helpers.Logf(helpers.ERROR, "[YOUTUBE] GetStreamData json.Unmarshal failed: %v", err)
+		return nil, err
+	}
 
 	if len(videoResp.Items) == 0 {
 		return nil, nil

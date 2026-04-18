@@ -242,10 +242,14 @@ func connectToEventSub() {
 	conn, resp, err := websocket.DefaultDialer.Dial(u.String(), nil)
 	if err != nil {
 		if resp != nil {
-			body, _ := io.ReadAll(resp.Body)
-			helpers.Logf(helpers.ERROR, "[Twitch] Falha no handshake (%d): %s", resp.StatusCode, string(body))
+			body, err := io.ReadAll(resp.Body)
+			if err != nil {
+				helpers.Logf(helpers.ERROR, "[TWITCH] connectToEventSub io.ReadAll failed: %v", err)
+			} else {
+				helpers.Logf(helpers.ERROR, "[Twitch] Handshake failed (%d): %s", resp.StatusCode, string(body))
+			}
 		}
-		helpers.Logf(helpers.ERROR, "[Twitch] Erro ao conectar: %v", err)
+		helpers.Logf(helpers.ERROR, "[Twitch] Error connecting: %v", err)
 		time.Sleep(10 * time.Second)
 		//StartEventSub(clientID, token, broadcasterID)
 		return
@@ -255,14 +259,14 @@ func connectToEventSub() {
 
 	messageHandlers["session_reconnect"] = func(payload, metadata map[string]any) {
 		reconnectURL := payload["session"].(map[string]any)["reconnect_url"].(string)
-		helpers.Logf(helpers.WARN, "[Twitch EventSub] Reconnect solicitado: %s", reconnectURL)
+		helpers.Logf(helpers.WARN, "[Twitch EventSub] Reconnect requested: %s", reconnectURL)
 		eventSubMu.Lock()
 		defer eventSubMu.Unlock()
 		conn.Close()
 		//EventSubConn.Close()
 		conn, _, err := websocket.DefaultDialer.Dial(reconnectURL, nil)
 		if err != nil {
-			helpers.Logf(helpers.ERROR, "[Twitch EventSub] Falha ao reconectar: %v", err)
+			helpers.Logf(helpers.ERROR, "[Twitch EventSub] Error reconnecting: %v", err)
 			time.Sleep(5 * time.Second)
 			connectToEventSub()
 			return
@@ -290,13 +294,13 @@ func listenToEventSub(conn *websocket.Conn) {
 	for {
 		_, msg, err := conn.ReadMessage()
 		if err != nil {
-			helpers.Logf(helpers.ERROR, "[Twitch EventSub] erro de leitura: %v", err)
+			helpers.Logf(helpers.ERROR, "[Twitch EventSub] Read error: %v", err)
 			break // <- Sai naturalmente do loop
 		}
 
 		var base map[string]any
 		if err := json.Unmarshal(msg, &base); err != nil {
-			helpers.Logf(helpers.ERROR, "[Twitch EventSub] Erro ao decodificar JSON: %v", err)
+			helpers.Logf(helpers.ERROR, "[Twitch EventSub] Error decoding JSON: %v", err)
 			continue
 		}
 
@@ -367,14 +371,20 @@ func subscribeToEvents() {
 		}
 		defer resp.Body.Close()
 		if resp.StatusCode != 204 {
-			body, _ := io.ReadAll(resp.Body)
+			body, err := io.ReadAll(resp.Body)
+			if err != nil {
+				helpers.Logf(helpers.ERROR, "[TWITCH] sub io.ReadAll failed: %v", err)
+				continue
+			}
 			var d struct {
 				Error   string `json:"error"`
 				Status  int    `json:"status"`
 				Message string `json:"message"`
 				Data    []any  `json:"data"`
 			}
-			_ = json.Unmarshal(body, &d)
+			if err := json.Unmarshal(body, &d); err != nil {
+				helpers.Logf(helpers.ERROR, "[TWITCH] sub json.Unmarshal failed: %v", err)
+			}
 
 			if d.Status != 0 || len(d.Data) == 0 {
 				helpers.Logf(helpers.ERROR, "[TWITCH EventSub] %s: %s", d.Error, d.Message)

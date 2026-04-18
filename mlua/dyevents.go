@@ -165,7 +165,7 @@ func (dev *DynamicEvent) ProcessWebsocketEvent(msg any) {
 	LState.SetField(tbl, "payload", ToLValue(LState, msg))
 
 	if err := LState.CallByParam(lua.P{Fn: f, NRet: 0, Protect: true}, tbl); err != nil {
-		helpers.Logf(helpers.ERROR, "[DYNAMIC] Erro no on_event de %s: %v", dev.Name, err)
+		helpers.Logf(helpers.ERROR, "[DYNAMIC] Error in on_event of %s: %v", dev.Name, err)
 	}
 }
 
@@ -185,7 +185,7 @@ func (dev *DynamicEvent) ProcessStart() {
 	}
 
 	if err := LState.CallByParam(lua.P{Fn: f, NRet: 0, Protect: true}); err != nil {
-		helpers.Logf(helpers.ERROR, "[DYNAMIC] Erro no on_start de %s: %v", dev.Name, err)
+		helpers.Logf(helpers.ERROR, "[DYNAMIC] Error in on_start of %s: %v", dev.Name, err)
 	}
 }
 
@@ -198,7 +198,7 @@ func (dev *DynamicEvent) ProcessOnTick() {
 
 	if f != nil {
 		if err := LState.CallByParam(lua.P{Fn: f, NRet: 0, Protect: true}); err != nil {
-			helpers.Logf(helpers.ERROR, "[DYNAMIC] Erro no on_tick de %s: %v", dev.Name, err)
+			helpers.Logf(helpers.ERROR, "[DYNAMIC] Error inor in on_tick of %s: %v", dev.Name, err)
 		}
 	}
 }
@@ -372,7 +372,7 @@ func LoadDyEvents(baseDir string) {
 
 	files, err := os.ReadDir(baseDir)
 	if err != nil {
-		helpers.Logf(helpers.ERROR, "[DYNAMIC] Erro ao ler diretório: %v", err)
+		helpers.Logf(helpers.ERROR, "[DYNAMIC] Error reading directory: %v", err)
 		return
 	}
 
@@ -413,12 +413,12 @@ func LoadDyEventModule(folder, fileName string) {
 
 	fn, err := L.LoadFile(fullPath)
 	if err != nil {
-		helpers.Logf(helpers.ERROR, "[DYNAMIC] Erro ao carregar %s: %v", fileName, err)
+		helpers.Logf(helpers.ERROR, "[DYNAMIC] Error loading %s: %v", fileName, err)
 		return
 	}
 
 	if err := L.CallByParam(lua.P{Fn: fn, NRet: 0, Protect: true}); err != nil {
-		helpers.Logf(helpers.ERROR, "[DYNAMIC] Erro executando %s: %v", fileName, err)
+		helpers.Logf(helpers.ERROR, "[DYNAMIC] Error executing %s: %v", fileName, err)
 		return
 	}
 

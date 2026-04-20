@@ -138,7 +138,7 @@ func SaveLog(level Level, message string) {
 	// Read the current cumulative CPU seconds
 	metrics.Read(samples)
 	if samples[0].Value.Kind() == metrics.KindBad {
-		fmt.Printf("Metric %s is not supported\n", cpuMetric)
+		Logf(WARN, "Metric %s is not supported", cpuMetric)
 	}
 
 	goroutines := runtime.NumGoroutine()

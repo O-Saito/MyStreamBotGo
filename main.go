@@ -10,6 +10,9 @@ import (
 	"MyStreamBot/services/twitch"
 	"MyStreamBot/services/youtube"
 	"MyStreamBot/sql"
+	"os"
+	"os/signal"
+	"syscall"
 )
 
 var (
@@ -19,6 +22,12 @@ var (
 )
 
 func main() {
+	defer func() {
+		if r := recover(); r != nil {
+			helpers.Logf(helpers.ERROR, "[MAIN] panic: %v", r)
+		}
+	}()
+
 	kick.Channels = []kick.IrcChannel{}
 	twitch.Channels = []string{}
 
@@ -57,5 +66,18 @@ func main() {
 	kick.HandleLogin()
 	youtube.HandleLogin()
 
-	select {} // manter aplicação rodando
+	//select {} // manter aplicação rodando
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	<-quit
+
+	// 3. Gracefully shutdown with 10s timeout
+	//ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	//defer cancel()
+
+	helpers.Logf(helpers.DEBUG, "Closing...")
+
+	db.Close()
+	mlua.SaveDynamicEvents()
+	twitch.Close()
 }

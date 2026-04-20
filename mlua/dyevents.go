@@ -352,6 +352,23 @@ func UpdateDynamicEvent(event *DynamicEventInfo) error {
 	return os.ErrNotExist
 }
 
+func SaveDynamicEvents() {
+	dynamicEventsMutex.RLock()
+	defer dynamicEventsMutex.RUnlock()
+	for _, val := range dynamicEvents {
+		val.State.mu.Lock()
+		val.Lua.mu.Lock()
+		if val.State.db != nil {
+			val.State.db.Close()
+		}
+		if val.Lua.LState != nil {
+			val.Lua.LState.Close()
+		}
+		val.State.mu.Unlock()
+		val.Lua.mu.Unlock()
+	}
+}
+
 func (des *DynamicEventStats) AddTiming(elapsed time.Duration) {
 	des.mu.Lock()
 	des.ProcessedTimes++

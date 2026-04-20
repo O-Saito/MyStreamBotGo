@@ -419,3 +419,17 @@ func SendMessage(msg, channel string, messageToReply ...string) {
 
 	helpers.Logf(helpers.ERROR, "[TWITCH ERROR] Channel not found! %s", channel)
 }
+
+func Close() {
+	readerMutex.Lock()
+	defer readerMutex.Unlock()
+	if readerCancel != nil {
+		readerCancel()
+	}
+	writerMutex.Lock()
+	defer writerMutex.Unlock()
+	if writerCancel != nil {
+		writerCancel()
+	}
+	Disconnect()
+}

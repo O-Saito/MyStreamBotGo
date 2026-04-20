@@ -138,3 +138,7 @@ func (c *CoreDB) KVDelete(key string) error {
 	_, err := c.db.Exec(`DELETE FROM kv WHERE key=?;`, key)
 	return err
 }
+
+func (c *CoreDB) Close() error {
+	return c.db.Close()
+}

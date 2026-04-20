@@ -54,18 +54,23 @@ var SocketHandlers = map[string]func(*websocket.Conn, map[string]any, int){
 			Respond: mytag,
 		}
 		if m["conn"] != nil {
-			if m["conn"].(string) == "ignore-broadcast" {
+			connVal, ok := m["conn"].(string)
+			if !ok {
+				helpers.Logf(helpers.ERROR, "[WebSocket] upgrade-conn: invalid conn type")
+				return
+			}
+			if connVal == "ignore-broadcast" {
 				mu.Lock()
 				wsClients[c] = -1
 				mu.Unlock()
 				return
 			}
 			mu.Lock()
-			if wsClientsUpgraded[m["conn"].(string)] == nil {
-				wsClientsUpgraded[m["conn"].(string)] = make([]*websocket.Conn, 0)
+			if wsClientsUpgraded[connVal] == nil {
+				wsClientsUpgraded[connVal] = make([]*websocket.Conn, 0)
 			}
 
-			wsClientsUpgraded[m["conn"].(string)] = append(wsClientsUpgraded[m["conn"].(string)], c)
+			wsClientsUpgraded[connVal] = append(wsClientsUpgraded[connVal], c)
 			mu.Unlock()
 			data.Data = "conexão atualizada!"
 		} else {
@@ -123,7 +128,12 @@ func StartHTTPServer() {
 			}
 
 			if handler, exists := SocketHandlers[string(data.Type)]; exists {
-				handler(conn, data.Data.(map[string]any), mytag)
+				dataMap, ok := data.Data.(map[string]any)
+				if !ok {
+					helpers.Logf(helpers.ERROR, "[WebSocket] Invalid message data type")
+					continue
+				}
+				handler(conn, dataMap, mytag)
 				continue
 			}
 		}

@@ -115,11 +115,17 @@ func ListenToChat(id string) {
 				if userColor == nil {
 					userColor = make(map[string]any)
 				}
-				if userColor.(map[string]any)[messagedata.User] == nil {
-					userColor.(map[string]any)[messagedata.User] = defaultUserColor(messagedata.User)
-					state.SetData("youtube-user-color", userColor)
+				userColorMap, ok := userColor.(map[string]any)
+				if !ok {
+					userColorMap = make(map[string]any)
 				}
-				messagedata.Metadata["color"] = userColor.(map[string]any)[messagedata.User]
+				if userColorMap[messagedata.User] == nil {
+					userColorMap[messagedata.User] = defaultUserColor(messagedata.User)
+					state.SetData("youtube-user-color", userColorMap)
+				}
+				if colorVal, ok := userColorMap[messagedata.User].(string); ok {
+					messagedata.Metadata["color"] = colorVal
+				}
 			}
 
 			globals.ChatQueue <- messagedata

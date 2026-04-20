@@ -66,7 +66,14 @@ func GetCacheUserChatColor(user string) string {
 		userColor = make(map[string]any)
 	}
 
-	if userColor.(map[string]any)[user] == nil {
+	userColorMap, ok := userColor.(map[string]any)
+	if !ok {
+		color = defaultTwitchColor(user)
+		state.SetData("twitch-user-color", map[string]any{user: color})
+		return color
+	}
+
+	if userColorMap[user] == nil {
 		d, err := GetUserData(user)
 		if err == nil {
 			c, err := GetUserChatColor(d.ID)
@@ -79,12 +86,16 @@ func GetCacheUserChatColor(user string) string {
 			color = defaultTwitchColor(user)
 		}
 
-		userColor.(map[string]any)[user] = color
+		userColorMap[user] = color
 
-		state.SetData("twitch-user-color", userColor)
+		state.SetData("twitch-user-color", userColorMap)
 	}
 
-	return userColor.(map[string]any)[user].(string)
+	colorVal, ok := userColorMap[user].(string)
+	if !ok {
+		return defaultTwitchColor(user)
+	}
+	return colorVal
 }
 
 var ircHandlers = map[string]func(parts []string, afterMetadataIndex int, metadata ...map[string]any){
@@ -138,10 +149,16 @@ var ircHandlers = map[string]func(parts []string, afterMetadataIndex int, metada
 			reason = strings.Join(parts[(afterMetadataIndex+3):], " ")[1:]
 		}
 		helpers.Printf(helpers.Twitch, "[TWITCH CLEARMSG] Chat %s cleared: %s", channel, reason)
+
+		msgId, ok := metadata[0]["target-msg-id"].(string)
+		if !ok {
+			helpers.Logf(helpers.ERROR, "[TWITCH CLEARMSG] Invalid target-msg-id type")
+			return
+		}
 		globals.EventQueue <- globals.Event{
 			Type: "user-message-delete",
 			Data: map[string]any{
-				"messageId": metadata[0]["target-msg-id"].(string),
+				"messageId": msgId,
 				"metadata":  metadata[0],
 			},
 		}
@@ -179,12 +196,23 @@ var ircHandlers = map[string]func(parts []string, afterMetadataIndex int, metada
 		message := strings.Join(parts[(afterMetadataIndex+3):], " ")[1:]
 		helpers.Printf(helpers.Twitch, "[TWITCH MESSAGE] %s in %s: %s", user, channel, message)
 
+		userId, ok := metadata[0]["user-id"].(string)
+		if !ok {
+			helpers.Logf(helpers.ERROR, "[TWITCH PRIVMSG] Invalid user-id type")
+			return
+		}
+		msgId, ok := metadata[0]["id"].(string)
+		if !ok {
+			helpers.Logf(helpers.ERROR, "[TWITCH PRIVMSG] Invalid id type")
+			return
+		}
+
 		messagedata := globals.MessageFromStream{
 			Source:    "twitch",
 			Channel:   channel,
 			User:      user,
-			UserId:    metadata[0]["user-id"].(string),
-			MessageId: metadata[0]["id"].(string),
+			UserId:    userId,
+			MessageId: msgId,
 			Message:   message,
 			Metadata:  metadata[0],
 		}
@@ -222,14 +250,21 @@ var ircHandlers = map[string]func(parts []string, afterMetadataIndex int, metada
 					streamerInfo = make(map[string]any)
 				}
 
-				id := roomId.(string)
-				if streamerInfo.(map[string]any)[id] == nil {
-					streamerInfo.(map[string]any)[id], _ = GetUserDataById(id)
+				streamerInfoMap, ok := streamerInfo.(map[string]any)
+				if !ok {
+					streamerInfoMap = make(map[string]any)
 				}
 
-				state.SetData("twitch-streamer-info", streamerInfo)
+				id, ok := roomId.(string)
+				if ok {
+					if streamerInfoMap[id] == nil {
+						streamerInfoMap[id], _ = GetUserDataById(id)
+					}
 
-				messagedata.Metadata["room"] = streamerInfo.(map[string]any)[id]
+					state.SetData("twitch-streamer-info", streamerInfoMap)
+
+					messagedata.Metadata["room"] = streamerInfoMap[id]
+				}
 			}
 		}
 
@@ -238,17 +273,27 @@ var ircHandlers = map[string]func(parts []string, afterMetadataIndex int, metada
 			if userColor == nil {
 				userColor = make(map[string]any)
 			}
-			if userColor.(map[string]any)[user] == nil {
-				userColor.(map[string]any)[user] = defaultTwitchColor(user)
-				state.SetData("twitch-user-color", userColor)
+			userColorMap, ok := userColor.(map[string]any)
+			if !ok {
+				userColorMap = make(map[string]any)
 			}
-			messagedata.Metadata["color"] = userColor.(map[string]any)[user]
+			if userColorMap[user] == nil {
+				userColorMap[user] = defaultTwitchColor(user)
+				state.SetData("twitch-user-color", userColorMap)
+			}
+			if colorVal, ok := userColorMap[user].(string); ok {
+				messagedata.Metadata["color"] = colorVal
+			}
 		}
 
+		infoMap, _ := info.(map[string]any)
 		bi := make(map[string]any)
-		for _, v := range strings.Split(messagedata.Metadata["badges"].(string), ",") {
+		badgesStr, _ := messagedata.Metadata["badges"].(string)
+		for _, v := range strings.Split(badgesStr, ",") {
 			n := strings.Split(v, "/")[0]
-			bi[n] = info.(map[string]any)[n]
+			if infoMap != nil {
+				bi[n] = infoMap[n]
+			}
 		}
 
 		messagedata.Metadata["badges-info"] = bi

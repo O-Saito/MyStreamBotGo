@@ -73,20 +73,34 @@ var ircHandlers = map[string]func(km KickMessage, data map[string]any){
 		}
 	},
 	"App\\Events\\ChatMessageEvent": func(km KickMessage, data map[string]any) {
-		sender := data["sender"].(map[string]any)
+		sender, ok := data["sender"].(map[string]any)
+		if !ok {
+			helpers.Logf(helpers.ERROR, "[Kick] ChatMessageEvent: invalid sender type")
+			return
+		}
+		senderId, _ := sender["id"].(float64)
+		username, _ := sender["username"].(string)
+		msgId, _ := data["id"].(string)
+		content, _ := data["content"].(string)
+		identity, _ := sender["identity"].(map[string]any)
+
 		socketdata := globals.MessageFromStream{
 			Source:    "kick",
 			Channel:   km.Channel,
-			UserId:    strconv.FormatFloat(sender["id"].(float64), 'f', 0, 64),
-			User:      sender["username"].(string),
-			MessageId: data["id"].(string),
-			Message:   data["content"].(string),
-			Metadata:  sender["identity"].(map[string]any),
+			UserId:    strconv.FormatFloat(senderId, 'f', 0, 64),
+			User:      username,
+			MessageId: msgId,
+			Message:   content,
+			Metadata:  identity,
 		}
 		globals.ChatQueue <- socketdata
 	},
 	"App\\Events\\MessageDeletedEvent": func(km KickMessage, data map[string]any) {
-		globals.EventQueue <- globals.Event{Type: "user-message-delete", Data: map[string]any{"messageId": data["message"].(map[string]any)["id"]}}
+		msgData, ok := data["message"].(map[string]any)
+		if !ok {
+			return
+		}
+		globals.EventQueue <- globals.Event{Type: "user-message-delete", Data: map[string]any{"messageId": msgData["id"]}}
 	},
 }
 

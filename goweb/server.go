@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"os"
 	"sync"
 
 	"github.com/gorilla/websocket"
@@ -243,8 +244,9 @@ func StartHTTPServer() {
 
 	addrs, err := net.InterfaceAddrs()
 	if err != nil {
-		helpers.Logf(helpers.ERROR, "Failed to get interface address %s", err.Error())
-		panic(err)
+		helpers.Logf(helpers.ERROR, "[WebSocket] Failed to get interface address: %s", err.Error())
+		helpers.Log(helpers.ERROR, "[WebSocket] Exiting due to unrecoverable error")
+		os.Exit(1)
 	}
 
 	port := globals.GetConfig().HTTPPort
@@ -258,5 +260,11 @@ func StartHTTPServer() {
 	}
 	helpers.Printf(helpers.Green, "[MyStreamBot] Servidor HTTP iniciado em http://localhost:%s", port)
 	helpers.Log(helpers.INFO, "Started listen and serve (http started)!")
-	go http.ListenAndServe(fmt.Sprintf("0.0.0.0:%s", port), nil)
+	go func() {
+		if err := http.ListenAndServe(fmt.Sprintf("0.0.0.0:%s", port), nil); err != nil && err != http.ErrServerClosed {
+			helpers.Logf(helpers.ERROR, "[HTTP] Server failed: %v", err)
+			helpers.Log(helpers.ERROR, "[HTTP] Exiting due to unrecoverable error")
+			os.Exit(1)
+		}
+	}()
 }

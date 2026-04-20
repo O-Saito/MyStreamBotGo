@@ -38,7 +38,9 @@ func main() {
 
 	db, err := sql.NewCoreDB(globals.GetConfig().DBName)
 	if err != nil {
-		panic(err)
+		helpers.Logf(helpers.ERROR, "[MAIN] Failed to connect to database: %v", err)
+		helpers.Log(helpers.ERROR, "[MAIN] Exiting due to unrecoverable error")
+		os.Exit(1)
 	}
 	globals.SetGlobalDB(db)
 

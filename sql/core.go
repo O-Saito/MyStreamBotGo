@@ -123,7 +123,7 @@ func (c *CoreDB) KVSet(key string, value any) error {
 
 	nvalue, err := json.Marshal(value)
 	if err != nil {
-		return fmt.Errorf("kvset failed to parse")
+		return fmt.Errorf("KVSet(%s, %+v): failed to marshal value: %w", key, value, err)
 	}
 	_, nerr := c.db.Exec(`
         INSERT INTO kv (key, value)

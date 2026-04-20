@@ -89,7 +89,7 @@ func GetUser(userId string) (UserData, error) {
 		return UserData{}, err
 	}
 	if len(u.Data) == 0 {
-		return UserData{}, fmt.Errorf("channel not found")
+		return UserData{}, fmt.Errorf("GetUser(%v): user not found", userId)
 	}
 	return u.Data[0], nil
 }
@@ -123,7 +123,7 @@ func GetChannel(streamerId int, slug *string) (ChannelData, error) {
 		return ChannelData{}, err
 	}
 	if len(u.Data) == 0 {
-		return ChannelData{}, fmt.Errorf("channel not found")
+		return ChannelData{}, fmt.Errorf("GetChannel(streamerId=%d, slug=%v): channel not found", streamerId, slug)
 	}
 	return u.Data[0], nil
 }

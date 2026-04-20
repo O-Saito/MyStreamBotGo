@@ -108,7 +108,7 @@ func GetStreamerData() (*TwitchUserData, error) {
 	json.Unmarshal(dataUser, &u)
 
 	if len(u.Data) == 0 {
-		return nil, fmt.Errorf("nenhum usuário retornado, verifique token e scopes")
+		return nil, fmt.Errorf("GetUserDataByToken: no user returned, check token and scopes")
 	}
 
 	return &u.Data[0], nil
@@ -129,7 +129,7 @@ func GetUserData(login string) (*TwitchUserData, error) {
 	json.Unmarshal(body, &u)
 	if len(u.Data) == 0 {
 		helpers.Logf(helpers.DEBUG, "[TWITCH] GetUserData: login=%v", login)
-		return nil, fmt.Errorf("usuário não encontrado")
+		return nil, fmt.Errorf("GetUserData(%s): user not found", login)
 	}
 	return &u.Data[0], nil
 }
@@ -149,7 +149,7 @@ func GetUserDataById(id string) (*TwitchUserData, error) {
 	json.Unmarshal(body, &u)
 	if len(u.Data) == 0 {
 		helpers.Logf(helpers.DEBUG, "[TWITCH] GetUserDataById: id=%v", id)
-		return nil, fmt.Errorf("usuário não encontrado")
+		return nil, fmt.Errorf("GetUserDataById(%s): user not found", id)
 	}
 	return &u.Data[0], nil
 }
@@ -193,7 +193,7 @@ func DeleteMessage(msgID string) error {
 	if resp.StatusCode != 204 {
 		body, _ := io.ReadAll(resp.Body)
 		helpers.Logf(helpers.DEBUG, "[TWITCH] DeleteMessage: msgID=%v", msgID)
-		return fmt.Errorf("erro ao excluir mensagem: %s", body)
+		return fmt.Errorf("DeleteMessage(%s): failed to delete message: %s", msgID, body)
 	}
 	return nil
 }
@@ -224,7 +224,7 @@ func BanUser(userId string, duration int32, reason string) (string, error) {
 	if resp.StatusCode != 204 {
 		body, _ := io.ReadAll(resp.Body)
 		helpers.Logf(helpers.DEBUG, "[TWITCH] BanUser: userId=%v, duration=%v, reason=%v", userId, duration, reason)
-		return "", fmt.Errorf("erro ao banir usuario: %s", body)
+		return "", fmt.Errorf("BanUser(%s, %d, %s): failed to ban user: %s", userId, duration, reason, body)
 	}
 	body, _ := io.ReadAll(resp.Body)
 	return string(body), nil
@@ -243,8 +243,8 @@ func GetListOfGames(query string) ([]GameData, error) {
 	if resp.StatusCode != 200 {
 		body, _ := io.ReadAll(resp.Body)
 		helpers.Logf(helpers.DEBUG, "[TWITCH] GetListOfGames: query=%v", query)
-		helpers.Logf(helpers.ERROR, "[TWITCH FETCH] Erro ao buscar lista de jogos: (%d) %s", resp.StatusCode, body)
-		return nil, fmt.Errorf("erro ao buscar lista de jogos: %s", body)
+		helpers.Logf(helpers.ERROR, "[TWITCH FETCH] Error fetching game list: (%d) %s", resp.StatusCode, body)
+		return nil, fmt.Errorf("GetListOfGames(%s): failed to fetch game list: %s", query, body)
 	}
 	body, _ := io.ReadAll(resp.Body)
 	//helpers.Logf(helpers.Twitch, "[TWITCH FETCH] GetListOfGames: %s", body)
@@ -280,7 +280,7 @@ func GetChannelStreamData(id string) (*StreamData, error) {
 
 func UpdateChannelStreamData(sd *StreamData) error {
 	if sd == nil {
-		return fmt.Errorf("sem dados para atualizar")
+		return fmt.Errorf("UpdateChannelStreamData: nil stream data")
 	}
 	user := globals.GetState().GetTwitchUser()
 	jsonData, _ := json.Marshal(sd)
@@ -295,7 +295,7 @@ func UpdateChannelStreamData(sd *StreamData) error {
 	if resp.StatusCode != 204 {
 		body, _ := io.ReadAll(resp.Body)
 		helpers.Logf(helpers.DEBUG, "[TWITCH] UpdateChannelStreamData: sd=%v", sd)
-		return fmt.Errorf("erro ao excluir mensagem: %s", body)
+		return fmt.Errorf("UpdateChannelStreamData(%+v): failed to update: %s", sd, body)
 	}
 	return nil
 }
@@ -319,8 +319,8 @@ func GetBadges(broadcasterId ...string) (*map[string]any, error) {
 	if resp.StatusCode != 200 {
 		body, _ := io.ReadAll(resp.Body)
 		helpers.Logf(helpers.DEBUG, "[TWITCH] GetBadges: broadcasterId=%v", broadcasterId)
-		helpers.Logf(helpers.ERROR, "[TWITCH FETCH] Erro ao buscar lista de badges: (%d) %s", resp.StatusCode, body)
-		return nil, fmt.Errorf("erro ao buscar lista de badges: %s", body)
+		helpers.Logf(helpers.ERROR, "[TWITCH FETCH] Error fetching badges: (%d) %s", resp.StatusCode, body)
+		return nil, fmt.Errorf("GetBadges(%v): failed to fetch badges: %s", broadcasterId, body)
 	}
 	body, _ := io.ReadAll(resp.Body)
 	//helpers.Logf(helpers.Twitch, "[TWITCH FETCH] GetBadges: %s", body)
@@ -361,8 +361,8 @@ func GetEventSubscriptions() (*EventSubData, error) {
 	if resp.StatusCode != 200 {
 		body, _ := io.ReadAll(resp.Body)
 		helpers.Logf(helpers.DEBUG, "[TWITCH] GetEventSubscriptions: no params")
-		helpers.Logf(helpers.ERROR, "[TWITCH FETCH] Erro ao buscar lsita de event subscriptions: (%d) %s", resp.StatusCode, body)
-		return nil, fmt.Errorf("erro ao buscar lista de event subscriptions: %s", body)
+		helpers.Logf(helpers.ERROR, "[TWITCH FETCH] Error fetching event subscriptions: (%d) %s", resp.StatusCode, body)
+		return nil, fmt.Errorf("GetEventSubscriptions: failed to fetch subscriptions: %s", body)
 	}
 	body, _ := io.ReadAll(resp.Body)
 	//helpers.Logf(helpers.Twitch, "[TWITCH FETCH] GetBadges: %s", body)
@@ -384,8 +384,8 @@ func DeleteEventSubscriptions(id string) error {
 	if resp.StatusCode != 200 && resp.StatusCode != 204 {
 		body, _ := io.ReadAll(resp.Body)
 		helpers.Logf(helpers.DEBUG, "[TWITCH] DeleteEventSubscriptions: id=%v", id)
-		helpers.Logf(helpers.ERROR, "[TWITCH FETCH] Erro ao deletar event subscriptions: (%d) %s", resp.StatusCode, body)
-		return fmt.Errorf("erro ao deletar event subscriptions: %s", body)
+		helpers.Logf(helpers.ERROR, "[TWITCH FETCH] Error deleting event subscriptions: (%d) %s", resp.StatusCode, body)
+		return fmt.Errorf("DeleteEventSubscriptions(%s): failed to delete: %s", id, body)
 	}
 	body, _ := io.ReadAll(resp.Body)
 	//helpers.Logf(helpers.Twitch, "[TWITCH FETCH] GetBadges: %s", body)
@@ -412,8 +412,8 @@ func GetUserChatColor(id string) (*struct {
 	if resp.StatusCode != 200 {
 		body, _ := io.ReadAll(resp.Body)
 		helpers.Logf(helpers.DEBUG, "[TWITCH] GetUserChatColor: id=%v", id)
-		helpers.Logf(helpers.ERROR, "[TWITCH FETCH] Erro ao buscar cor do usuario: (%d) %s", resp.StatusCode, body)
-		return nil, fmt.Errorf("erro ao buscar cor do usuario: %s", body)
+		helpers.Logf(helpers.ERROR, "[TWITCH FETCH] Error fetching user color: (%d) %s", resp.StatusCode, body)
+		return nil, fmt.Errorf("GetUserChatColor(%s): failed to fetch user color: %s", id, body)
 	}
 	body, _ := io.ReadAll(resp.Body)
 	var d struct {
@@ -427,7 +427,7 @@ func GetUserChatColor(id string) (*struct {
 	_ = json.Unmarshal(body, &d)
 
 	if len(d.Data) == 0 {
-		return nil, fmt.Errorf("nenhum item encontrado")
+		return nil, fmt.Errorf("GetUserChatColor(%s): no items found", id)
 	}
 
 	return &d.Data[0], nil
@@ -474,7 +474,7 @@ func UpdateAutomod(userId, msgId, action string) (string, error) {
 	if resp.StatusCode != 204 {
 		body, _ := io.ReadAll(resp.Body)
 		helpers.Logf(helpers.DEBUG, "[TWITCH] UpdateAutomod: userId=%v, msgId=%v, action=%v", userId, msgId, action)
-		return "", fmt.Errorf("erro ao atualizar automod: %s", body)
+		return "", fmt.Errorf("UpdateAutomod(%s, %s, %s): failed to update automod: %s", userId, msgId, action, body)
 	}
 	body, _ := io.ReadAll(resp.Body)
 	return string(body), nil

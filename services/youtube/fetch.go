@@ -112,7 +112,7 @@ func RefreshToken() error {
 		globals.GetState().SetYouTubeUser(currentuser)
 		return nil
 	}
-	return fmt.Errorf("failed to execute refresh token! %s: %s", u.Error, u.ErrorDesc)
+	return fmt.Errorf("RefreshToken: failed to execute refresh token: error=%s, description=%s", u.Error, u.ErrorDesc)
 }
 
 func GetCurrentStreamings() (*LiveBroadcastListResponse, error) {

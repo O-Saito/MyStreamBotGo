@@ -9,6 +9,7 @@ import (
 	"MyStreamBot/services/twitch"
 	"MyStreamBot/services/youtube"
 	"encoding/json"
+	"strings"
 
 	lua "github.com/yuin/gopher-lua"
 )
@@ -93,6 +94,8 @@ var TwitchFunctionList = []services.LuaFunction{
 		return twitch.GetFollowersData("", userId)
 	}},
 	{Name: "get_channel_stream_data", Fn: twitch.GetChannelStreamData},
+	{Name: "ban_user", Fn: twitch.BanUser},
+	{Name: "delete_message", Fn: twitch.DeleteMessage},
 }
 
 func RegisterLuaFunctions(L *lua.LState) {
@@ -143,6 +146,7 @@ func RegisterLuaFunctions(L *lua.LState) {
 				reply = L.CheckString(4)
 			}
 			helpers.Printf(helpers.Lua, "[LUA g.send_message] {%s} %s: %s [%s]", source, channel, msg, reply)
+			msg = strings.Trim(msg, " ")
 			if source == "twitch" {
 				twitch.SendMessage(msg, channel, reply)
 			}

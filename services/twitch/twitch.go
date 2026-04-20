@@ -377,7 +377,7 @@ func writer(ctx context.Context) {
 			return
 		case msg := <-MsgQueue:
 			if msg.MessageToReply != "" {
-				text := fmt.Sprintf("@reply-parent-msg-id=%s PRIVMSG #%s : %s", msg.MessageToReply, msg.Channel, msg.Text)
+				text := fmt.Sprintf("@reply-parent-msg-id=%s PRIVMSG #%s :%s", msg.MessageToReply, msg.Channel, msg.Text)
 				helpers.Printf(helpers.Yellow, "[TWITCH REPLY] %s", text)
 				fmt.Fprintf(Conn, "%s\r\n", text)
 				continue

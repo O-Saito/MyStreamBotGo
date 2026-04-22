@@ -649,6 +649,10 @@ func globalEventLoop() {
 				}
 
 				ev.State.mu.RLock()
+				if ev.State.Interval == 0 {
+					ev.State.mu.RUnlock()
+					continue
+				}
 				nextTick := ev.State.NextTick
 				ev.State.mu.RUnlock()
 

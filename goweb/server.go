@@ -223,7 +223,11 @@ func StartHTTPServer() {
 				if len(wsList) == 0 {
 					continue
 				}
-				jsonData, _ := json.Marshal(msg)
+				jsonData, err := json.Marshal(msg)
+				if err != nil {
+					helpers.Logf(helpers.ERROR, "[WebSocket] Broadcast filtered json.Marshal failed: %v", err)
+					continue
+				}
 				for _, client := range wsList {
 					_ = client.WriteMessage(websocket.TextMessage, []byte(jsonData))
 				}
@@ -231,7 +235,11 @@ func StartHTTPServer() {
 			}
 
 			//helpers.Logf(helpers.Cyan, "[WebSocket] Broadcast: %s - %s", msg.Type, msg.Data)
-			jsonData, _ := json.Marshal(msg)
+			jsonData, err := json.Marshal(msg)
+			if err != nil {
+				helpers.Logf(helpers.ERROR, "[WebSocket] Broadcast json.Marshal failed: %v", err)
+				continue
+			}
 			mu.RLock()
 			clientsList := make([]*websocket.Conn, 0, len(wsClients))
 			for client, tag := range wsClients {

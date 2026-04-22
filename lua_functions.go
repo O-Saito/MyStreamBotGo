@@ -107,8 +107,12 @@ func RegisterLuaFunctions(L *lua.LState) {
 			}
 
 			table := L.CheckTable(2)
-			jsonData, _ := json.Marshal(mlua.TableToMap(table))
-			helpers.Logf(helpers.DEBUG, "[LUA g.log] %s: %s", L.CheckString(1), jsonData)
+			jsonData, err := json.Marshal(mlua.TableToMap(table))
+			if err != nil {
+				helpers.Logf(helpers.ERROR, "[LUA g.log] json.Marshal failed: %v", err)
+			} else {
+				helpers.Logf(helpers.DEBUG, "[LUA g.log] %s: %s", L.CheckString(1), jsonData)
+			}
 			return 0
 		},
 		"print": func(L *lua.LState) int {
@@ -117,8 +121,12 @@ func RegisterLuaFunctions(L *lua.LState) {
 				return 0
 			}
 			table := L.CheckTable(2)
-			jsonData, _ := json.Marshal(mlua.TableToMap(table))
-			helpers.Printf(helpers.Lua, "[LUA g.print] %s: %s", L.CheckString(1), jsonData)
+			jsonData, err := json.Marshal(mlua.TableToMap(table))
+			if err != nil {
+				helpers.Logf(helpers.ERROR, "[LUA g.print] json.Marshal failed: %v", err)
+			} else {
+				helpers.Printf(helpers.Lua, "[LUA g.print] %s: %s", L.CheckString(1), jsonData)
+			}
 			return 0
 		},
 		"socket_send": func(L *lua.LState) int {

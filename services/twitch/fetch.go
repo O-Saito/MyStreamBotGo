@@ -70,7 +70,11 @@ func ValidateAccessToken(accessToken string) (*struct {
 	Status    int      `json:"status"`
 	Message   string   `json:"message"`
 }, error) {
-	req, _ := http.NewRequest("GET", "https://id.twitch.tv/oauth2/validate", nil)
+	req, err := http.NewRequest("GET", "https://id.twitch.tv/oauth2/validate", nil)
+	if err != nil {
+		helpers.Logf(helpers.ERROR, "[TWITCH] ValidateAccessToken http.NewRequest failed: %v", err)
+		return nil, err
+	}
 	req.Header.Set("Authorization", "OAuth "+accessToken)
 	req.Header.Set("Client-ID", globals.GetConfig().TwitchClientID)
 	resp, err := http.DefaultClient.Do(req)
@@ -88,24 +92,42 @@ func ValidateAccessToken(accessToken string) (*struct {
 		Status    int      `json:"status"`
 		Message   string   `json:"message"`
 	}
-	body, _ := io.ReadAll(resp.Body)
-	json.Unmarshal(body, &u)
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		helpers.Logf(helpers.ERROR, "[TWITCH] ValidateAccessToken io.ReadAll failed: %v", err)
+		return nil, err
+	}
+	if err := json.Unmarshal(body, &u); err != nil {
+		helpers.Logf(helpers.ERROR, "[TWITCH] ValidateAccessToken json.Unmarshal failed: %v", err)
+		return nil, err
+	}
 	return &u, nil
 }
 
 func GetStreamerData() (*TwitchUserData, error) {
-	req, _ := http.NewRequest("GET", "https://api.twitch.tv/helix/users", nil)
+	req, err := http.NewRequest("GET", "https://api.twitch.tv/helix/users", nil)
+	if err != nil {
+		helpers.Logf(helpers.ERROR, "[TWITCH] GetStreamerData http.NewRequest failed: %v", err)
+		return nil, err
+	}
 	userResp, err := DoRequest(req)
 	if err != nil {
 		return nil, err
 	}
 	defer userResp.Body.Close()
-	dataUser, _ := io.ReadAll(userResp.Body)
+	dataUser, err := io.ReadAll(userResp.Body)
+	if err != nil {
+		helpers.Logf(helpers.ERROR, "[TWITCH] GetStreamerData io.ReadAll failed: %v", err)
+		return nil, err
+	}
 
 	var u struct {
 		Data []TwitchUserData `json:"data"`
 	}
-	json.Unmarshal(dataUser, &u)
+	if err := json.Unmarshal(dataUser, &u); err != nil {
+		helpers.Logf(helpers.ERROR, "[TWITCH] GetStreamerData json.Unmarshal failed: %v", err)
+		return nil, err
+	}
 
 	if len(u.Data) == 0 {
 		return nil, fmt.Errorf("GetUserDataByToken: no user returned, check token and scopes")
@@ -116,7 +138,11 @@ func GetStreamerData() (*TwitchUserData, error) {
 
 func GetUserData(login string) (*TwitchUserData, error) {
 	urlAPI := fmt.Sprintf("https://api.twitch.tv/helix/users?login=%s", login)
-	req, _ := http.NewRequest("GET", urlAPI, nil)
+	req, err := http.NewRequest("GET", urlAPI, nil)
+	if err != nil {
+		helpers.Logf(helpers.ERROR, "[TWITCH] GetUserData http.NewRequest failed: %v", err)
+		return nil, err
+	}
 	resp, err := DoRequest(req)
 	if err != nil {
 		helpers.Logf(helpers.DEBUG, "[TWITCH] GetUserData: login=%v", login)
@@ -125,8 +151,15 @@ func GetUserData(login string) (*TwitchUserData, error) {
 	defer resp.Body.Close()
 
 	var u UserResponse
-	body, _ := io.ReadAll(resp.Body)
-	json.Unmarshal(body, &u)
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		helpers.Logf(helpers.ERROR, "[TWITCH] GetUserData io.ReadAll failed: %v", err)
+		return nil, err
+	}
+	if err := json.Unmarshal(body, &u); err != nil {
+		helpers.Logf(helpers.ERROR, "[TWITCH] GetUserData json.Unmarshal failed: %v", err)
+		return nil, err
+	}
 	if len(u.Data) == 0 {
 		helpers.Logf(helpers.DEBUG, "[TWITCH] GetUserData: login=%v", login)
 		return nil, fmt.Errorf("GetUserData(%s): user not found", login)
@@ -136,7 +169,11 @@ func GetUserData(login string) (*TwitchUserData, error) {
 
 func GetUserDataById(id string) (*TwitchUserData, error) {
 	urlAPI := fmt.Sprintf("https://api.twitch.tv/helix/users?id=%s", id)
-	req, _ := http.NewRequest("GET", urlAPI, nil)
+	req, err := http.NewRequest("GET", urlAPI, nil)
+	if err != nil {
+		helpers.Logf(helpers.ERROR, "[TWITCH] GetUserDataById http.NewRequest failed: %v", err)
+		return nil, err
+	}
 	resp, err := DoRequest(req)
 	if err != nil {
 		helpers.Logf(helpers.DEBUG, "[TWITCH] GetUserDataById: id=%v", id)
@@ -145,8 +182,15 @@ func GetUserDataById(id string) (*TwitchUserData, error) {
 	defer resp.Body.Close()
 
 	var u UserResponse
-	body, _ := io.ReadAll(resp.Body)
-	json.Unmarshal(body, &u)
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		helpers.Logf(helpers.ERROR, "[TWITCH] GetUserDataById io.ReadAll failed: %v", err)
+		return nil, err
+	}
+	if err := json.Unmarshal(body, &u); err != nil {
+		helpers.Logf(helpers.ERROR, "[TWITCH] GetUserDataById json.Unmarshal failed: %v", err)
+		return nil, err
+	}
 	if len(u.Data) == 0 {
 		helpers.Logf(helpers.DEBUG, "[TWITCH] GetUserDataById: id=%v", id)
 		return nil, fmt.Errorf("GetUserDataById(%s): user not found", id)
@@ -164,7 +208,11 @@ func GetFollowersData(broadcaster_id, userId string) ([]TwitchViewerData, error)
 		url = fmt.Sprintf("%s&user_id=%s", url, userId)
 	}
 
-	req, _ := http.NewRequest("GET", url, nil)
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		helpers.Logf(helpers.ERROR, "[TWITCH] GetFollowersData http.NewRequest failed: %v", err)
+		return []TwitchViewerData{}, err
+	}
 	resp, err := DoRequest(req)
 	if err != nil {
 		helpers.Logf(helpers.DEBUG, "[TWITCH] GetFollowersData: broadcaster_id=%v, userId=%v", broadcaster_id, userId)
@@ -175,15 +223,26 @@ func GetFollowersData(broadcaster_id, userId string) ([]TwitchViewerData, error)
 	var u struct {
 		Data []TwitchViewerData `json:"data"`
 	}
-	body, _ := io.ReadAll(resp.Body)
-	json.Unmarshal(body, &u)
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		helpers.Logf(helpers.ERROR, "[TWITCH] GetFollowersData io.ReadAll failed: %v", err)
+		return []TwitchViewerData{}, err
+	}
+	if err := json.Unmarshal(body, &u); err != nil {
+		helpers.Logf(helpers.ERROR, "[TWITCH] GetFollowersData json.Unmarshal failed: %v", err)
+		return []TwitchViewerData{}, err
+	}
 	return u.Data, nil
 }
 
 func DeleteMessage(msgID string) error {
 	user := globals.GetState().TwitchUser
 	urlAPI := fmt.Sprintf("https://api.twitch.tv/helix/moderation/chat?broadcaster_id=%s&moderator_id=%s&message_id=%s", user.UserID, user.UserID, msgID)
-	req, _ := http.NewRequest("DELETE", urlAPI, nil)
+	req, err := http.NewRequest("DELETE", urlAPI, nil)
+	if err != nil {
+		helpers.Logf(helpers.ERROR, "[TWITCH] DeleteMessage http.NewRequest failed: %v", err)
+		return err
+	}
 	resp, err := DoRequest(req)
 	if err != nil {
 		helpers.Logf(helpers.DEBUG, "[TWITCH] DeleteMessage: msgID=%v", msgID)
@@ -191,7 +250,11 @@ func DeleteMessage(msgID string) error {
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != 204 {
-		body, _ := io.ReadAll(resp.Body)
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			helpers.Logf(helpers.ERROR, "[TWITCH] DeleteMessage io.ReadAll failed: %v", err)
+			return err
+		}
 		helpers.Logf(helpers.DEBUG, "[TWITCH] DeleteMessage: msgID=%v", msgID)
 		return fmt.Errorf("DeleteMessage(%s): failed to delete message: %s", msgID, body)
 	}
@@ -211,9 +274,17 @@ func BanUser(userId string, duration int32, reason string) (string, error) {
 		d["data"]["duration"] = duration
 	}
 
-	data, _ := json.Marshal(d)
+	data, err := json.Marshal(d)
+	if err != nil {
+		helpers.Logf(helpers.ERROR, "[TWITCH] BanUser json.Marshal failed: %v", err)
+		return "", err
+	}
 	urlAPI := fmt.Sprintf("https://api.twitch.tv/helix/moderation/bans?broadcaster_id=%s&moderator_id=%s", user.UserID, user.UserID)
-	req, _ := http.NewRequest("POST", urlAPI, bytes.NewBuffer(data))
+	req, err := http.NewRequest("POST", urlAPI, bytes.NewBuffer(data))
+	if err != nil {
+		helpers.Logf(helpers.ERROR, "[TWITCH] BanUser http.NewRequest failed: %v", err)
+		return "", err
+	}
 	req.Header.Set("Content-Type", "application/json")
 	resp, err := DoRequest(req)
 	if err != nil {
@@ -222,17 +293,29 @@ func BanUser(userId string, duration int32, reason string) (string, error) {
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != 204 {
-		body, _ := io.ReadAll(resp.Body)
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			helpers.Logf(helpers.ERROR, "[TWITCH] BanUser io.ReadAll failed: %v", err)
+			return "", err
+		}
 		helpers.Logf(helpers.DEBUG, "[TWITCH] BanUser: userId=%v, duration=%v, reason=%v", userId, duration, reason)
 		return "", fmt.Errorf("BanUser(%s, %d, %s): failed to ban user: %s", userId, duration, reason, body)
 	}
-	body, _ := io.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		helpers.Logf(helpers.ERROR, "[TWITCH] BanUser io.ReadAll failed: %v", err)
+		return "", err
+	}
 	return string(body), nil
 }
 
 func GetListOfGames(query string) ([]GameData, error) {
 	urlAPI := fmt.Sprintf("%s?query=%s", urlAPIGames, query)
-	req, _ := http.NewRequest("GET", urlAPI, nil)
+	req, err := http.NewRequest("GET", urlAPI, nil)
+	if err != nil {
+		helpers.Logf(helpers.ERROR, "[TWITCH] GetListOfGames http.NewRequest failed: %v", err)
+		return nil, err
+	}
 	resp, err := DoRequest(req)
 	if err != nil {
 		helpers.Logf(helpers.DEBUG, "[TWITCH] GetListOfGames: query=%v", query)
@@ -241,23 +324,38 @@ func GetListOfGames(query string) ([]GameData, error) {
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != 200 {
-		body, _ := io.ReadAll(resp.Body)
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			helpers.Logf(helpers.ERROR, "[TWITCH] GetListOfGames io.ReadAll failed: %v", err)
+			return nil, err
+		}
 		helpers.Logf(helpers.DEBUG, "[TWITCH] GetListOfGames: query=%v", query)
 		helpers.Logf(helpers.ERROR, "[TWITCH FETCH] Error fetching game list: (%d) %s", resp.StatusCode, body)
 		return nil, fmt.Errorf("GetListOfGames(%s): failed to fetch game list: %s", query, body)
 	}
-	body, _ := io.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		helpers.Logf(helpers.ERROR, "[TWITCH] GetListOfGames io.ReadAll failed: %v", err)
+		return nil, err
+	}
 	//helpers.Logf(helpers.Twitch, "[TWITCH FETCH] GetListOfGames: %s", body)
 	var reqData struct {
 		Data []GameData `json:"data"`
 	}
-	_ = json.Unmarshal(body, &reqData)
+	if err := json.Unmarshal(body, &reqData); err != nil {
+		helpers.Logf(helpers.ERROR, "[TWITCH] GetListOfGames json.Unmarshal failed: %v", err)
+		return nil, err
+	}
 	return reqData.Data, nil
 }
 
 func GetChannelStreamData(id string) (*StreamData, error) {
 	urlAPI := fmt.Sprintf("%s?broadcaster_id=%s", urlAPIChannel, id)
-	req, _ := http.NewRequest("GET", urlAPI, nil)
+	req, err := http.NewRequest("GET", urlAPI, nil)
+	if err != nil {
+		helpers.Logf(helpers.ERROR, "[TWITCH] GetChannelStreamData http.NewRequest failed: %v", err)
+		return nil, err
+	}
 	resp, err := DoRequest(req)
 	if err != nil {
 		helpers.Logf(helpers.DEBUG, "[TWITCH] GetChannelStreamData: id=%v", id)
@@ -269,8 +367,15 @@ func GetChannelStreamData(id string) (*StreamData, error) {
 	var u struct {
 		Data []StreamData `json:"data"`
 	}
-	body, _ := io.ReadAll(resp.Body)
-	json.Unmarshal(body, &u)
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		helpers.Logf(helpers.ERROR, "[TWITCH] GetChannelStreamData io.ReadAll failed: %v", err)
+		return nil, err
+	}
+	if err := json.Unmarshal(body, &u); err != nil {
+		helpers.Logf(helpers.ERROR, "[TWITCH] GetChannelStreamData json.Unmarshal failed: %v", err)
+		return nil, err
+	}
 	if len(u.Data) == 0 {
 		helpers.Logf(helpers.ERROR, "[TWITCH] No stream data on GetStreamData")
 		return nil, nil
@@ -283,9 +388,17 @@ func UpdateChannelStreamData(sd *StreamData) error {
 		return fmt.Errorf("UpdateChannelStreamData: nil stream data")
 	}
 	user := globals.GetState().GetTwitchUser()
-	jsonData, _ := json.Marshal(sd)
+	jsonData, err := json.Marshal(sd)
+	if err != nil {
+		helpers.Logf(helpers.ERROR, "[TWITCH] UpdateChannelStreamData json.Marshal failed: %v", err)
+		return err
+	}
 	urlAPI := fmt.Sprintf("%s?broadcaster_id=%s", urlAPIChannel, user.UserID)
-	req, _ := http.NewRequest("PATCH", urlAPI, bytes.NewBuffer(jsonData))
+	req, err := http.NewRequest("PATCH", urlAPI, bytes.NewBuffer(jsonData))
+	if err != nil {
+		helpers.Logf(helpers.ERROR, "[TWITCH] UpdateChannelStreamData http.NewRequest failed: %v", err)
+		return err
+	}
 	resp, err := DoRequest(req)
 	if err != nil {
 		helpers.Logf(helpers.DEBUG, "[TWITCH] UpdateChannelStreamData: sd=%v", sd)
@@ -293,7 +406,11 @@ func UpdateChannelStreamData(sd *StreamData) error {
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != 204 {
-		body, _ := io.ReadAll(resp.Body)
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			helpers.Logf(helpers.ERROR, "[TWITCH] UpdateChannelStreamData io.ReadAll failed: %v", err)
+			return err
+		}
 		helpers.Logf(helpers.DEBUG, "[TWITCH] UpdateChannelStreamData: sd=%v", sd)
 		return fmt.Errorf("UpdateChannelStreamData(%+v): failed to update: %s", sd, body)
 	}
@@ -308,7 +425,11 @@ func GetBadges(broadcasterId ...string) (*map[string]any, error) {
 		urlAPI = urlAPI + "/global"
 	}
 
-	req, _ := http.NewRequest("GET", urlAPI, nil)
+	req, err := http.NewRequest("GET", urlAPI, nil)
+	if err != nil {
+		helpers.Logf(helpers.ERROR, "[TWITCH] GetBadges http.NewRequest failed: %v", err)
+		return nil, err
+	}
 	resp, err := DoRequest(req)
 	if err != nil {
 		helpers.Logf(helpers.DEBUG, "[TWITCH] GetBadges: broadcasterId=%v", broadcasterId)
@@ -317,12 +438,20 @@ func GetBadges(broadcasterId ...string) (*map[string]any, error) {
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != 200 {
-		body, _ := io.ReadAll(resp.Body)
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			helpers.Logf(helpers.ERROR, "[TWITCH] GetBadges io.ReadAll failed: %v", err)
+			return nil, err
+		}
 		helpers.Logf(helpers.DEBUG, "[TWITCH] GetBadges: broadcasterId=%v", broadcasterId)
 		helpers.Logf(helpers.ERROR, "[TWITCH FETCH] Error fetching badges: (%d) %s", resp.StatusCode, body)
 		return nil, fmt.Errorf("GetBadges(%v): failed to fetch badges: %s", broadcasterId, body)
 	}
-	body, _ := io.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		helpers.Logf(helpers.ERROR, "[TWITCH] GetBadges io.ReadAll failed: %v", err)
+		return nil, err
+	}
 	//helpers.Logf(helpers.Twitch, "[TWITCH FETCH] GetBadges: %s", body)
 	var reqData struct {
 		Data []struct {
@@ -339,7 +468,10 @@ func GetBadges(broadcasterId ...string) (*map[string]any, error) {
 			} `json:"versions"`
 		} `json:"data"`
 	}
-	_ = json.Unmarshal(body, &reqData)
+	if err := json.Unmarshal(body, &reqData); err != nil {
+		helpers.Logf(helpers.ERROR, "[TWITCH] GetBadges json.Unmarshal failed: %v", err)
+		return nil, err
+	}
 
 	d := make(map[string]any)
 	for _, v := range reqData.Data {
@@ -350,7 +482,11 @@ func GetBadges(broadcasterId ...string) (*map[string]any, error) {
 }
 
 func GetEventSubscriptions() (*EventSubData, error) {
-	req, _ := http.NewRequest("GET", urlAPIEventSub, nil)
+	req, err := http.NewRequest("GET", urlAPIEventSub, nil)
+	if err != nil {
+		helpers.Logf(helpers.ERROR, "[TWITCH] GetEventSubscriptions http.NewRequest failed: %v", err)
+		return nil, err
+	}
 	resp, err := DoRequest(req)
 	if err != nil {
 		helpers.Logf(helpers.DEBUG, "[TWITCH] GetEventSubscriptions: no params")
@@ -359,40 +495,66 @@ func GetEventSubscriptions() (*EventSubData, error) {
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != 200 {
-		body, _ := io.ReadAll(resp.Body)
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			helpers.Logf(helpers.ERROR, "[TWITCH] GetEventSubscriptions io.ReadAll failed: %v", err)
+			return nil, err
+		}
 		helpers.Logf(helpers.DEBUG, "[TWITCH] GetEventSubscriptions: no params")
 		helpers.Logf(helpers.ERROR, "[TWITCH FETCH] Error fetching event subscriptions: (%d) %s", resp.StatusCode, body)
 		return nil, fmt.Errorf("GetEventSubscriptions: failed to fetch subscriptions: %s", body)
 	}
-	body, _ := io.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		helpers.Logf(helpers.ERROR, "[TWITCH] GetEventSubscriptions io.ReadAll failed: %v", err)
+		return nil, err
+	}
 	//helpers.Logf(helpers.Twitch, "[TWITCH FETCH] GetBadges: %s", body)
 	var reqData EventSubData
-	_ = json.Unmarshal(body, &reqData)
+	if err := json.Unmarshal(body, &reqData); err != nil {
+		helpers.Logf(helpers.ERROR, "[TWITCH] GetEventSubscriptions json.Unmarshal failed: %v", err)
+		return nil, err
+	}
 
 	return &reqData, nil
 }
 
 func DeleteEventSubscriptions(id string) error {
-	req, _ := http.NewRequest("DELETE", fmt.Sprintf("%s?id=%s", urlAPIEventSub, id), nil)
+	req, err := http.NewRequest("DELETE", fmt.Sprintf("%s?id=%s", urlAPIEventSub, id), nil)
+	if err != nil {
+		helpers.Logf(helpers.ERROR, "[TWITCH] DeleteEventSubscriptions http.NewRequest failed: %v", err)
+		return err
+	}
 	resp, err := DoRequest(req)
 	if err != nil {
 		helpers.Logf(helpers.DEBUG, "[TWITCH] DeleteEventSubscriptions: id=%v", id)
-		helpers.Logf(helpers.ERROR, "[TWITCH FETCH] Error deleting event subscription (%s): %s", id, err.Error())
+		helpers.Logf(helpers.ERROR, "[TWITCH FETCH] Error deleting event subscription: %s", err.Error())
 		return err
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != 200 && resp.StatusCode != 204 {
-		body, _ := io.ReadAll(resp.Body)
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			helpers.Logf(helpers.ERROR, "[TWITCH] DeleteEventSubscriptions io.ReadAll failed: %v", err)
+			return err
+		}
 		helpers.Logf(helpers.DEBUG, "[TWITCH] DeleteEventSubscriptions: id=%v", id)
 		helpers.Logf(helpers.ERROR, "[TWITCH FETCH] Error deleting event subscriptions: (%d) %s", resp.StatusCode, body)
 		return fmt.Errorf("DeleteEventSubscriptions(%s): failed to delete: %s", id, body)
 	}
-	body, _ := io.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		helpers.Logf(helpers.ERROR, "[TWITCH] DeleteEventSubscriptions io.ReadAll failed: %v", err)
+		return err
+	}
 	//helpers.Logf(helpers.Twitch, "[TWITCH FETCH] GetBadges: %s", body)
 	var reqData EventSubData
-	_ = json.Unmarshal(body, &reqData)
+	if err := json.Unmarshal(body, &reqData); err != nil {
+		helpers.Logf(helpers.ERROR, "[TWITCH] DeleteEventSubscriptions json.Unmarshal failed: %v", err)
+		return err
+	}
 
-	return nil
+return nil
 }
 
 func GetUserChatColor(id string) (*struct {
@@ -401,7 +563,11 @@ func GetUserChatColor(id string) (*struct {
 	UserLogin string `json:"user_login"`
 	Color     string `json:"color"`
 }, error) {
-	req, _ := http.NewRequest("GET", fmt.Sprintf("https://api.twitch.tv/helix/chat/color?user_id=%s", id), nil)
+	req, err := http.NewRequest("GET", fmt.Sprintf("https://api.twitch.tv/helix/chat/color?user_id=%s", id), nil)
+	if err != nil {
+		helpers.Logf(helpers.ERROR, "[TWITCH] GetUserChatColor http.NewRequest failed: %v", err)
+		return nil, err
+	}
 	resp, err := DoRequest(req)
 	if err != nil {
 		helpers.Logf(helpers.DEBUG, "[TWITCH] GetUserChatColor: id=%v", id)
@@ -410,12 +576,20 @@ func GetUserChatColor(id string) (*struct {
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != 200 {
-		body, _ := io.ReadAll(resp.Body)
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			helpers.Logf(helpers.ERROR, "[TWITCH] GetUserChatColor io.ReadAll failed: %v", err)
+			return nil, err
+		}
 		helpers.Logf(helpers.DEBUG, "[TWITCH] GetUserChatColor: id=%v", id)
 		helpers.Logf(helpers.ERROR, "[TWITCH FETCH] Error fetching user color: (%d) %s", resp.StatusCode, body)
 		return nil, fmt.Errorf("GetUserChatColor(%s): failed to fetch user color: %s", id, body)
 	}
-	body, _ := io.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		helpers.Logf(helpers.ERROR, "[TWITCH] GetUserChatColor io.ReadAll failed: %v", err)
+		return nil, err
+	}
 	var d struct {
 		Data []struct {
 			UserId    string `json:"user_id"`
@@ -424,7 +598,10 @@ func GetUserChatColor(id string) (*struct {
 			Color     string `json:"color"`
 		} `json:"data"`
 	}
-	_ = json.Unmarshal(body, &d)
+	if err := json.Unmarshal(body, &d); err != nil {
+		helpers.Logf(helpers.ERROR, "[TWITCH] GetUserChatColor json.Unmarshal failed: %v", err)
+		return nil, err
+	}
 
 	if len(d.Data) == 0 {
 		return nil, fmt.Errorf("GetUserChatColor(%s): no items found", id)
@@ -435,7 +612,11 @@ func GetUserChatColor(id string) (*struct {
 
 func GetStreamData(id string) (*globals.TwitchStreamData, error) {
 	urlAPI := fmt.Sprintf("https://api.twitch.tv/helix/streams?user_id=%s", id)
-	req, _ := http.NewRequest("GET", urlAPI, nil)
+	req, err := http.NewRequest("GET", urlAPI, nil)
+	if err != nil {
+		helpers.Logf(helpers.ERROR, "[TWITCH] GetStreamData http.NewRequest failed: %v", err)
+		return nil, err
+	}
 	resp, err := DoRequest(req)
 	if err != nil {
 		helpers.Logf(helpers.DEBUG, "[TWITCH] GetStreamData: id=%v", id)
@@ -447,8 +628,15 @@ func GetStreamData(id string) (*globals.TwitchStreamData, error) {
 	var u struct {
 		Data []globals.TwitchStreamData `json:"data"`
 	}
-	body, _ := io.ReadAll(resp.Body)
-	json.Unmarshal(body, &u)
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		helpers.Logf(helpers.ERROR, "[TWITCH] GetStreamData io.ReadAll failed: %v", err)
+		return nil, err
+	}
+if err := json.Unmarshal(body, &u); err != nil {
+		helpers.Logf(helpers.ERROR, "[TWITCH] GetStreamData json.Unmarshal failed: %v", err)
+		return nil, err
+	}
 	if len(u.Data) == 0 {
 		helpers.Logf(helpers.ERROR, "[TWITCH] No stream data on GetStreamData")
 		return nil, nil
@@ -462,8 +650,16 @@ func UpdateAutomod(userId, msgId, action string) (string, error) {
 		"msg_id":  msgId,
 		"action":  action,
 	}
-	data, _ := json.Marshal(d)
-	req, _ := http.NewRequest("POST", "https://api.twitch.tv/helix/moderation/automod/message", bytes.NewBuffer(data))
+	data, err := json.Marshal(d)
+	if err != nil {
+		helpers.Logf(helpers.ERROR, "[TWITCH] UpdateAutomod json.Marshal failed: %v", err)
+		return "", err
+	}
+	req, err := http.NewRequest("POST", "https://api.twitch.tv/helix/moderation/automod/message", bytes.NewBuffer(data))
+	if err != nil {
+		helpers.Logf(helpers.ERROR, "[TWITCH] UpdateAutomod http.NewRequest failed: %v", err)
+		return "", err
+	}
 	req.Header.Set("Content-Type", "application/json")
 	resp, err := DoRequest(req)
 	if err != nil {
@@ -472,10 +668,18 @@ func UpdateAutomod(userId, msgId, action string) (string, error) {
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != 204 {
-		body, _ := io.ReadAll(resp.Body)
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			helpers.Logf(helpers.ERROR, "[TWITCH] UpdateAutomod io.ReadAll failed: %v", err)
+			return "", err
+		}
 		helpers.Logf(helpers.DEBUG, "[TWITCH] UpdateAutomod: userId=%v, msgId=%v, action=%v", userId, msgId, action)
 		return "", fmt.Errorf("UpdateAutomod(%s, %s, %s): failed to update automod: %s", userId, msgId, action, body)
 	}
-	body, _ := io.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		helpers.Logf(helpers.ERROR, "[TWITCH] UpdateAutomod io.ReadAll failed: %v", err)
+		return "", err
+	}
 	return string(body), nil
 }

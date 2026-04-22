@@ -405,8 +405,16 @@ func subscribeToEvents() {
 				data.Version = v
 			}
 		}
-		jsonData, _ := json.Marshal(data)
-		req, _ := http.NewRequest("POST", urlAPIEventSub, bytes.NewBuffer(jsonData))
+		jsonData, err := json.Marshal(data)
+		if err != nil {
+			helpers.Logf(helpers.ERROR, "[TWITCH] subscribe json.Marshal failed: %v", err)
+			continue
+		}
+		req, err := http.NewRequest("POST", urlAPIEventSub, bytes.NewBuffer(jsonData))
+		if err != nil {
+			helpers.Logf(helpers.ERROR, "[TWITCH] subscribe http.NewRequest failed: %v", err)
+			continue
+		}
 		AddAuthHeaders(req)
 		req.Header.Set("Content-Type", "application/json")
 		resp, err := http.DefaultClient.Do(req)

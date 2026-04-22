@@ -116,7 +116,11 @@ func RefreshToken() error {
 }
 
 func GetCurrentStreamings() (*LiveBroadcastListResponse, error) {
-	req, _ := http.NewRequest("GET", "https://www.googleapis.com/youtube/v3/liveBroadcasts?broadcastStatus=active&part=snippet,status", nil)
+	req, err := http.NewRequest("GET", "https://www.googleapis.com/youtube/v3/liveBroadcasts?broadcastStatus=active&part=snippet,status", nil)
+	if err != nil {
+		helpers.Logf(helpers.ERROR, "[YOUTUBE] GetCurrentStreamings http.NewRequest failed: %v", err)
+		return nil, err
+	}
 	resp, err := DoYouTubeRequest(req)
 	if err != nil {
 		return nil, err
@@ -140,7 +144,11 @@ func GetCurrentStreamings() (*LiveBroadcastListResponse, error) {
 }
 
 func GetNextStreamings() (*LiveBroadcastListResponse, error) {
-	req, _ := http.NewRequest("GET", "https://www.googleapis.com/youtube/v3/liveBroadcasts?broadcastStatus=upcoming&part=snippet,status", nil)
+	req, err := http.NewRequest("GET", "https://www.googleapis.com/youtube/v3/liveBroadcasts?broadcastStatus=upcoming&part=snippet,status", nil)
+	if err != nil {
+		helpers.Logf(helpers.ERROR, "[YOUTUBE] GetNextStreamings http.NewRequest failed: %v", err)
+		return nil, err
+	}
 	resp, err := DoYouTubeRequest(req)
 	if err != nil {
 		return nil, err
@@ -164,7 +172,11 @@ func GetNextStreamings() (*LiveBroadcastListResponse, error) {
 }
 
 func GetCurrentYouTubeChannel() (*YouTubeChannelListResponse, error) {
-	req, _ := http.NewRequest("GET", "https://www.googleapis.com/youtube/v3/channels?part=id,snippet&mine=true", nil)
+	req, err := http.NewRequest("GET", "https://www.googleapis.com/youtube/v3/channels?part=id,snippet&mine=true", nil)
+	if err != nil {
+		helpers.Logf(helpers.ERROR, "[YOUTUBE] GetCurrentYouTubeChannel http.NewRequest failed: %v", err)
+		return nil, err
+	}
 	resp, err := DoYouTubeRequest(req)
 	if err != nil {
 		return nil, err
@@ -224,7 +236,11 @@ type StreamData struct {
 }
 
 func GetStreamData(videoID string) (*StreamData, error) {
-	req, _ := http.NewRequest("GET", "https://www.googleapis.com/youtube/v3/videos", nil)
+	req, err := http.NewRequest("GET", "https://www.googleapis.com/youtube/v3/videos", nil)
+	if err != nil {
+		helpers.Logf(helpers.ERROR, "[YOUTUBE] GetStreamData http.NewRequest failed: %v", err)
+		return nil, err
+	}
 	req.URL.RawQuery = fmt.Sprintf("part=liveStreamingDetails,snippet&id=%s", videoID)
 
 	resp, err := DoYouTubeRequest(req)

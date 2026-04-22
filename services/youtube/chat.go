@@ -64,7 +64,11 @@ func defaultUserColor(username string) string {
 
 func FetchLiveChatMessages(liveChatID, pageToken string) (*YouTubeLiveChatMessagesResponse, error) {
 	baseURL := "https://www.googleapis.com/youtube/v3/liveChat/messages"
-	req, _ := http.NewRequest("GET", baseURL, nil)
+	req, err := http.NewRequest("GET", baseURL, nil)
+	if err != nil {
+		helpers.Logf(helpers.ERROR, "[YOUTUBE] FetchLiveChatMessages http.NewRequest failed: %v", err)
+		return nil, err
+	}
 
 	q := req.URL.Query()
 	q.Add("liveChatId", liveChatID)

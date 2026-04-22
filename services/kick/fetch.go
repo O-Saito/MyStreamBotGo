@@ -68,7 +68,11 @@ func GetUser(userId string) (UserData, error) {
 	if userId != "" {
 		url += fmt.Sprintf("?broadcaster_user_id=%s", userId)
 	}
-	req, _ := http.NewRequest("GET", url, nil)
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		helpers.Logf(helpers.ERROR, "[KICK] GetUser http.NewRequest failed: %v", err)
+		return UserData{}, err
+	}
 	resp, err := DoRequest(req)
 	if err != nil {
 		helpers.Logf(helpers.DEBUG, "[KICK] GetUser: userId=%v", userId)
@@ -102,7 +106,11 @@ func GetChannel(streamerId int, slug *string) (ChannelData, error) {
 	if slug != nil {
 		url += fmt.Sprintf("?slug=%s", *slug)
 	}
-	req, _ := http.NewRequest("GET", url, nil)
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		helpers.Logf(helpers.ERROR, "[KICK] GetChannel http.NewRequest failed: %v", err)
+		return ChannelData{}, err
+	}
 	resp, err := DoRequest(req)
 	if err != nil {
 		helpers.Logf(helpers.DEBUG, "[KICK] GetChannel: streamerId=%v, slug=%v", streamerId, slug)
@@ -130,7 +138,11 @@ func GetChannel(streamerId int, slug *string) (ChannelData, error) {
 
 func GetChatroom(slug string) (ChatroomData, error) {
 	url := fmt.Sprintf("https://api.kick.com/public/v1/channels?slug=%s", slug)
-	req, _ := http.NewRequest("GET", url, nil)
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		helpers.Logf(helpers.ERROR, "[KICK] GetChatroom http.NewRequest failed: %v", err)
+		return ChatroomData{}, err
+	}
 	req.Header.Set("Client-Id", globals.GetConfig().KickClientID)
 	resp, err := DoRequest(req)
 	if err != nil {
@@ -161,8 +173,16 @@ func PostMessage(msg Message) error {
 		"content":             msg.Text,
 		"type":                "user",
 	}
-	jsonData, _ := json.Marshal(data)
-	req, _ := http.NewRequest("POST", url, bytes.NewBuffer(jsonData))
+	jsonData, err := json.Marshal(data)
+	if err != nil {
+		helpers.Logf(helpers.ERROR, "[KICK] PostMessage json.Marshal failed: %v", err)
+		return err
+	}
+	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonData))
+	if err != nil {
+		helpers.Logf(helpers.ERROR, "[KICK] PostMessage http.NewRequest failed: %v", err)
+		return err
+	}
 	req.Header.Set("Content-Type", "application/json")
 	resp, err := DoRequest(req)
 	if err != nil {

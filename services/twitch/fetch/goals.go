@@ -1,0 +1,40 @@
+package twitch
+
+import (
+	"MyStreamBot/globals"
+	"MyStreamBot/helpers"
+	twitch "MyStreamBot/services/twitch"
+)
+
+type Goal struct {
+	ID             string `json:"id"`
+	BroadcasterID  string `json:"broadcaster_id"`
+	BroadcasterName string `json:"broadcaster_name"`
+	BroadcasterLogin string `json:"broadcaster_login"`
+	Type           string `json:"type"`
+	Description    string `json:"description"`
+	CurrentAmount  int    `json:"current_amount"`
+	TargetAmount   int    `json:"target_amount"`
+	StartedAt      string `json:"started_at"`
+	EndsAt         string `json:"ends_at"`
+}
+
+type GetCreatorGoalsResponse struct {
+	Data []Goal `json:"data"`
+}
+
+func GetCreatorGoals(broadcasterID string) ([]Goal, error) {
+	user := globals.GetState().GetTwitchUser()
+	if broadcasterID == "" {
+		broadcasterID = user.UserID
+	}
+
+	url := twitch.HelixBaseURL + "/goals?broadcaster_id=" + broadcasterID
+	result, err := twitch.ExecuteRequest[GetCreatorGoalsResponse]("GET", url, 200)
+	if err != nil {
+		helpers.Logf(helpers.DEBUG, "[TWITCH] GetCreatorGoals: broadcasterID=%v", broadcasterID)
+		return nil, err
+	}
+
+	return result.Data, nil
+}

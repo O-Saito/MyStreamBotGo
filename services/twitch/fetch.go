@@ -61,7 +61,9 @@ type GameData struct {
 	BoxArt string `json:"box_art_url"`
 }
 
-func ValidateAccessToken(accessToken string) (*struct {
+var urlOAuthValidate = IDBaseURL + "/oauth2/validate"
+
+type TokenValidation struct {
 	ClientId  string   `json:"client_id"`
 	Login     string   `json:"login"`
 	Scopes    []string `json:"scopes"`
@@ -69,7 +71,9 @@ func ValidateAccessToken(accessToken string) (*struct {
 	ExpiresIn int      `json:"expires_in"`
 	Status    int      `json:"status"`
 	Message   string   `json:"message"`
-}, error) {
+}
+
+func ValidateAccessToken(accessToken string) (*TokenValidation, error) {
 	req, err := http.NewRequest("GET", "https://id.twitch.tv/oauth2/validate", nil)
 	if err != nil {
 		helpers.Logf(helpers.ERROR, "[TWITCH] ValidateAccessToken http.NewRequest failed: %v", err)
@@ -83,15 +87,7 @@ func ValidateAccessToken(accessToken string) (*struct {
 	}
 	defer resp.Body.Close()
 
-	var u struct {
-		ClientId  string   `json:"client_id"`
-		Login     string   `json:"login"`
-		Scopes    []string `json:"scopes"`
-		UserId    string   `json:"user_id"`
-		ExpiresIn int      `json:"expires_in"`
-		Status    int      `json:"status"`
-		Message   string   `json:"message"`
-	}
+	var u TokenValidation
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		helpers.Logf(helpers.ERROR, "[TWITCH] ValidateAccessToken io.ReadAll failed: %v", err)
@@ -554,7 +550,7 @@ func DeleteEventSubscriptions(id string) error {
 		return err
 	}
 
-return nil
+	return nil
 }
 
 func GetUserChatColor(id string) (*struct {
@@ -633,7 +629,7 @@ func GetStreamData(id string) (*globals.TwitchStreamData, error) {
 		helpers.Logf(helpers.ERROR, "[TWITCH] GetStreamData io.ReadAll failed: %v", err)
 		return nil, err
 	}
-if err := json.Unmarshal(body, &u); err != nil {
+	if err := json.Unmarshal(body, &u); err != nil {
 		helpers.Logf(helpers.ERROR, "[TWITCH] GetStreamData json.Unmarshal failed: %v", err)
 		return nil, err
 	}

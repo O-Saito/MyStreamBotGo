@@ -1149,19 +1149,28 @@
             let text = parseMessageWithEmotes(data.message || '');
 
             if (data.source === "twitch" && data.metadata?.emotes) {
-                const emotes = data.metadata.emotes.split('/').filter(e => e && e.includes(':')).map(x => {
-                    const [id, positions] = x.split(':');
-                    const [start, end] = positions.split('-').map(Number);
-                    return {
-                        id,
-                        url: CONSTANTS.EMOTE_URL.replace('{id}', id),
-                        name: (data.message || '').slice(start, end + 1),
-                    };
-                });
+                let emotes = data.metadata.emotes.split('/')
+                if (emotes && emotes[0] != '') {
+                    emotes = emotes.map(x => {
+                        let v = x.split(':');
+                        let id = v[0];
+                        let url = `https://static-cdn.jtvnw.net/emoticons/v2/${id}/default/light/1.0`;
+                        let indexes = v[1].split('-').map(y => parseInt(y));
+                        let name = data.message.slice(indexes[0], indexes[1] + 1);
+                        return {
+                            id: id,
+                            url: url,
+                            name: name,
+                            indexes: indexes,
+                        }
+                    });
+                }
 
-                emotes.forEach(emote => {
-                    text = text.replaceAll(emote.name, `<img src="${emote.url}" alt="${emote.name}" title="${emote.name}" />`);
-                });
+
+                for (let i = 0; i < emotes.length; i++) {
+                    const emote = emotes[i];
+                    text = text.replaceAll(emote.name, `<img src="${emote.url}" />`)
+                }
             }
             return text;
         }
@@ -1367,36 +1376,36 @@
         }
 
         function formatDuration(ns) {
-                if (!ns || ns <= 0) return 'N/A';
-                if (ns >= 1000000000) {
-                    return (ns / 1000000000).toFixed(1) + 's';
-                } else if (ns >= 1000000) {
-                    return (ns / 1000000).toFixed(1) + 'ms';
-                } else if (ns >= 1000) {
-                    return (ns / 1000).toFixed(0) + 'us';
-                } else {
-                    return Math.round(ns) + 'ns';
-                }
+            if (!ns || ns <= 0) return 'N/A';
+            if (ns >= 1000000000) {
+                return (ns / 1000000000).toFixed(1) + 's';
+            } else if (ns >= 1000000) {
+                return (ns / 1000000).toFixed(1) + 'ms';
+            } else if (ns >= 1000) {
+                return (ns / 1000).toFixed(0) + 'us';
+            } else {
+                return Math.round(ns) + 'ns';
             }
+        }
 
-            function updateDyStatistics(events) {
-                if (!events?.length) return;
+        function updateDyStatistics(events) {
+            if (!events?.length) return;
 
-                const overview = document.getElementById('dy-statistics-list');
-                if (overview) {
-                    overview.innerHTML = events.map(ev => {
-                        const processed = ev.processedTimes || 0;
-                        const lastTime = formatDuration(ev.LastProcessedTime);
-                        const interval = ev.interval ? (ev.interval / 1000000000) + 's' : 'N/A';
-                        
-                        let avgTime = 'N/A';
-                        if (processed > 0 && ev.ProcessedTotalTimes > 0) {
-                            avgTime = formatDuration(ev.ProcessedTotalTimes / processed);
-                        }
-                        const hiTime = formatDuration(ev.highestTime);
-                        const loTime = formatDuration(ev.lowestTime);
-                        
-                        return `<div class="dy-stat-item">
+            const overview = document.getElementById('dy-statistics-list');
+            if (overview) {
+                overview.innerHTML = events.map(ev => {
+                    const processed = ev.processedTimes || 0;
+                    const lastTime = formatDuration(ev.LastProcessedTime);
+                    const interval = ev.interval ? (ev.interval / 1000000000) + 's' : 'N/A';
+
+                    let avgTime = 'N/A';
+                    if (processed > 0 && ev.ProcessedTotalTimes > 0) {
+                        avgTime = formatDuration(ev.ProcessedTotalTimes / processed);
+                    }
+                    const hiTime = formatDuration(ev.highestTime);
+                    const loTime = formatDuration(ev.lowestTime);
+
+                    return `<div class="dy-stat-item">
                             <span>${ev.name}:</span>
                             <span>${ev.paused ? 'Paused' : 'Running'}</span>
                             <span>Int: ${interval}</span>
@@ -1406,28 +1415,28 @@
                             <span>Hi: ${hiTime}</span>
                             <span>Lo: ${loTime}</span>
                         </div>`;
-                    }).join('');
-                }
-
-                events.forEach(ev => {
-                    const statLabel = document.getElementById(ev.name)?.querySelector('.dy-stat-detail');
-                    if (statLabel) {
-                        const processed = ev.processedTimes || 0;
-                        const interval = ev.interval ? (ev.interval / 1000000000) + 's' : 'N/A';
-                        const lastTime = formatDuration(ev.LastProcessedTime);
-                        const totalTime = ev.ProcessedTotalTimes ? Math.round(ev.ProcessedTotalTimes / 1000000) + 'ms' : '0ms';
-                        
-                        let avgTime = 'N/A';
-                        if (processed > 0 && ev.ProcessedTotalTimes > 0) {
-                            avgTime = formatDuration(ev.ProcessedTotalTimes / processed);
-                        }
-                        const hiTime = formatDuration(ev.highestTime);
-                        const loTime = formatDuration(ev.lowestTime);
-                        
-                        statLabel.textContent = `${ev.paused ? 'Paused' : 'Running'} | Int: ${interval} | Processed: ${processed} | Last: ${lastTime} | Avg: ${avgTime} | Hi: ${hiTime} | Lo: ${loTime} | Total: ${totalTime}`;
-                    }
-                });
+                }).join('');
             }
+
+            events.forEach(ev => {
+                const statLabel = document.getElementById(ev.name)?.querySelector('.dy-stat-detail');
+                if (statLabel) {
+                    const processed = ev.processedTimes || 0;
+                    const interval = ev.interval ? (ev.interval / 1000000000) + 's' : 'N/A';
+                    const lastTime = formatDuration(ev.LastProcessedTime);
+                    const totalTime = ev.ProcessedTotalTimes ? Math.round(ev.ProcessedTotalTimes / 1000000) + 'ms' : '0ms';
+
+                    let avgTime = 'N/A';
+                    if (processed > 0 && ev.ProcessedTotalTimes > 0) {
+                        avgTime = formatDuration(ev.ProcessedTotalTimes / processed);
+                    }
+                    const hiTime = formatDuration(ev.highestTime);
+                    const loTime = formatDuration(ev.lowestTime);
+
+                    statLabel.textContent = `${ev.paused ? 'Paused' : 'Running'} | Int: ${interval} | Processed: ${processed} | Last: ${lastTime} | Avg: ${avgTime} | Hi: ${hiTime} | Lo: ${loTime} | Total: ${totalTime}`;
+                }
+            });
+        }
 
 
     </script>

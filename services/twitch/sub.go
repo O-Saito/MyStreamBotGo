@@ -306,7 +306,7 @@ func connectToEventSub() {
 		go listenToEventSub(conn)
 		//EventSubConn = conn
 	}
-	helpers.Printf(helpers.Twitch, "[Twitch EventSub] Conexão WebSocket aberta com sucesso!")
+	helpers.Printf(helpers.Twitch, "[Twitch EventSub] WebSocket connection opened successfully!")
 	eventSubMu.Unlock()
 
 	go listenToEventSub(conn)
@@ -318,7 +318,7 @@ func listenToEventSub(conn *websocket.Conn) {
 		if conn != nil {
 			conn.Close()
 		}
-		helpers.Printf(helpers.Twitch, "[Twitch EventSub] Leitura encerrada.")
+		helpers.Printf(helpers.Twitch, "[Twitch EventSub] Reading ended.")
 		connectToEventSub()
 	}()
 
@@ -337,7 +337,7 @@ func listenToEventSub(conn *websocket.Conn) {
 
 		meta, ok := base["metadata"].(map[string]any)
 		if !ok {
-			helpers.Logf(helpers.ERROR, "[Twitch EventSub] Metadata !ok")
+			helpers.Logf(helpers.ERROR, "[Twitch EventSub] Metadata type assertion failed")
 			continue
 		}
 

@@ -70,7 +70,7 @@ type Thumbnails struct {
 	Default *Thumbnail `json:"default,omitempty"`
 	Medium  *Thumbnail `json:"medium,omitempty"`
 	High    *Thumbnail `json:"high,omitempty"`
-	// A API pode incluir outros níveis; mantenha se precisar (standard, maxres, etc).
+	// API may include other levels; keep if needed (standard, maxres, etc).
 }
 
 type Thumbnail struct {

@@ -67,7 +67,7 @@ var (
 	DyEventQueue = make(chan DyEventQueueData, 1000)
 )
 
-// inicializa o LState
+// initialize the LState
 func Init(funcs ...func(*lua.LState)) {
 	LChat = lua.NewState()
 	LCommands = lua.NewState()
@@ -185,7 +185,7 @@ func loadModule(L *lua.LState, path string, modType string) {
 func RegisterGlobalState(L *lua.LState) {
 	mt := L.NewTypeMetatable("State")
 
-	// __index → getters e métodos
+	// __index → getters and methods
 	L.SetField(mt, "__index", L.NewFunction(func(L *lua.LState) int {
 		ud := L.CheckUserData(1)
 		key := L.CheckString(2)
@@ -235,12 +235,12 @@ func RegisterGlobalState(L *lua.LState) {
 		return 1
 	}))
 
-	// __newindex → não permite set direto
+	// __newindex → does not allow direct set
 	L.SetField(mt, "__newindex", L.NewFunction(func(L *lua.LState) int {
-		// nada permitido
+		// nothing allowed
 		ud := L.CheckUserData(1)
 		key := L.CheckString(2)
-		helpers.Logf(helpers.WARN, "[LUA STATE WARNING] Tentativa de setar State.%s diretamente", key)
+		helpers.Logf(helpers.WARN, "[LUA STATE WARNING] Attempt to set State.%s directly", key)
 
 		state := ud.Value.(*globals.State)
 

@@ -51,7 +51,7 @@ func RegisterSocketHandlers() {
 		helpers.Printf(helpers.Reset, "[Socket Handler] connect-chat-youtube %s\r\n", channel)
 		lives, err := youtube.GetCurrentStreamings()
 		if err != nil {
-			helpers.Logf(helpers.ERROR, "Falha ao buscar YouTubeStreamings %v", err)
+			helpers.Logf(helpers.ERROR, "Failed to fetch YouTubeStreamings: %v", err)
 			return
 		}
 
@@ -96,7 +96,7 @@ func RegisterSocketHandlers() {
 		helpers.Printf(helpers.Reset, "[Socket Handler] get-next-streams-youtube %s\r\n", channel)
 		lives, err := youtube.GetNextStreamings()
 		if err != nil {
-			helpers.Logf(helpers.ERROR, "Falha ao buscar YouTubeStreamings %v", err)
+			helpers.Logf(helpers.ERROR, "Failed to fetch YouTubeStreamings: %v", err)
 			return
 		}
 

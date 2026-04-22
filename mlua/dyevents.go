@@ -383,9 +383,9 @@ func (des *DynamicEventStats) AddTiming(elapsed time.Duration) {
 	des.mu.Unlock()
 }
 
-// Chamado de loadAllModules
+// Called from loadAllModules
 func LoadDyEvents(baseDir string) {
-	helpers.Logf(helpers.DEBUG, "[DYNAMIC] Carregando eventos dinâmicos de %s", baseDir)
+	helpers.Logf(helpers.DEBUG, "[DYNAMIC] Loading dynamic events from %s", baseDir)
 
 	files, err := os.ReadDir(baseDir)
 	if err != nil {
@@ -401,7 +401,7 @@ func LoadDyEvents(baseDir string) {
 		LoadDyEventModule(baseDir, name)
 	}
 
-	// Inicia o loop global apenas uma vez
+	// Start global loop only once
 	dynamicEventsMutex.RLock()
 	defer dynamicEventsMutex.RUnlock()
 	if len(dynamicEvents) > 0 {
@@ -453,8 +453,8 @@ func LoadDyEventModule(folder, fileName string) {
 		},
 		State: DynamicEventState{
 			NextTick: time.Now().Add(time.Second),
-			Interval: time.Second, // padrão
-			Paused:   true,        // padrão
+			Interval: time.Second, // default
+			Paused:   true,        // default
 			db:       nil,
 		},
 	}
@@ -471,7 +471,7 @@ func LoadDyEventModule(folder, fileName string) {
 	dynamicEvents[fileName] = ev
 	dynamicEventsMutex.Unlock()
 
-	helpers.Logf(helpers.DEBUG, "[DYNAMIC] Evento carregado: %s", fileName)
+	helpers.Logf(helpers.DEBUG, "[DYNAMIC] Event loaded: %s", fileName)
 
 	ev.ProcessStart()
 }
@@ -619,7 +619,7 @@ func setFunctionOnTable(ev *DynamicEvent, tbl *lua.LTable) {
 
 }
 
-// Permite eventos do websocket interno
+// Allow internal websocket events
 func HandleDyEventWebsocket(msg any) {
 	dynamicEventsMutex.RLock()
 	defer dynamicEventsMutex.RUnlock()
@@ -629,7 +629,7 @@ func HandleDyEventWebsocket(msg any) {
 	}
 }
 
-// Loop único para todos os eventos
+// Single loop for all events
 func globalEventLoop() {
 	helpers.Log(helpers.INFO, "Started dyevent global event loop!")
 	ticker := time.NewTicker((1 * time.Second) / 60)

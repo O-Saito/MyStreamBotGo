@@ -19,7 +19,7 @@ type Message struct {
 	MessageToReply string
 }
 
-// variaveis globais do streamer logado
+// Global variables for the logged-in streamer
 var (
 	LoginDone = make(chan bool)
 	Conn      net.Conn
@@ -100,7 +100,7 @@ func GetCacheUserChatColor(user string) string {
 
 var ircHandlers = map[string]func(parts []string, afterMetadataIndex int, metadata ...map[string]any){
 	"RECONNECT": func(parts []string, afterMetadataIndex int, metadata ...map[string]any) {
-		// fazer o reconnect
+		// do the reconnect
 		helpers.Logf(helpers.INFO, "[TWITCH RECONNECT] Server requested reconnect")
 		Disconnect()
 	},
@@ -336,7 +336,7 @@ func Connect() error {
 	go writer(ctxWriter)
 
 	ircHandlers["RECONNECT"] = func(parts []string, afterMetadataIndex int, metadata ...map[string]any) {
-		// fazer o reconnect
+		// do the reconnect
 		helpers.Logf(helpers.INFO, "[TWITCH RECONNECT] Server requested reconnect")
 		Disconnect()
 		Connect()
@@ -381,7 +381,7 @@ func reader(ctx context.Context) {
 		default:
 			if !scanner.Scan() {
 				if err := scanner.Err(); err != nil {
-					helpers.Logf(helpers.ERROR, "[Twitch ERROR] Erro na leitura: %v", err)
+					helpers.Logf(helpers.ERROR, "[Twitch ERROR] Error reading: %v", err)
 					ircHandlers["RECONNECT"](nil, 0, nil)
 					return
 				}

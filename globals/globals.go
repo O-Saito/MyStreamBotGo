@@ -54,7 +54,7 @@ type LuaChat struct {
 	Metadata  map[string]any `json:"metadata"`
 }
 
-// WebSocket global exportado
+// Exported WebSocket global
 var (
 	WsBroadcast  = make(chan SocketMessage, 100)
 	ChatQueue    = make(chan MessageFromStream, 200)
@@ -68,11 +68,11 @@ var sectionMap = map[string]any{
 }
 
 func LoadInitFile() {
-	helpers.Logf(helpers.INFO, "Carregando arquivo de inicialização init.txt")
+	helpers.Logf(helpers.INFO, "Loading initialization file init.txt")
 	filePath := filepath.Join(".", "init.txt")
 	file, err := os.Open(filePath)
 	if err != nil {
-		//helpers.Logf(helpers.Red, "Erro ao abrir o arquivo: %v", err)
+		//helpers.Logf(helpers.Red, "Error opening file: %v", err)
 		os.WriteFile(filePath, []byte(""), 0644)
 		return
 	}
@@ -83,7 +83,7 @@ func LoadInitFile() {
 	for scanner.Scan() {
 		line := scanner.Text()
 		line = strings.TrimSpace(line)
-		//helpers.Logf(helpers.Cyan, "Lendo linha: %s", line)
+		//helpers.Logf(helpers.Cyan, "Reading line: %s", line)
 
 		// Process the line (e.g., parse key-value pairs)
 		if line == "" || line[0] == '#' {
@@ -92,16 +92,16 @@ func LoadInitFile() {
 		// Example processing (you can expand this as needed)
 		if line[0] == '[' && line[len(line)-1] == ']' {
 			current = line[1 : len(line)-1]
-			helpers.Logf(helpers.INFO, "Seção: %s", current)
+			helpers.Logf(helpers.INFO, "Section: %s", current)
 			continue
 		}
 		if current == "" {
-			//helpers.Logf(helpers.Yellow, "Ignorando linha fora de seção: %s", line)
+			//helpers.Logf(helpers.Yellow, "Skipping line outside section: %s", line)
 			continue
 		}
 		parts := strings.SplitN(line, "=", 2)
 		if len(parts) != 2 {
-			//helpers.Logf(helpers.Yellow, "Linha inválida: %s", line)
+			//helpers.Logf(helpers.Yellow, "Invalid line: %s", line)
 			continue
 		}
 
@@ -110,11 +110,11 @@ func LoadInitFile() {
 
 		obj, ok := sectionMap[current]
 		if !ok {
-			//helpers.Logf(helpers.Yellow, "Seção desconhecida: %s", current)
+			//helpers.Logf(helpers.Yellow, "Unknown section: %s", current)
 			continue
 		}
 
-		// Caso especial: State.Data.algumacoisa=valor
+		// Special case: State.Data.something=value
 		if current == "State" && strings.Contains(key, ".") {
 			parts := strings.SplitN(key, ".", 2)
 			if parts[0] == "Data" {
@@ -127,7 +127,7 @@ func LoadInitFile() {
 	}
 
 	if err := scanner.Err(); err != nil {
-		helpers.Logf(helpers.ERROR, "Erro ao ler o arquivo: %v", err)
+		helpers.Logf(helpers.ERROR, "Error reading file: %v", err)
 	}
 }
 
@@ -143,12 +143,12 @@ func LoadTwitchSubTypes() {
 	GetConfig().SetTwitchSubTypes(data)
 }
 
-// Define campos simples via reflection (ex: Config.BotPrefix)
+// Define simple fields via reflection (e.g., Config.BotPrefix)
 func setField(obj any, field, value string) {
 	v := reflect.ValueOf(obj).Elem()
 	f := v.FieldByName(field)
 	if !f.IsValid() || !f.CanSet() {
-		helpers.Logf(helpers.WARN, "Campo inválido: %s", field)
+		helpers.Logf(helpers.WARN, "Invalid field: %s", field)
 		return
 	}
 
@@ -158,11 +158,11 @@ func setField(obj any, field, value string) {
 	case reflect.Bool:
 		f.SetBool(strings.ToLower(value) == "true")
 	case reflect.Int:
-		// Conversão simples (sem erro fatal)
+		// Simple conversion (no fatal error)
 		if i, err := strconv.Atoi(value); err == nil {
 			f.SetInt(int64(i))
 		}
 	default:
-		helpers.Logf(helpers.WARN, "Tipo de campo não suportado: %s", field)
+		helpers.Logf(helpers.WARN, "Field type not supported: %s", field)
 	}
 }

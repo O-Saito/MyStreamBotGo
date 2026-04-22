@@ -29,7 +29,7 @@ func NewCoreDB(fileName string) (*CoreDB, error) {
 		return nil, err
 	}
 
-	// WAL melhora segurança e velocidade
+	// WAL improves security and speed
 	_, _ = db.Exec(`PRAGMA journal_mode = WAL;`)
 	_, _ = db.Exec(`PRAGMA busy_timeout = 5000;`)
 

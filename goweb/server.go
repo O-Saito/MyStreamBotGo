@@ -72,9 +72,9 @@ var SocketHandlers = map[string]func(*websocket.Conn, map[string]any, int){
 
 			wsClientsUpgraded[connVal] = append(wsClientsUpgraded[connVal], c)
 			mu.Unlock()
-			data.Data = "conexão atualizada!"
+			data.Data = "Connection updated!"
 		} else {
-			data.Data = "conexão não especificada!"
+			data.Data = "Connection not specified!"
 		}
 
 		globals.WsBroadcast <- data
@@ -82,14 +82,14 @@ var SocketHandlers = map[string]func(*websocket.Conn, map[string]any, int){
 }
 
 func StartHTTPServer() {
-	// Servir frontend
+	// Serve frontend
 	http.Handle("/", http.FileServer(http.Dir("./web")))
 
 	// WebSocket
 	http.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
 		conn, err := upgrader.Upgrade(w, r, nil)
 		if err != nil {
-			helpers.Logf(helpers.ERROR, "[WebSocket] Erro: %s", err.Error())
+			helpers.Logf(helpers.ERROR, "[WebSocket] Error: %s", err.Error())
 			return
 		}
 		defer conn.Close()
@@ -139,10 +139,10 @@ func StartHTTPServer() {
 		}
 	})
 
-	// Endpoints administrativos
+	// Administrative endpoints
 	http.HandleFunc("/admin/delete/twitch", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != "POST" {
-			http.Error(w, "Método inválido", http.StatusMethodNotAllowed)
+			http.Error(w, "Invalid method", http.StatusMethodNotAllowed)
 			return
 		}
 		var req struct {
@@ -158,7 +158,7 @@ func StartHTTPServer() {
 
 	http.HandleFunc("/admin/ban/twitch", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != "POST" {
-			http.Error(w, "Método inválido", http.StatusMethodNotAllowed)
+			http.Error(w, "Invalid method", http.StatusMethodNotAllowed)
 			return
 		}
 		var req struct {
@@ -182,7 +182,7 @@ func StartHTTPServer() {
 
 	http.HandleFunc("/admin/automod/twitch", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != "POST" {
-			http.Error(w, "Método inválido", http.StatusMethodNotAllowed)
+			http.Error(w, "Invalid method", http.StatusMethodNotAllowed)
 			return
 		}
 		var req struct {
@@ -210,7 +210,7 @@ func StartHTTPServer() {
 		w.Write([]byte(d))
 	})
 
-	// Goroutine para enviar mensagens do backend para todos os clients
+	// Goroutine to send messages from backend to all clients
 	go func() {
 		helpers.Log(helpers.INFO, "Started server broadcast!")
 		for msg := range globals.WsBroadcast {
@@ -260,7 +260,7 @@ func StartHTTPServer() {
 	}
 
 	port := globals.GetConfig().HTTPPort
-	helpers.Print(helpers.Green, "[MyStreamBot] Possíveis IP's (para os logins TEM que ser pelo localhost):")
+	helpers.Print(helpers.Green, "[MyStreamBot] Possible IPs (logins MUST be via localhost):")
 	for _, addr := range addrs {
 		if ipnet, ok := addr.(*net.IPNet); ok && !ipnet.IP.IsLoopback() {
 			if ipnet.IP.To4() != nil {
@@ -268,7 +268,7 @@ func StartHTTPServer() {
 			}
 		}
 	}
-	helpers.Printf(helpers.Green, "[MyStreamBot] Servidor HTTP iniciado em http://localhost:%s", port)
+	helpers.Printf(helpers.Green, "[MyStreamBot] HTTP server started at http://localhost:%s", port)
 	helpers.Log(helpers.INFO, "Started listen and serve (http started)!")
 	go func() {
 		if err := http.ListenAndServe(fmt.Sprintf("0.0.0.0:%s", port), nil); err != nil && err != http.ErrServerClosed {

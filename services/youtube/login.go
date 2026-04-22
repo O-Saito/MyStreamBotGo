@@ -63,7 +63,7 @@ func HandleLogin() {
 				sqlErr := globals.GetGlobalDB().SaveToken("youtube", newUser.Token, newUser.RefreshToken, time.Now().Add(time.Duration(newUser.TokenExpiresIn)*time.Second))
 
 				if sqlErr != nil {
-					helpers.Logf(helpers.ERROR, "Falha ao salvar token do YT %s", sqlErr.Error())
+					helpers.Logf(helpers.ERROR, "Failed to save YT token: %s", sqlErr.Error())
 				}
 
 				globals.WsBroadcast <- globals.SocketMessage{
@@ -71,16 +71,16 @@ func HandleLogin() {
 					Data: newUser,
 				}
 			} else {
-				helpers.Logf(helpers.ERROR, "Falha ao buscar canais do YT %s", err.Error())
+				helpers.Logf(helpers.ERROR, "Failed to fetch YT channels: %s", err.Error())
 			}
 		} else {
-			helpers.Logf(helpers.ERROR, "Falha ao atualizar token %s", err.Error())
+			helpers.Logf(helpers.ERROR, "Failed to refresh token: %s", err.Error())
 		}
 	}
 
 	redirectURI := fmt.Sprintf("http://localhost:%s/youtube/callback", globals.GetConfig().HTTPPort)
 
-	// Endpoint que redireciona para YT
+	// Endpoint that redirects to YT
 	http.HandleFunc("/youtube/login", func(w http.ResponseWriter, r *http.Request) {
 		authURL := fmt.Sprintf(
 			"https://accounts.google.com/o/oauth2/v2/auth?client_id=%s&redirect_uri=%s&response_type=code&scope=%s&access_type=offline&prompt=consent",
@@ -88,11 +88,11 @@ func HandleLogin() {
 			url.QueryEscape(redirectURI),
 			url.QueryEscape(scopes),
 		)
-		helpers.Printf(helpers.Reset, "[YT LOGIN] Abrindo URL de login: %s", authURL)
+		helpers.Printf(helpers.Reset, "[YT LOGIN] Opening login URL: %s", authURL)
 		http.Redirect(w, r, authURL, http.StatusFound)
 	})
 
-	// Callback do Youtube
+	// Youtube callback
 	http.HandleFunc("/youtube/callback", func(w http.ResponseWriter, r *http.Request) {
 		code := r.URL.Query().Get("code")
 		if code == "" {
@@ -109,21 +109,21 @@ func HandleLogin() {
 
 		resp, err := http.PostForm("https://oauth2.googleapis.com/token", data)
 		if err != nil {
-			http.Error(w, "Erro token: "+err.Error(), 500)
+			http.Error(w, "Token error: "+err.Error(), 500)
 			return
 		}
 		defer resp.Body.Close()
 		body, err := io.ReadAll(resp.Body)
 		if err != nil {
 			helpers.Logf(helpers.ERROR, "[YOUTUBE] login io.ReadAll failed: %v", err)
-			http.Error(w, "Erro ao ler resposta: "+err.Error(), 500)
+			http.Error(w, "Error reading response: "+err.Error(), 500)
 			return
 		}
 
 		var tokenResp OAuthResponse
 		if err := json.Unmarshal(body, &tokenResp); err != nil {
 			helpers.Logf(helpers.ERROR, "[YOUTUBE] login json.Unmarshal failed: %v", err)
-			http.Error(w, "Erro ao processar resposta: "+err.Error(), 500)
+			http.Error(w, "Error processing response: "+err.Error(), 500)
 			return
 		}
 
@@ -136,19 +136,19 @@ func HandleLogin() {
 		sqlErr := globals.GetGlobalDB().SaveToken("youtube", user.Token, user.RefreshToken, time.Now().Add(time.Duration(user.TokenExpiresIn)*time.Second))
 
 		if sqlErr != nil {
-			helpers.Logf(helpers.ERROR, "[YT HANDLELOGIN] Falha ao salvar token %s", sqlErr.Error())
+			helpers.Logf(helpers.ERROR, "[YT HANDLELOGIN] Failed to save token: %s", sqlErr.Error())
 		}
 
 		globals.GetState().SetYouTubeUser(user)
 
 		helpers.Printf(helpers.Red, "[YT TOKEN] %s : %s E: %d", string(body), globals.GetConfig().YouTubeClientID, tokenResp.ExpiresIn)
 
-		fmt.Fprintf(w, "Login concluído! Pode fechar esta página.")
+		fmt.Fprintf(w, "Login completed! You may close this page.")
 
 		yt, err := GetCurrentYouTubeChannel()
 
 		if err != nil {
-			http.Error(w, "Erro buscar channel: "+err.Error(), 500)
+			http.Error(w, "Error getting channel: "+err.Error(), 500)
 			return
 		}
 

@@ -236,7 +236,7 @@ func GetListOfGames(query string) ([]GameData, error) {
 	resp, err := DoRequest(req)
 	if err != nil {
 		helpers.Logf(helpers.DEBUG, "[TWITCH] GetListOfGames: query=%v", query)
-		helpers.Logf(helpers.ERROR, "[TWITCH FETCH] Erro ao buscar lista de jogos: %s", err.Error())
+		helpers.Logf(helpers.ERROR, "[TWITCH FETCH] Error fetching game list: %s", err.Error())
 		return nil, err
 	}
 	defer resp.Body.Close()
@@ -312,7 +312,7 @@ func GetBadges(broadcasterId ...string) (*map[string]any, error) {
 	resp, err := DoRequest(req)
 	if err != nil {
 		helpers.Logf(helpers.DEBUG, "[TWITCH] GetBadges: broadcasterId=%v", broadcasterId)
-		helpers.Logf(helpers.ERROR, "[TWITCH FETCH] Erro ao buscar lista de badges: %s", err.Error())
+		helpers.Logf(helpers.ERROR, "[TWITCH FETCH] Error fetching badges list: %s", err.Error())
 		return nil, err
 	}
 	defer resp.Body.Close()
@@ -354,7 +354,7 @@ func GetEventSubscriptions() (*EventSubData, error) {
 	resp, err := DoRequest(req)
 	if err != nil {
 		helpers.Logf(helpers.DEBUG, "[TWITCH] GetEventSubscriptions: no params")
-		helpers.Logf(helpers.ERROR, "[TWITCH FETCH] Erro ao buscar lista de event subscriptions: %s", err.Error())
+		helpers.Logf(helpers.ERROR, "[TWITCH FETCH] Error fetching event subscriptions list: %s", err.Error())
 		return nil, err
 	}
 	defer resp.Body.Close()
@@ -377,7 +377,7 @@ func DeleteEventSubscriptions(id string) error {
 	resp, err := DoRequest(req)
 	if err != nil {
 		helpers.Logf(helpers.DEBUG, "[TWITCH] DeleteEventSubscriptions: id=%v", id)
-		helpers.Logf(helpers.ERROR, "[TWITCH FETCH] Erro ao deletar event subscriptions (%s): %s", id, err.Error())
+		helpers.Logf(helpers.ERROR, "[TWITCH FETCH] Error deleting event subscription (%s): %s", id, err.Error())
 		return err
 	}
 	defer resp.Body.Close()
@@ -405,7 +405,7 @@ func GetUserChatColor(id string) (*struct {
 	resp, err := DoRequest(req)
 	if err != nil {
 		helpers.Logf(helpers.DEBUG, "[TWITCH] GetUserChatColor: id=%v", id)
-		helpers.Logf(helpers.ERROR, "[TWITCH FETCH] Erro ao buscar cor do usuario: %s", err.Error())
+		helpers.Logf(helpers.ERROR, "[TWITCH FETCH] Error fetching user color: %s", err.Error())
 		return nil, err
 	}
 	defer resp.Body.Close()

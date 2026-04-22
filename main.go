@@ -46,29 +46,29 @@ func main() {
 
 	RegisterSocketHandlers()
 
-	// Inicializa o package mlua
+	// Initialize mlua package
 	mlua.Init(RegisterLuaFunctions, RegisterServiceAPIs)
 
-	// Carrega todos os módulos Lua e inicia hotreload
+	// Load all Lua modules and start hotreload
 	mlua.LoadAllModules()
 	mlua.StartWatcher()
 
-	// Inicia goroutines de consumo das filas
+	// Start queue consumer goroutines
 	go processors.ProcessChatQueue()
 	go processors.ProcessCommandQueue()
 	go processors.ProcessEventQueue()
 	go processors.ProcessDyEventQueue()
 	go processors.ProcessLuaRequest()
 
-	// iniciar servidor web
+	// start web server
 	goweb.StartHTTPServer()
 
-	// iniciar login Twitch
+	// start Twitch login
 	twitch.HandleLogin()
 	kick.HandleLogin()
 	youtube.HandleLogin()
 
-	//select {} // manter aplicação rodando
+	//select {} // keep application running
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit

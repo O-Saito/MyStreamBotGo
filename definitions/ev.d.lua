@@ -12,7 +12,7 @@ function ev.socket_send(type, data) end
 ---@return number
 function ev.get_interval()end
 
----Set interval in seconds
+---Set interval in seconds (0 to not tick)
 ---@param seconds number
 function ev.set_interval(seconds) end
 

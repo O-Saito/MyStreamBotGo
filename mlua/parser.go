@@ -72,7 +72,7 @@ func ToLValue(L *lua.LState, val any) lua.LValue {
 		tbl := L.NewTable()
 		for i := 0; i < rv.NumField(); i++ {
 			field := rt.Field(i)
-			// Ignora campos não exportados
+			// Ignore unexported fields
 			if field.PkgPath != "" {
 				continue
 			}
@@ -105,12 +105,12 @@ func FromLValue(L *lua.LState, lv lua.LValue) any {
 	case lua.LBool:
 		return bool(v)
 	case lua.LNumber:
-		return float64(v) // ou int se você quiser forçar
+		return float64(v) // or int if you want to force
 	case lua.LString:
 		return string(v)
 	case *lua.LTable:
-		// Decide se é map ou slice
-		// Checa se existem índices numéricos sequenciais
+		// Decide if it's map or slice
+		// Check if there are sequential numeric indices
 		max := 0
 		isArray := true
 		v.ForEach(func(key, value lua.LValue) {
@@ -133,7 +133,7 @@ func FromLValue(L *lua.LState, lv lua.LValue) any {
 			return arr
 		}
 
-		// Caso contrário, é um mapa
+		// Otherwise it's a map
 		m := make(map[string]any)
 		v.ForEach(func(key, value lua.LValue) {
 			m[fmt.Sprint(key)] = FromLValue(L, value)
@@ -229,10 +229,10 @@ func StructToLTable(L *lua.LState, s interface{}) *lua.LTable {
 		field := v.Field(i)
 		fieldType := t.Field(i)
 
-		// Nome do campo
+		// Field name
 		key := fieldType.Name
 
-		// Converter valor
+		// Convert value
 		var lv lua.LValue
 		switch field.Kind() {
 		case reflect.String:
@@ -255,7 +255,7 @@ func StructToLTable(L *lua.LState, s interface{}) *lua.LTable {
 			}
 			return arr
 		default:
-			lv = lua.LNil // tipos não suportados ainda
+			lv = lua.LNil // unsupported types yet
 		}
 
 		tbl.RawSetString(key, lv)

@@ -9,7 +9,7 @@ import (
 
 func OpenModuleDB(moduleName string) (*sql.DB, error) {
 	if moduleName == "" {
-		return nil, fmt.Errorf("invalid module name")
+		return nil, fmt.Errorf("OpenModuleDB(%q): invalid module name", moduleName)
 	}
 	dir := filepath.Join("./db", "modules")
 	err := os.MkdirAll(dir, 0755)

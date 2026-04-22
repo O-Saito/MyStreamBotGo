@@ -65,6 +65,15 @@ button {
     align-items: center;
     gap: 8px;
     border-left: 3px solid var(--border-color);
+    cursor: grab;
+    user-select: none;
+    touch-action: none;
+}
+
+.areas.dragging .header,
+.panel.dragging .header {
+    opacity: 0.7;
+    cursor: grabbing;
 }
 
 .areas .header input[type="checkbox"] {
@@ -124,35 +133,35 @@ button {
 }
 
 /* Login Areas */
-#logins {
+.login {
     display: flex;
     flex-direction: column;
     gap: 4px;
     margin-bottom: 8px;
 }
 
-#logins .areas .body {
+.login.areas .body {
     font-size: 0.875rem;
     color: var(--text-secondary);
 }
 
-#logins .areas .chat-list .list::before {
+.login.areas .chat-list .list::before {
     content: "Conectado aos Chats:";
     display: block;
     margin-bottom: 4px;
 }
 
-#logins .areas .chat-list .list {
+.login.areas .chat-list .list {
     list-style: none;
 }
 
-#logins .areas .chat-list .list li {
+.login.areas .chat-list .list li {
     padding-left: 20px;
     margin-top: 2px;
     margin-bottom: 2px;
 }
 
-#logins .areas img {
+.login.areas img {
     width: 25px;
     height: 25px;
     border-radius: 12px;
@@ -279,6 +288,17 @@ button {
 /* Chat Section */
 #chat-section {
     margin-bottom: 8px;
+}
+
+#chat-section > h1 {
+    cursor: grab;
+    user-select: none;
+    touch-action: none;
+}
+
+#chat-section.dragging > h1 {
+    opacity: 0.7;
+    cursor: grabbing;
 }
 
 #chat-header {
@@ -590,6 +610,9 @@ button {
     display: flex;
     align-items: center;
     gap: 8px;
+    cursor: grab;
+    user-select: none;
+    touch-action: none;
 }
 
 .panel .header input[type="checkbox"] {
@@ -710,4 +733,13 @@ input[type="checkbox"] {
 /* Hidden */
 .hidden {
     display: none;
+}
+
+/* Drag and Drop */
+.drag-over-above {
+    border-top: 2px solid var(--twitch) !important;
+}
+
+.drag-over-below {
+    border-bottom: 2px solid var(--twitch) !important;
 }

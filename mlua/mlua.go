@@ -1,6 +1,7 @@
 package mlua
 
 import (
+	"fmt"
 	"io/fs"
 	"log"
 	"os"
@@ -40,6 +41,13 @@ const (
 	DyEventRequest = 3
 )
 
+const (
+	folderPathCommands = "./modules/commands"
+	folderPathChat     = "./modules/chat"
+	folderPathEvents   = "./modules/events"
+	folderPathCustom   = "./modules/customevents"
+)
+
 var (
 	LChat     *lua.LState
 	LCommands *lua.LState
@@ -59,7 +67,7 @@ var (
 	DyEventQueue = make(chan DyEventQueueData, 1000)
 )
 
-// inicializa o LState
+// initialize the LState
 func Init(funcs ...func(*lua.LState)) {
 	LChat = lua.NewState()
 	LCommands = lua.NewState()
@@ -97,16 +105,15 @@ func createIfNotExists(path string) {
 
 // Load/Reload all modules
 func LoadAllModules() {
+	createIfNotExists(folderPathCommands)
+	createIfNotExists(folderPathChat)
+	createIfNotExists(folderPathEvents)
+	createIfNotExists(folderPathCustom)
 
-	createIfNotExists("./modules/commands")
-	createIfNotExists("./modules/chat")
-	createIfNotExists("./modules/events")
-	createIfNotExists("./modules/customevents")
-
-	loadDir(LCommands, "./modules/commands", "command")
-	loadDir(LChat, "./modules/chat", "chat")
-	loadEvents(LEvents, "./modules/events")
-	LoadDyEvents("./modules/customevents")
+	loadDir(LCommands, folderPathCommands, "command")
+	loadDir(LChat, folderPathChat, "chat")
+	loadEvents(LEvents, folderPathEvents)
+	LoadDyEvents(folderPathCustom)
 }
 
 func loadDir(L *lua.LState, dir string, modType string) {
@@ -178,7 +185,7 @@ func loadModule(L *lua.LState, path string, modType string) {
 func RegisterGlobalState(L *lua.LState) {
 	mt := L.NewTypeMetatable("State")
 
-	// __index → getters e métodos
+	// __index → getters and methods
 	L.SetField(mt, "__index", L.NewFunction(func(L *lua.LState) int {
 		ud := L.CheckUserData(1)
 		key := L.CheckString(2)
@@ -228,12 +235,12 @@ func RegisterGlobalState(L *lua.LState) {
 		return 1
 	}))
 
-	// __newindex → não permite set direto
+	// __newindex → does not allow direct set
 	L.SetField(mt, "__newindex", L.NewFunction(func(L *lua.LState) int {
-		// nada permitido
+		// nothing allowed
 		ud := L.CheckUserData(1)
 		key := L.CheckString(2)
-		helpers.Logf(helpers.WARN, "[LUA STATE WARNING] Tentativa de setar State.%s diretamente", key)
+		helpers.Logf(helpers.WARN, "[LUA STATE WARNING] Attempt to set State.%s directly", key)
 
 		state := ud.Value.(*globals.State)
 
@@ -316,9 +323,26 @@ func StartWatcher() {
 				if filepath.Ext(ev.Name) != ".lua" {
 					continue
 				}
-				log.Printf("[FS EVENT] %s %s", ev.Name, ev.Op)
+				folder := strings.ReplaceAll(fmt.Sprintf(".\\%s", filepath.Dir(ev.Name)), "\\", "/")
+				log.Printf("[FS EVENT] %s %s %s", folder, ev.Name, ev.Op)
 				time.Sleep(50 * time.Millisecond)
-				LoadAllModules()
+
+				if strings.Contains(folder, folderPathCustom) {
+					LoadDyEventModule(folder, strings.Replace(ev.Name, fmt.Sprintf("%s\\", filepath.Dir(ev.Name)), "", 1))
+					continue
+				}
+				if strings.Contains(folder, folderPathCommands) {
+					loadModule(LCommands, ev.Name, "command")
+					continue
+				}
+				if strings.Contains(folder, folderPathChat) {
+					loadModule(LChat, ev.Name, "chat")
+					continue
+				}
+				if strings.Contains(folder, folderPathEvents) {
+					loadEvents(LEvents, folderPathEvents)
+					continue
+				}
 			case err, ok := <-watcher.Errors:
 				if !ok {
 					return
@@ -334,44 +358,4 @@ func StartWatcher() {
 		}
 		return nil
 	})
-}
-
-func ProcessLuaRequest() {
-	helpers.Log(helpers.INFO, "Started lua requests queue!")
-	defer func() {
-		if r := recover(); r != nil {
-			helpers.Logf(helpers.ERROR, "[LuaRequest] panic: %v", r)
-		}
-	}()
-	for ev := range globals.LuaRequest {
-		DyEventQueue <- DyEventQueueData{
-			Type:          DyEventRequest,
-			SocketMessage: ev,
-		}
-	}
-}
-
-func ProcessDyEventQueue() {
-	helpers.Log(helpers.INFO, "Started dyevents processor!")
-	for deq := range DyEventQueue {
-		dynamicEventsMutex.RLock()
-		events := dynamicEvents
-		dynamicEventsMutex.RUnlock()
-		for _, dev := range events {
-			if deq.Type == DyEventChat {
-				dev.ProcessChat(&deq.MessageFromStream)
-				continue
-			} else if deq.Type == DyEventCommand {
-				dev.ProcessCommand(&deq.LuaCommand)
-				continue
-			} else if deq.Type == DyEventEvent {
-				dev.ProcessEvent(&deq.LuaEvent)
-				continue
-			} else if deq.Type == DyEventRequest {
-				dev.ProcessRequest(&deq.SocketMessage)
-				continue
-			}
-
-		}
-	}
 }

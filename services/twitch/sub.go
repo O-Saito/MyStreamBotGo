@@ -150,10 +150,19 @@ var subTypes = map[string]map[string]any{
 
 var messageHandlers = map[string]func(map[string]any, map[string]any){
 	"session_welcome": func(payload, metadata map[string]any) {
-		globals.GetState().SetTwitchEventSubId(payload["session"].(map[string]any)["id"].(string))
+		session, ok := payload["session"].(map[string]any)
+		if !ok {
+			helpers.Logf(helpers.ERROR, "[Twitch EventSub] session_welcome: invalid session type")
+			return
+		}
+		sessionId, ok := session["id"].(string)
+		if !ok {
+			helpers.Logf(helpers.ERROR, "[Twitch EventSub] session_welcome: invalid session id type")
+			return
+		}
+		globals.GetState().SetTwitchEventSubId(sessionId)
 		subscribeToEvents()
-		helpers.Printf(helpers.Twitch, "Session: %s", payload["session"].(map[string]any)["id"].(string))
-		//ts.execute("session_welcome", payload);
+		helpers.Printf(helpers.Twitch, "Session: %s", sessionId)
 		globals.WsBroadcast <- globals.SocketMessage{
 			Type: "twitch-eventsub-session-welcome",
 			Data: map[string]any{
@@ -176,8 +185,16 @@ var messageHandlers = map[string]func(map[string]any, map[string]any){
 	"notification": func(payload, metadata map[string]any) {
 		helpers.Printf(helpers.Twitch, "[TWITCH EventSub] notification %v", payload)
 
-		eventType := payload["subscription"].(map[string]any)["type"].(string)
-		//ts.execute(metadata.subscription_type, payload.event, payload.subscription);
+		sub, ok := payload["subscription"].(map[string]any)
+		if !ok {
+			helpers.Logf(helpers.ERROR, "[Twitch EventSub] notification: invalid subscription type")
+			return
+		}
+		eventType, ok := sub["type"].(string)
+		if !ok {
+			helpers.Logf(helpers.ERROR, "[Twitch EventSub] notification: invalid subscription type field")
+			return
+		}
 		globals.EventQueue <- globals.Event{
 			Type: "twitch-eventsub-notification",
 			Data: map[string]any{
@@ -186,7 +203,8 @@ var messageHandlers = map[string]func(map[string]any, map[string]any){
 			},
 		}
 
-		if payload["event"] == nil {
+		event, ok := payload["event"].(map[string]any)
+		if !ok {
 			return
 		}
 		switch eventType {
@@ -194,14 +212,16 @@ var messageHandlers = map[string]func(map[string]any, map[string]any){
 			user := globals.GetState().GetTwitchUser()
 			if user.StreamDetails == nil {
 				user.StreamDetails, _ = GetStreamData(user.UserID)
-				// recreate copy to garantee sync data
 				u := globals.GetState().GetTwitchUser()
 				u.StreamDetails = user.StreamDetails
 				globals.GetState().SetTwitchUser(u)
 				return
 			}
 
-			user.StreamDetails.StartedAt = payload["event"].(map[string]any)["started_at"].(string)
+			startedAt, ok := event["started_at"].(string)
+			if ok {
+				user.StreamDetails.StartedAt = startedAt
+			}
 			globals.GetState().SetTwitchUser(user)
 		case "stream.offline":
 			user := globals.GetState().GetTwitchUser()
@@ -214,18 +234,20 @@ var messageHandlers = map[string]func(map[string]any, map[string]any){
 			user := globals.GetState().GetTwitchUser()
 			if user.StreamDetails == nil {
 				user.StreamDetails, _ = GetStreamData(user.UserID)
-				// recreate copy to garantee sync data
 				u := globals.GetState().GetTwitchUser()
 				u.StreamDetails = user.StreamDetails
 				globals.GetState().SetTwitchUser(u)
 				return
 			}
-			event := payload["event"].(map[string]any)
-			user.StreamDetails.Title = event["title"].(string)
-			user.StreamDetails.Language = event["language"].(string)
-			user.StreamDetails.GameId = event["category_id"].(string)
-			user.StreamDetails.GameName = event["category_name"].(string)
-			if event["content_classification_labels"] != nil && slices.Contains(event["content_classification_labels"].([]string), "MatureGame") {
+			title, _ := event["title"].(string)
+			lang, _ := event["language"].(string)
+			catId, _ := event["category_id"].(string)
+			catName, _ := event["category_name"].(string)
+			user.StreamDetails.Title = title
+			user.StreamDetails.Language = lang
+			user.StreamDetails.GameId = catId
+			user.StreamDetails.GameName = catName
+			if labels, ok := event["content_classification_labels"].([]string); ok && slices.Contains(labels, "MatureGame") {
 				user.StreamDetails.IsMature = false
 			}
 			globals.GetState().SetTwitchUser(user)
@@ -242,10 +264,14 @@ func connectToEventSub() {
 	conn, resp, err := websocket.DefaultDialer.Dial(u.String(), nil)
 	if err != nil {
 		if resp != nil {
-			body, _ := io.ReadAll(resp.Body)
-			helpers.Logf(helpers.ERROR, "[Twitch] Falha no handshake (%d): %s", resp.StatusCode, string(body))
+			body, err := io.ReadAll(resp.Body)
+			if err != nil {
+				helpers.Logf(helpers.ERROR, "[TWITCH] connectToEventSub io.ReadAll failed: %v", err)
+			} else {
+				helpers.Logf(helpers.ERROR, "[Twitch] Handshake failed (%d): %s", resp.StatusCode, string(body))
+			}
 		}
-		helpers.Logf(helpers.ERROR, "[Twitch] Erro ao conectar: %v", err)
+		helpers.Logf(helpers.ERROR, "[Twitch] Error connecting: %v", err)
 		time.Sleep(10 * time.Second)
 		//StartEventSub(clientID, token, broadcasterID)
 		return
@@ -254,15 +280,24 @@ func connectToEventSub() {
 	//EventSubConn = conn
 
 	messageHandlers["session_reconnect"] = func(payload, metadata map[string]any) {
-		reconnectURL := payload["session"].(map[string]any)["reconnect_url"].(string)
-		helpers.Logf(helpers.WARN, "[Twitch EventSub] Reconnect solicitado: %s", reconnectURL)
+		session, ok := payload["session"].(map[string]any)
+		if !ok {
+			helpers.Logf(helpers.ERROR, "[Twitch EventSub] session_reconnect: invalid session type")
+			return
+		}
+		reconnectURL, ok := session["reconnect_url"].(string)
+		if !ok {
+			helpers.Logf(helpers.ERROR, "[Twitch EventSub] session_reconnect: invalid reconnect_url type")
+			return
+		}
+		helpers.Logf(helpers.WARN, "[Twitch EventSub] Reconnect requested: %s", reconnectURL)
 		eventSubMu.Lock()
 		defer eventSubMu.Unlock()
 		conn.Close()
 		//EventSubConn.Close()
 		conn, _, err := websocket.DefaultDialer.Dial(reconnectURL, nil)
 		if err != nil {
-			helpers.Logf(helpers.ERROR, "[Twitch EventSub] Falha ao reconectar: %v", err)
+			helpers.Logf(helpers.ERROR, "[Twitch EventSub] Error reconnecting: %v", err)
 			time.Sleep(5 * time.Second)
 			connectToEventSub()
 			return
@@ -271,7 +306,7 @@ func connectToEventSub() {
 		go listenToEventSub(conn)
 		//EventSubConn = conn
 	}
-	helpers.Printf(helpers.Twitch, "[Twitch EventSub] Conexão WebSocket aberta com sucesso!")
+	helpers.Printf(helpers.Twitch, "[Twitch EventSub] WebSocket connection opened successfully!")
 	eventSubMu.Unlock()
 
 	go listenToEventSub(conn)
@@ -283,37 +318,49 @@ func listenToEventSub(conn *websocket.Conn) {
 		if conn != nil {
 			conn.Close()
 		}
-		helpers.Printf(helpers.Twitch, "[Twitch EventSub] Leitura encerrada.")
+		helpers.Printf(helpers.Twitch, "[Twitch EventSub] Reading ended.")
 		connectToEventSub()
 	}()
 
 	for {
 		_, msg, err := conn.ReadMessage()
 		if err != nil {
-			helpers.Logf(helpers.ERROR, "[Twitch EventSub] erro de leitura: %v", err)
+			helpers.Logf(helpers.ERROR, "[Twitch EventSub] Read error: %v", err)
 			break // <- Sai naturalmente do loop
 		}
 
 		var base map[string]any
 		if err := json.Unmarshal(msg, &base); err != nil {
-			helpers.Logf(helpers.ERROR, "[Twitch EventSub] Erro ao decodificar JSON: %v", err)
+			helpers.Logf(helpers.ERROR, "[Twitch EventSub] Error decoding JSON: %v", err)
 			continue
 		}
 
 		meta, ok := base["metadata"].(map[string]any)
 		if !ok {
-			helpers.Logf(helpers.ERROR, "[Twitch EventSub] Metadata !ok")
+			helpers.Logf(helpers.ERROR, "[Twitch EventSub] Metadata type assertion failed")
 			continue
 		}
 
-		handler := messageHandlers[meta["message_type"].(string)]
+		msgType, ok := meta["message_type"].(string)
+		if !ok {
+			helpers.Logf(helpers.ERROR, "[Twitch EventSub] Invalid message_type")
+			continue
+		}
+
+		handler := messageHandlers[msgType]
 
 		if handler == nil {
-			helpers.Logf(helpers.ERROR, "[TWITCH EventSub] Handler not found %s", meta["message_type"])
+			helpers.Logf(helpers.ERROR, "[TWITCH EventSub] Handler not found %s", msgType)
 			continue
 		}
 
-		handler(base["payload"].(map[string]any), base["metadata"].(map[string]any))
+		payload, ok := base["payload"].(map[string]any)
+		if !ok {
+			helpers.Logf(helpers.ERROR, "[Twitch EventSub] Invalid payload type")
+			continue
+		}
+
+		handler(payload, meta)
 	}
 
 	helpers.Logf(helpers.INFO, "[TWITCH EventSub] Is not in the loop!")
@@ -337,7 +384,7 @@ func subscribeToEvents() {
 	e := globals.GetState().GetData("TwitchSubEventsConnectedEvents")
 	events := []string{}
 	if e != nil {
-		events = e.([]string)
+		events, _ = e.([]string)
 	}
 
 	oldSubs, _ := GetEventSubscriptions()
@@ -354,10 +401,20 @@ func subscribeToEvents() {
 		data.Type = name
 		data.Version = 1
 		if sub["version"] != nil {
-			data.Version = sub["version"].(float64)
+			if v, ok := sub["version"].(float64); ok {
+				data.Version = v
+			}
 		}
-		jsonData, _ := json.Marshal(data)
-		req, _ := http.NewRequest("POST", urlAPIEventSub, bytes.NewBuffer(jsonData))
+		jsonData, err := json.Marshal(data)
+		if err != nil {
+			helpers.Logf(helpers.ERROR, "[TWITCH] subscribe json.Marshal failed: %v", err)
+			continue
+		}
+		req, err := http.NewRequest("POST", urlAPIEventSub, bytes.NewBuffer(jsonData))
+		if err != nil {
+			helpers.Logf(helpers.ERROR, "[TWITCH] subscribe http.NewRequest failed: %v", err)
+			continue
+		}
 		AddAuthHeaders(req)
 		req.Header.Set("Content-Type", "application/json")
 		resp, err := http.DefaultClient.Do(req)
@@ -367,25 +424,41 @@ func subscribeToEvents() {
 		}
 		defer resp.Body.Close()
 		if resp.StatusCode != 204 {
-			body, _ := io.ReadAll(resp.Body)
+			body, err := io.ReadAll(resp.Body)
+			if err != nil {
+				helpers.Logf(helpers.ERROR, "[TWITCH] sub io.ReadAll failed: %v", err)
+				continue
+			}
 			var d struct {
 				Error   string `json:"error"`
 				Status  int    `json:"status"`
 				Message string `json:"message"`
 				Data    []any  `json:"data"`
 			}
-			_ = json.Unmarshal(body, &d)
+			if err := json.Unmarshal(body, &d); err != nil {
+				helpers.Logf(helpers.ERROR, "[TWITCH] sub json.Unmarshal failed: %v", err)
+			}
 
 			if d.Status != 0 || len(d.Data) == 0 {
 				helpers.Logf(helpers.ERROR, "[TWITCH EventSub] %s: %s", d.Error, d.Message)
 				continue
 			}
 
-			cd := d.Data[0].(map[string]any)
-			events = append(events, cd["type"].(string))
+			cd, ok := d.Data[0].(map[string]any)
+			if !ok {
+				continue
+			}
+			eventType, ok := cd["type"].(string)
+			if ok {
+				events = append(events, eventType)
+			}
 
-			if cd["max_total_cost"] != nil && cd["total_cost"] != nil && cd["max_total_cost"].(float64) < cd["total_cost"].(float64) {
-				helpers.Logf(helpers.ERROR, "Twitch max cost reached!")
+			if cd["max_total_cost"] != nil && cd["total_cost"] != nil {
+				maxCost, maxOk := cd["max_total_cost"].(float64)
+				cost, costOk := cd["total_cost"].(float64)
+				if maxOk && costOk && maxCost < cost {
+					helpers.Logf(helpers.ERROR, "Twitch max cost reached!")
+				}
 			}
 		}
 		globals.GetState().SetData("TwitchSubEventsConnectedEvents", events)

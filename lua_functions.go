@@ -9,9 +9,35 @@ import (
 	"MyStreamBot/services/twitch"
 	"MyStreamBot/services/youtube"
 	"encoding/json"
+	"strings"
 
 	lua "github.com/yuin/gopher-lua"
 )
+
+type TwitchStateLuaData struct {
+	UserID                 string
+	UserLogin              string
+	DisplayName            string
+	Type                   string
+	BroadcasterType        string
+	Description            string
+	ProfileImageURL        string
+	ProfileOfflineImageURL string
+}
+
+type TwitchStreamLuaData struct {
+	ID           string
+	GameId       string
+	GameName     string
+	Type         string
+	Title        string
+	Tags         []string
+	ViewerCount  int32
+	StartedAt    string
+	Language     string
+	ThumbnailURL string
+	IsMature     bool
+}
 
 var KickFunctionList = []services.LuaFunction{
 	{Name: "get_user", Fn: kick.GetUser},
@@ -20,11 +46,46 @@ var KickFunctionList = []services.LuaFunction{
 }
 
 var YouTubeFunctionList = []services.LuaFunction{
+	{Name: "get_state", Fn: func() []globals.YouTubeChannel {
+		return globals.GetState().GetYouTubeUser().Channels
+	}},
 	{Name: "get_current_youtube_channel", Fn: youtube.GetCurrentYouTubeChannel},
 	{Name: "get_current_streamings", Fn: youtube.GetCurrentStreamings},
 }
 
 var TwitchFunctionList = []services.LuaFunction{
+	{Name: "get_state", Fn: func() TwitchStateLuaData {
+		state := globals.GetState().GetTwitchUser()
+		return TwitchStateLuaData{
+			UserID:                 state.UserID,
+			UserLogin:              state.UserLogin,
+			DisplayName:            state.DisplayName,
+			Type:                   state.Type,
+			BroadcasterType:        state.BroadcasterType,
+			Description:            state.Description,
+			ProfileImageURL:        state.ProfileImageURL,
+			ProfileOfflineImageURL: state.ProfileOfflineImageURL,
+		}
+	}},
+	{Name: "get_cache_stream", Fn: func() TwitchStreamLuaData {
+		stream := globals.GetState().GetTwitchUser().StreamDetails
+		if stream == nil {
+			return TwitchStreamLuaData{}
+		}
+		return TwitchStreamLuaData{
+			ID:           stream.ID,
+			GameId:       stream.GameId,
+			GameName:     stream.GameName,
+			Type:         stream.Type,
+			Title:        stream.Title,
+			Tags:         stream.Tags,
+			ViewerCount:  stream.ViewerCount,
+			StartedAt:    stream.StartedAt,
+			Language:     stream.Language,
+			ThumbnailURL: stream.ThumbnailURL,
+			IsMature:     stream.IsMature,
+		}
+	}},
 	{Name: "get_cache_user_chat_color", Fn: twitch.GetCacheUserChatColor},
 	{Name: "get_user_data", Fn: twitch.GetUserData},
 	{Name: "get_user_data_by_id", Fn: twitch.GetUserDataById},
@@ -33,6 +94,8 @@ var TwitchFunctionList = []services.LuaFunction{
 		return twitch.GetFollowersData("", userId)
 	}},
 	{Name: "get_channel_stream_data", Fn: twitch.GetChannelStreamData},
+	{Name: "ban_user", Fn: twitch.BanUser},
+	{Name: "delete_message", Fn: twitch.DeleteMessage},
 }
 
 func RegisterLuaFunctions(L *lua.LState) {
@@ -44,8 +107,12 @@ func RegisterLuaFunctions(L *lua.LState) {
 			}
 
 			table := L.CheckTable(2)
-			jsonData, _ := json.Marshal(mlua.TableToMap(table))
-			helpers.Logf(helpers.DEBUG, "[LUA g.log] %s: %s", L.CheckString(1), jsonData)
+			jsonData, err := json.Marshal(mlua.TableToMap(table))
+			if err != nil {
+				helpers.Logf(helpers.ERROR, "[LUA g.log] json.Marshal failed: %v", err)
+			} else {
+				helpers.Logf(helpers.DEBUG, "[LUA g.log] %s: %s", L.CheckString(1), jsonData)
+			}
 			return 0
 		},
 		"print": func(L *lua.LState) int {
@@ -54,8 +121,12 @@ func RegisterLuaFunctions(L *lua.LState) {
 				return 0
 			}
 			table := L.CheckTable(2)
-			jsonData, _ := json.Marshal(mlua.TableToMap(table))
-			helpers.Printf(helpers.Lua, "[LUA g.print] %s: %s", L.CheckString(1), jsonData)
+			jsonData, err := json.Marshal(mlua.TableToMap(table))
+			if err != nil {
+				helpers.Logf(helpers.ERROR, "[LUA g.print] json.Marshal failed: %v", err)
+			} else {
+				helpers.Printf(helpers.Lua, "[LUA g.print] %s: %s", L.CheckString(1), jsonData)
+			}
 			return 0
 		},
 		"socket_send": func(L *lua.LState) int {
@@ -83,6 +154,7 @@ func RegisterLuaFunctions(L *lua.LState) {
 				reply = L.CheckString(4)
 			}
 			helpers.Printf(helpers.Lua, "[LUA g.send_message] {%s} %s: %s [%s]", source, channel, msg, reply)
+			msg = strings.Trim(msg, " ")
 			if source == "twitch" {
 				twitch.SendMessage(msg, channel, reply)
 			}

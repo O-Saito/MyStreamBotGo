@@ -16,12 +16,13 @@ import (
 )
 
 type DynamicEvent struct {
-	mu        sync.RWMutex
-	Name      string
-	Path      string
-	Reloading bool
-	Lua       DynamicEventLua
-	State     DynamicEventState
+	mu         sync.RWMutex
+	Name       string
+	Path       string
+	Reloading  bool
+	Lua        DynamicEventLua
+	State      DynamicEventState
+	Statistics DynamicEventStats
 }
 
 type DynamicEventLua struct {
@@ -44,11 +45,25 @@ type DynamicEventState struct {
 	Interval time.Duration
 }
 
+type DynamicEventStats struct {
+	mu                 sync.RWMutex
+	ProcessedTimes     int
+	ProcessedTotalTime time.Duration
+	LastProcessedTime  time.Duration
+	HighestTime        time.Duration
+	LowestTime         time.Duration
+}
+
 type DynamicEventInfo struct {
-	Name       string         `json:"name"`
-	Paused     bool           `json:"paused"`
-	Interval   time.Duration  `json:"interval"`
-	ModuleData map[string]any `json:"moduleData"`
+	Name               string         `json:"name"`
+	Paused             bool           `json:"paused"`
+	Interval           time.Duration  `json:"interval"`
+	ModuleData         map[string]any `json:"moduleData"`
+	ProcessedTimes     int            `json:"processedTimes"`
+	ProcessedTotalTime time.Duration  `json:"ProcessedTotalTimes"`
+	LastProcessedTime  time.Duration  `json:"LastProcessedTime"`
+	HighestTime        time.Duration  `json:"highestTime"`
+	LowestTime         time.Duration  `json:"lowestTime"`
 }
 
 var (
@@ -59,6 +74,12 @@ var (
 	globalLoopOnce sync.Once
 	stopGlobalLoop chan struct{}
 )
+
+func GetDyEvents() map[string]*DynamicEvent {
+	dynamicEventsMutex.RLock()
+	defer dynamicEventsMutex.RUnlock()
+	return dynamicEvents
+}
 
 func (dev *DynamicEvent) Transfer(new *DynamicEvent) {
 	dev.mu.Lock()
@@ -144,7 +165,7 @@ func (dev *DynamicEvent) ProcessWebsocketEvent(msg any) {
 	LState.SetField(tbl, "payload", ToLValue(LState, msg))
 
 	if err := LState.CallByParam(lua.P{Fn: f, NRet: 0, Protect: true}, tbl); err != nil {
-		helpers.Logf(helpers.ERROR, "[DYNAMIC] Erro no on_event de %s: %v", dev.Name, err)
+		helpers.Logf(helpers.ERROR, "[DYNAMIC] Error in on_event of %s: %v", dev.Name, err)
 	}
 }
 
@@ -164,7 +185,7 @@ func (dev *DynamicEvent) ProcessStart() {
 	}
 
 	if err := LState.CallByParam(lua.P{Fn: f, NRet: 0, Protect: true}); err != nil {
-		helpers.Logf(helpers.ERROR, "[DYNAMIC] Erro no on_start de %s: %v", dev.Name, err)
+		helpers.Logf(helpers.ERROR, "[DYNAMIC] Error in on_start of %s: %v", dev.Name, err)
 	}
 }
 
@@ -177,7 +198,7 @@ func (dev *DynamicEvent) ProcessOnTick() {
 
 	if f != nil {
 		if err := LState.CallByParam(lua.P{Fn: f, NRet: 0, Protect: true}); err != nil {
-			helpers.Logf(helpers.ERROR, "[DYNAMIC] Erro no on_tick de %s: %v", dev.Name, err)
+			helpers.Logf(helpers.ERROR, "[DYNAMIC] Error inor in on_tick of %s: %v", dev.Name, err)
 		}
 	}
 }
@@ -297,19 +318,26 @@ func ListDynamicEvents() []DynamicEventInfo {
 			d = data["data"].(map[string]any)
 		}
 		val.State.mu.RLock()
+		val.Statistics.mu.RLock()
 		events = append(events, DynamicEventInfo{
-			Name:       name,
-			Paused:     val.State.Paused,
-			Interval:   val.State.Interval,
-			ModuleData: d,
+			Name:               name,
+			Paused:             val.State.Paused,
+			Interval:           val.State.Interval,
+			ModuleData:         d,
+			ProcessedTimes:     val.Statistics.ProcessedTimes,
+			ProcessedTotalTime: val.Statistics.ProcessedTotalTime,
+			LastProcessedTime:  val.Statistics.LastProcessedTime,
+			HighestTime:        val.Statistics.HighestTime,
+			LowestTime:         val.Statistics.LowestTime,
 		})
 		val.State.mu.RUnlock()
+		val.Statistics.mu.RUnlock()
 	}
 
 	return events
 }
 
-func UpdateDynamicEvent(event DynamicEventInfo) error {
+func UpdateDynamicEvent(event *DynamicEventInfo) error {
 	dynamicEventsMutex.Lock()
 	defer dynamicEventsMutex.Unlock()
 	if ev, exists := dynamicEvents[event.Name]; exists {
@@ -324,13 +352,44 @@ func UpdateDynamicEvent(event DynamicEventInfo) error {
 	return os.ErrNotExist
 }
 
-// Chamado de loadAllModules
+func SaveDynamicEvents() {
+	dynamicEventsMutex.RLock()
+	defer dynamicEventsMutex.RUnlock()
+	for _, val := range dynamicEvents {
+		val.State.mu.Lock()
+		val.Lua.mu.Lock()
+		if val.State.db != nil {
+			val.State.db.Close()
+		}
+		if val.Lua.LState != nil {
+			val.Lua.LState.Close()
+		}
+		val.State.mu.Unlock()
+		val.Lua.mu.Unlock()
+	}
+}
+
+func (des *DynamicEventStats) AddTiming(elapsed time.Duration) {
+	des.mu.Lock()
+	des.ProcessedTimes++
+	des.ProcessedTotalTime += elapsed
+	des.LastProcessedTime = elapsed
+	if elapsed > des.HighestTime {
+		des.HighestTime = elapsed
+	}
+	if des.LowestTime == 0 || elapsed < des.LowestTime {
+		des.LowestTime = elapsed
+	}
+	des.mu.Unlock()
+}
+
+// Called from loadAllModules
 func LoadDyEvents(baseDir string) {
-	helpers.Logf(helpers.DEBUG, "[DYNAMIC] Carregando eventos dinâmicos de %s", baseDir)
+	helpers.Logf(helpers.DEBUG, "[DYNAMIC] Loading dynamic events from %s", baseDir)
 
 	files, err := os.ReadDir(baseDir)
 	if err != nil {
-		helpers.Logf(helpers.ERROR, "[DYNAMIC] Erro ao ler diretório: %v", err)
+		helpers.Logf(helpers.ERROR, "[DYNAMIC] Error reading directory: %v", err)
 		return
 	}
 
@@ -338,71 +397,11 @@ func LoadDyEvents(baseDir string) {
 		if filepath.Ext(file.Name()) != ".lua" {
 			continue
 		}
-		fullPath := filepath.Join(baseDir, file.Name())
 		name := file.Name()
-
-		L := lua.NewState()
-		L.DoString(fmt.Sprintf(`package.path = package.path .. ";%s/modules/?.lua;"`, baseDir))
-		RegisterGlobalState(L)
-
-		dynamicEventsMutex.RLock()
-		for _, f := range globalRegister {
-			f(L)
-		}
-		dynamicEventsMutex.RUnlock()
-
-		eventTable := L.NewTable()
-		L.SetGlobal("ev", eventTable)
-
-		fn, err := L.LoadFile(fullPath)
-		if err != nil {
-			helpers.Logf(helpers.ERROR, "[DYNAMIC] Erro ao carregar %s: %v", name, err)
-			continue
-		}
-
-		if err := L.CallByParam(lua.P{Fn: fn, NRet: 0, Protect: true}); err != nil {
-			helpers.Logf(helpers.ERROR, "[DYNAMIC] Erro executando %s: %v", name, err)
-			continue
-		}
-
-		ev := &DynamicEvent{
-			Name: name,
-			Path: fullPath,
-			Lua: DynamicEventLua{
-				LState:    L,
-				OnStart:   getGlobalFunction(L, "on_start"),
-				OnTick:    getGlobalFunction(L, "on_tick"),
-				OnEvent:   getGlobalFunction(L, "on_event"),
-				OnMessage: getGlobalFunction(L, "on_message"),
-				OnCommand: getGlobalFunction(L, "on_command"),
-				OnRequest: getGlobalFunction(L, "on_request"),
-			},
-			State: DynamicEventState{
-				NextTick: time.Now().Add(time.Second),
-				Interval: time.Second, // padrão
-				Paused:   true,        // padrão
-				db:       nil,
-			},
-		}
-
-		setFunctionOnTable(ev, eventTable)
-
-		oldEvent := dynamicEvents[name]
-		if oldEvent != nil {
-			oldEvent.Transfer(ev)
-			oldEvent.Close()
-		}
-
-		dynamicEventsMutex.Lock()
-		dynamicEvents[name] = ev
-		dynamicEventsMutex.Unlock()
-
-		helpers.Logf(helpers.DEBUG, "[DYNAMIC] Evento carregado: %s", name)
-
-		ev.ProcessStart()
+		LoadDyEventModule(baseDir, name)
 	}
 
-	// Inicia o loop global apenas uma vez
+	// Start global loop only once
 	dynamicEventsMutex.RLock()
 	defer dynamicEventsMutex.RUnlock()
 	if len(dynamicEvents) > 0 {
@@ -411,6 +410,70 @@ func LoadDyEvents(baseDir string) {
 			go globalEventLoop()
 		})
 	}
+}
+
+func LoadDyEventModule(folder, fileName string) {
+	fullPath := filepath.Join(folder, fileName)
+	helpers.Logf(helpers.INFO, "LoadDyEventModule %s %s [%s]", folder, fileName, fullPath)
+	L := lua.NewState()
+	L.DoString(fmt.Sprintf(`package.path = package.path .. ";%s/modules/?.lua;"`, folder))
+	RegisterGlobalState(L)
+
+	dynamicEventsMutex.RLock()
+	for _, f := range globalRegister {
+		f(L)
+	}
+	dynamicEventsMutex.RUnlock()
+
+	eventTable := L.NewTable()
+	L.SetGlobal("ev", eventTable)
+
+	fn, err := L.LoadFile(fullPath)
+	if err != nil {
+		helpers.Logf(helpers.ERROR, "[DYNAMIC] Error loading %s: %v", fileName, err)
+		return
+	}
+
+	if err := L.CallByParam(lua.P{Fn: fn, NRet: 0, Protect: true}); err != nil {
+		helpers.Logf(helpers.ERROR, "[DYNAMIC] Error executing %s: %v", fileName, err)
+		return
+	}
+
+	ev := &DynamicEvent{
+		Name: fileName,
+		Path: fullPath,
+		Lua: DynamicEventLua{
+			LState:    L,
+			OnStart:   getGlobalFunction(L, "on_start"),
+			OnTick:    getGlobalFunction(L, "on_tick"),
+			OnEvent:   getGlobalFunction(L, "on_event"),
+			OnMessage: getGlobalFunction(L, "on_message"),
+			OnCommand: getGlobalFunction(L, "on_command"),
+			OnRequest: getGlobalFunction(L, "on_request"),
+		},
+		State: DynamicEventState{
+			NextTick: time.Now().Add(time.Second),
+			Interval: time.Second, // default
+			Paused:   true,        // default
+			db:       nil,
+		},
+	}
+
+	setFunctionOnTable(ev, eventTable)
+
+	oldEvent := dynamicEvents[fileName]
+	if oldEvent != nil {
+		oldEvent.Transfer(ev)
+		oldEvent.Close()
+	}
+
+	dynamicEventsMutex.Lock()
+	dynamicEvents[fileName] = ev
+	dynamicEventsMutex.Unlock()
+
+	helpers.Logf(helpers.DEBUG, "[DYNAMIC] Event loaded: %s", fileName)
+
+	ev.ProcessStart()
 }
 
 func setFunctionOnTable(ev *DynamicEvent, tbl *lua.LTable) {
@@ -556,7 +619,17 @@ func setFunctionOnTable(ev *DynamicEvent, tbl *lua.LTable) {
 
 }
 
-// Loop único para todos os eventos
+// Allow internal websocket events
+func HandleDyEventWebsocket(msg any) {
+	dynamicEventsMutex.RLock()
+	defer dynamicEventsMutex.RUnlock()
+
+	for _, ev := range dynamicEvents {
+		ev.ProcessWebsocketEvent(msg)
+	}
+}
+
+// Single loop for all events
 func globalEventLoop() {
 	helpers.Log(helpers.INFO, "Started dyevent global event loop!")
 	ticker := time.NewTicker((1 * time.Second) / 60)
@@ -592,16 +665,6 @@ func globalEventLoop() {
 			}
 			dynamicEventsMutex.RUnlock()
 		}
-	}
-}
-
-// Permite eventos do websocket interno
-func HandleDyEventWebsocket(msg any) {
-	dynamicEventsMutex.RLock()
-	defer dynamicEventsMutex.RUnlock()
-
-	for _, ev := range dynamicEvents {
-		ev.ProcessWebsocketEvent(msg)
 	}
 }
 

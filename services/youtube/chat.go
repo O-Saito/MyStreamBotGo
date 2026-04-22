@@ -64,7 +64,11 @@ func defaultUserColor(username string) string {
 
 func FetchLiveChatMessages(liveChatID, pageToken string) (*YouTubeLiveChatMessagesResponse, error) {
 	baseURL := "https://www.googleapis.com/youtube/v3/liveChat/messages"
-	req, _ := http.NewRequest("GET", baseURL, nil)
+	req, err := http.NewRequest("GET", baseURL, nil)
+	if err != nil {
+		helpers.Logf(helpers.ERROR, "[YOUTUBE] FetchLiveChatMessages http.NewRequest failed: %v", err)
+		return nil, err
+	}
 
 	q := req.URL.Query()
 	q.Add("liveChatId", liveChatID)
@@ -115,11 +119,17 @@ func ListenToChat(id string) {
 				if userColor == nil {
 					userColor = make(map[string]any)
 				}
-				if userColor.(map[string]any)[messagedata.User] == nil {
-					userColor.(map[string]any)[messagedata.User] = defaultUserColor(messagedata.User)
-					state.SetData("youtube-user-color", userColor)
+				userColorMap, ok := userColor.(map[string]any)
+				if !ok {
+					userColorMap = make(map[string]any)
 				}
-				messagedata.Metadata["color"] = userColor.(map[string]any)[messagedata.User]
+				if userColorMap[messagedata.User] == nil {
+					userColorMap[messagedata.User] = defaultUserColor(messagedata.User)
+					state.SetData("youtube-user-color", userColorMap)
+				}
+				if colorVal, ok := userColorMap[messagedata.User].(string); ok {
+					messagedata.Metadata["color"] = colorVal
+				}
 			}
 
 			globals.ChatQueue <- messagedata

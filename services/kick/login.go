@@ -57,11 +57,16 @@ func HandleLogin() {
 
 		resp, err := http.PostForm("https://id.kick.com/oauth/token", data)
 		if err != nil {
-			http.Error(w, "Erro token: "+err.Error(), 500)
+			http.Error(w, "Token error: "+err.Error(), 500)
 			return
 		}
 		defer resp.Body.Close()
-		body, _ := io.ReadAll(resp.Body)
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			helpers.Logf(helpers.ERROR, "[KICK] login io.ReadAll failed: %v", err)
+			http.Error(w, "Error reading response: "+err.Error(), 500)
+			return
+		}
 
 		helpers.Printf(helpers.Reset, "[KICK LOGIN] TOKEN: %s", body)
 		var tokenResp struct {
@@ -71,7 +76,11 @@ func HandleLogin() {
 			ExpiresIn    int    `json:"expires_in"`
 			Scope        string `json:"scope"`
 		}
-		json.Unmarshal(body, &tokenResp)
+		if err := json.Unmarshal(body, &tokenResp); err != nil {
+			helpers.Logf(helpers.ERROR, "[KICK] login json.Unmarshal failed: %v", err)
+			http.Error(w, "Error processing response: "+err.Error(), 500)
+			return
+		}
 
 		helpers.Printf(helpers.Reset, "[KICK LOGIN] Login: access_token: %s; token_type: %s; refresh_token: %s; expires: %d; scope: %s", tokenResp.AccessToken, tokenResp.TokenType, tokenResp.RefreshToken, tokenResp.ExpiresIn, tokenResp.Scope)
 		TokenMutex.Lock()
@@ -81,8 +90,8 @@ func HandleLogin() {
 
 		var userData, uErr = GetChannel(0, nil)
 		if uErr != nil {
-			log.Println("Erro ao obter info Kick:", uErr)
-			http.Error(w, "Erro ao obter info do usuário", 500)
+			log.Println("Error getting Kick info:", uErr)
+			http.Error(w, "Error getting user info", 500)
 			return
 		}
 
@@ -90,8 +99,8 @@ func HandleLogin() {
 		UserLogin = userData.Slug
 
 		close(LoginDone)
-		fmt.Fprintf(w, "Login Kick concluído! Pode fechar esta página.\r\n")
-		helpers.Printf(helpers.Reset, "[KICK LOGIN] Login concluído: %s (ID: %d)", UserLogin, UserID)
+		fmt.Fprintf(w, "Login Kick completed! You may close this page.\r\n")
+		helpers.Printf(helpers.Reset, "[KICK LOGIN] Login completed: %s (ID: %d)", UserLogin, UserID)
 
 		if err := Connect(); err != nil {
 			log.Fatal(err)

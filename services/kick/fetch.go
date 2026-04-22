@@ -2,6 +2,7 @@ package kick
 
 import (
 	"MyStreamBot/globals"
+	"MyStreamBot/helpers"
 	"bytes"
 	"encoding/json"
 	"fmt"
@@ -67,18 +68,32 @@ func GetUser(userId string) (UserData, error) {
 	if userId != "" {
 		url += fmt.Sprintf("?broadcaster_user_id=%s", userId)
 	}
-	req, _ := http.NewRequest("GET", url, nil)
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		helpers.Logf(helpers.ERROR, "[KICK] GetUser http.NewRequest failed: %v", err)
+		return UserData{}, err
+	}
 	resp, err := DoRequest(req)
 	if err != nil {
+		helpers.Logf(helpers.DEBUG, "[KICK] GetUser: userId=%v", userId)
 		return UserData{}, err
 	}
 	defer resp.Body.Close()
 
 	var u UserDataResponse
-	body, _ := io.ReadAll(resp.Body)
-	json.Unmarshal(body, &u)
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		helpers.Logf(helpers.DEBUG, "[KICK] GetUser: userId=%v", userId)
+		helpers.Logf(helpers.ERROR, "[KICK] GetUser io.ReadAll failed: %v", err)
+		return UserData{}, err
+	}
+	if err := json.Unmarshal(body, &u); err != nil {
+		helpers.Logf(helpers.DEBUG, "[KICK] GetUser: userId=%v", userId)
+		helpers.Logf(helpers.ERROR, "[KICK] GetUser json.Unmarshal failed: %v", err)
+		return UserData{}, err
+	}
 	if len(u.Data) == 0 {
-		return UserData{}, fmt.Errorf("canal não encontrado")
+		return UserData{}, fmt.Errorf("GetUser(%v): user not found", userId)
 	}
 	return u.Data[0], nil
 }
@@ -91,35 +106,63 @@ func GetChannel(streamerId int, slug *string) (ChannelData, error) {
 	if slug != nil {
 		url += fmt.Sprintf("?slug=%s", *slug)
 	}
-	req, _ := http.NewRequest("GET", url, nil)
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		helpers.Logf(helpers.ERROR, "[KICK] GetChannel http.NewRequest failed: %v", err)
+		return ChannelData{}, err
+	}
 	resp, err := DoRequest(req)
 	if err != nil {
+		helpers.Logf(helpers.DEBUG, "[KICK] GetChannel: streamerId=%v, slug=%v", streamerId, slug)
 		return ChannelData{}, err
 	}
 	defer resp.Body.Close()
 
 	var u ChannelDataResponse
-	body, _ := io.ReadAll(resp.Body)
-	json.Unmarshal(body, &u)
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		helpers.Logf(helpers.DEBUG, "[KICK] GetChannel: streamerId=%v, slug=%v", streamerId, slug)
+		helpers.Logf(helpers.ERROR, "[KICK] GetChannel io.ReadAll failed: %v", err)
+		return ChannelData{}, err
+	}
+	if err := json.Unmarshal(body, &u); err != nil {
+		helpers.Logf(helpers.DEBUG, "[KICK] GetChannel: streamerId=%v, slug=%v", streamerId, slug)
+		helpers.Logf(helpers.ERROR, "[KICK] GetChannel json.Unmarshal failed: %v", err)
+		return ChannelData{}, err
+	}
 	if len(u.Data) == 0 {
-		return ChannelData{}, fmt.Errorf("canal não encontrado")
+		return ChannelData{}, fmt.Errorf("GetChannel(streamerId=%d, slug=%v): channel not found", streamerId, slug)
 	}
 	return u.Data[0], nil
 }
 
 func GetChatroom(slug string) (ChatroomData, error) {
 	url := fmt.Sprintf("https://api.kick.com/public/v1/channels?slug=%s", slug)
-	req, _ := http.NewRequest("GET", url, nil)
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		helpers.Logf(helpers.ERROR, "[KICK] GetChatroom http.NewRequest failed: %v", err)
+		return ChatroomData{}, err
+	}
 	req.Header.Set("Client-Id", globals.GetConfig().KickClientID)
 	resp, err := DoRequest(req)
 	if err != nil {
+		helpers.Logf(helpers.DEBUG, "[KICK] GetChatroom: slug=%v", slug)
 		return ChatroomData{}, err
 	}
 	defer resp.Body.Close()
 
 	var u ChatroomData
-	body, _ := io.ReadAll(resp.Body)
-	json.Unmarshal(body, &u)
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		helpers.Logf(helpers.DEBUG, "[KICK] GetChatroom: slug=%v", slug)
+		helpers.Logf(helpers.ERROR, "[KICK] GetChatroom io.ReadAll failed: %v", err)
+		return ChatroomData{}, err
+	}
+	if err := json.Unmarshal(body, &u); err != nil {
+		helpers.Logf(helpers.DEBUG, "[KICK] GetChatroom: slug=%v", slug)
+		helpers.Logf(helpers.ERROR, "[KICK] GetChatroom json.Unmarshal failed: %v", err)
+		return ChatroomData{}, err
+	}
 	return u, nil
 }
 
@@ -130,17 +173,35 @@ func PostMessage(msg Message) error {
 		"content":             msg.Text,
 		"type":                "user",
 	}
-	jsonData, _ := json.Marshal(data)
-	req, _ := http.NewRequest("POST", url, bytes.NewBuffer(jsonData))
+	jsonData, err := json.Marshal(data)
+	if err != nil {
+		helpers.Logf(helpers.ERROR, "[KICK] PostMessage json.Marshal failed: %v", err)
+		return err
+	}
+	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonData))
+	if err != nil {
+		helpers.Logf(helpers.ERROR, "[KICK] PostMessage http.NewRequest failed: %v", err)
+		return err
+	}
 	req.Header.Set("Content-Type", "application/json")
 	resp, err := DoRequest(req)
 	if err != nil {
+		helpers.Logf(helpers.DEBUG, "[KICK] PostMessage: msg.Text=%v", msg.Text)
 		return err
 	}
 	defer resp.Body.Close()
 
 	var u ChatroomData
-	body, _ := io.ReadAll(resp.Body)
-	json.Unmarshal(body, &u)
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		helpers.Logf(helpers.DEBUG, "[KICK] PostMessage: msg.Text=%v", msg.Text)
+		helpers.Logf(helpers.ERROR, "[KICK] PostMessage io.ReadAll failed: %v", err)
+		return err
+	}
+	if err := json.Unmarshal(body, &u); err != nil {
+		helpers.Logf(helpers.DEBUG, "[KICK] PostMessage: msg.Text=%v", msg.Text)
+		helpers.Logf(helpers.ERROR, "[KICK] PostMessage json.Unmarshal failed: %v", err)
+		return err
+	}
 	return nil
 }

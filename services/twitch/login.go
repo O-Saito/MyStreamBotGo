@@ -42,14 +42,14 @@ func HandleLogin() {
 
 	currentAccess, err := globals.GetGlobalDB().GetToken("twitch")
 	if err != nil {
-		helpers.Logf(helpers.ERROR, "[TWITCH HANDLELOGIN] Falha ao buscar access token %s", err.Error())
+		helpers.Logf(helpers.ERROR, "[TWITCH HANDLELOGIN] Failed to fetch access token: %s", err.Error())
 	}
 
 	if currentAccess != nil {
 		data, err := ValidateAccessToken(currentAccess.AccessToken)
 		helpers.Printf(helpers.Twitch, "[TWITCH LOG VALIDATE ACCESS TOKEN] %v", data)
 		if err != nil {
-			helpers.Logf(helpers.ERROR, "[TWITCH HANDLELOGIN] Falha ao validar access token %s", err.Error())
+			helpers.Logf(helpers.ERROR, "[TWITCH HANDLELOGIN] Failed to validate access token: %s", err.Error())
 		}
 
 		reconnect := true
@@ -66,7 +66,7 @@ func HandleLogin() {
 				reconnect = false
 				err := initTwitchUser(currentAccess.AccessToken)
 				if err != nil {
-					helpers.Logf(helpers.ERROR, "[TWITCH HANDLELOGIN] Falha ao inicializar twitch user")
+					helpers.Logf(helpers.ERROR, "[TWITCH HANDLELOGIN] Failed to initialize Twitch user")
 				}
 			}
 		}
@@ -74,13 +74,13 @@ func HandleLogin() {
 		if reconnect {
 			d, err := RefreshToken(currentAccess.RefreshToken)
 			if err != nil {
-				helpers.Logf(helpers.ERROR, "[TWITCH HANDLELOGIN] Falha ao buscar token %s", err.Error())
+				helpers.Logf(helpers.ERROR, "[TWITCH HANDLELOGIN] Failed to fetch token: %s", err.Error())
 			}
 			initTwitchUser(d.AccessToken)
 		}
 	}
 
-	// Endpoint que redireciona para Twitch
+	// Endpoint that redirects to Twitch
 	http.HandleFunc("/twitch/login", func(w http.ResponseWriter, r *http.Request) {
 		authURL := fmt.Sprintf(
 			"https://id.twitch.tv/oauth2/authorize?client_id=%s&redirect_uri=%s&response_type=code&scope=%s",
@@ -88,11 +88,11 @@ func HandleLogin() {
 			url.QueryEscape(redirectURI),
 			url.QueryEscape(scopes),
 		)
-		helpers.Printf(helpers.Twitch, "[TWITCH LOGIN] Abrindo URL de login: %s", authURL)
+		helpers.Printf(helpers.Twitch, "[TWITCH LOGIN] Opening login URL: %s", authURL)
 		http.Redirect(w, r, authURL, http.StatusFound)
 	})
 
-	// Callback da Twitch
+	// Twitch callback
 	http.HandleFunc("/twitch/callback", func(w http.ResponseWriter, r *http.Request) {
 		code := r.URL.Query().Get("code")
 		if code == "" {
@@ -109,11 +109,16 @@ func HandleLogin() {
 
 		resp, err := http.PostForm("https://id.twitch.tv/oauth2/token", data)
 		if err != nil {
-			http.Error(w, "Erro token: "+err.Error(), 500)
+			http.Error(w, "Token error: "+err.Error(), 500)
 			return
 		}
 		defer resp.Body.Close()
-		body, _ := io.ReadAll(resp.Body)
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			helpers.Logf(helpers.ERROR, "[TWITCH] login io.ReadAll failed: %v", err)
+			http.Error(w, "Error reading response: "+err.Error(), 500)
+			return
+		}
 
 		var tokenResp struct {
 			AccessToken  string `json:"access_token"`
@@ -121,22 +126,26 @@ func HandleLogin() {
 			RefreshToken string `json:"refresh_token"`
 		}
 
-		json.Unmarshal(body, &tokenResp)
+		if err := json.Unmarshal(body, &tokenResp); err != nil {
+			helpers.Logf(helpers.ERROR, "[TWITCH] login json.Unmarshal failed: %v", err)
+			http.Error(w, "Error processing response: "+err.Error(), 500)
+			return
+		}
 		Token := tokenResp.AccessToken
 
 		sqlErr := globals.GetGlobalDB().SaveToken("twitch", tokenResp.AccessToken, tokenResp.RefreshToken, time.Now().Add(time.Duration(tokenResp.Expires)*time.Second))
 
 		if sqlErr != nil {
-			helpers.Logf(helpers.ERROR, "[TWITCH LOGIN] Falha ao salvar refresh token %s", sqlErr.Error())
+			helpers.Logf(helpers.ERROR, "[TWITCH LOGIN] Failed to save refresh token: %s", sqlErr.Error())
 		}
 
 		initError := initTwitchUser(Token)
 		if initError != nil {
-			http.Error(w, "Falha ao fazer login: "+initError.Error(), http.StatusTeapot)
+			http.Error(w, "Failed to login: "+initError.Error(), http.StatusTeapot)
 			return
 		}
 
-		fmt.Fprintf(w, "Login concluído! Pode fechar esta página.")
+		fmt.Fprintf(w, "Login completed! You may close this page.")
 	})
 }
 
@@ -156,7 +165,11 @@ func RefreshToken(refreshToken string) (*struct {
 		return nil, err
 	}
 	defer resp.Body.Close()
-	body, _ := io.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		helpers.Logf(helpers.ERROR, "[TWITCH] login io.ReadAll failed: %v", err)
+		return nil, err
+	}
 
 	var tokenResp struct {
 		AccessToken  string `json:"access_token"`
@@ -164,15 +177,18 @@ func RefreshToken(refreshToken string) (*struct {
 		RefreshToken string `json:"refresh_token"`
 	}
 
-	json.Unmarshal(body, &tokenResp)
+	if err := json.Unmarshal(body, &tokenResp); err != nil {
+		helpers.Logf(helpers.ERROR, "[TWITCH] login json.Unmarshal failed: %v", err)
+		return nil, err
+	}
 
 	if tokenResp.AccessToken == "" {
-		return nil, fmt.Errorf("[TWITCH] token de acesso vazio")
+		return nil, fmt.Errorf("[TWITCH] empty access token")
 	}
 
 	sqlErr := globals.GetGlobalDB().SaveToken("twitch", tokenResp.AccessToken, tokenResp.RefreshToken, time.Now().Add(time.Duration(tokenResp.Expires)*time.Second))
 	if sqlErr != nil {
-		helpers.Logf(helpers.ERROR, "[TWITCH] Falha ao salvar token %s", sqlErr.Error())
+		helpers.Logf(helpers.ERROR, "[TWITCH] Failed to save token: %s", sqlErr.Error())
 	}
 
 	user := globals.GetState().GetTwitchUser()

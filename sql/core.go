@@ -29,7 +29,7 @@ func NewCoreDB(fileName string) (*CoreDB, error) {
 		return nil, err
 	}
 
-	// WAL melhora segurança e velocidade
+	// WAL improves security and speed
 	_, _ = db.Exec(`PRAGMA journal_mode = WAL;`)
 	_, _ = db.Exec(`PRAGMA busy_timeout = 5000;`)
 
@@ -123,7 +123,7 @@ func (c *CoreDB) KVSet(key string, value any) error {
 
 	nvalue, err := json.Marshal(value)
 	if err != nil {
-		return fmt.Errorf("kvset failed to parse")
+		return fmt.Errorf("KVSet(%s, %+v): failed to marshal value: %w", key, value, err)
 	}
 	_, nerr := c.db.Exec(`
         INSERT INTO kv (key, value)
@@ -137,4 +137,8 @@ func (c *CoreDB) KVSet(key string, value any) error {
 func (c *CoreDB) KVDelete(key string) error {
 	_, err := c.db.Exec(`DELETE FROM kv WHERE key=?;`, key)
 	return err
+}
+
+func (c *CoreDB) Close() error {
+	return c.db.Close()
 }

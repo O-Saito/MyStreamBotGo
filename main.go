@@ -10,6 +10,9 @@ import (
 	"MyStreamBot/services/twitch"
 	"MyStreamBot/services/youtube"
 	"MyStreamBot/sql"
+	"os"
+	"os/signal"
+	"syscall"
 )
 
 var (
@@ -19,6 +22,12 @@ var (
 )
 
 func main() {
+	defer func() {
+		if r := recover(); r != nil {
+			helpers.Logf(helpers.ERROR, "[MAIN] panic: %v", r)
+		}
+	}()
+
 	kick.Channels = []kick.IrcChannel{}
 	twitch.Channels = []string{}
 
@@ -29,33 +38,48 @@ func main() {
 
 	db, err := sql.NewCoreDB(globals.GetConfig().DBName)
 	if err != nil {
-		panic(err)
+		helpers.Logf(helpers.ERROR, "[MAIN] Failed to connect to database: %v", err)
+		helpers.Log(helpers.ERROR, "[MAIN] Exiting due to unrecoverable error")
+		os.Exit(1)
 	}
 	globals.SetGlobalDB(db)
 
 	RegisterSocketHandlers()
 
-	// Inicializa o package mlua
+	// Initialize mlua package
 	mlua.Init(RegisterLuaFunctions, RegisterServiceAPIs)
 
-	// Carrega todos os módulos Lua e inicia hotreload
+	// Load all Lua modules and start hotreload
 	mlua.LoadAllModules()
 	mlua.StartWatcher()
 
-	// Inicia goroutines de consumo das filas
+	// Start queue consumer goroutines
 	go processors.ProcessChatQueue()
 	go processors.ProcessCommandQueue()
 	go processors.ProcessEventQueue()
-	go mlua.ProcessDyEventQueue()
-	go mlua.ProcessLuaRequest()
+	go processors.ProcessDyEventQueue()
+	go processors.ProcessLuaRequest()
 
-	// iniciar servidor web
+	// start web server
 	goweb.StartHTTPServer()
 
-	// iniciar login Twitch
+	// start Twitch login
 	twitch.HandleLogin()
 	kick.HandleLogin()
 	youtube.HandleLogin()
 
-	select {} // manter aplicação rodando
+	//select {} // keep application running
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	<-quit
+
+	// 3. Gracefully shutdown with 10s timeout
+	//ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	//defer cancel()
+
+	helpers.Logf(helpers.DEBUG, "Closing...")
+
+	db.Close()
+	mlua.SaveDynamicEvents()
+	twitch.Close()
 }

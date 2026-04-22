@@ -14,7 +14,7 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-// variaveis globais do streamer logado
+// Global variables for the logged-in streamer
 var Token string
 var UserID int
 var UserLogin string
@@ -73,20 +73,34 @@ var ircHandlers = map[string]func(km KickMessage, data map[string]any){
 		}
 	},
 	"App\\Events\\ChatMessageEvent": func(km KickMessage, data map[string]any) {
-		sender := data["sender"].(map[string]any)
+		sender, ok := data["sender"].(map[string]any)
+		if !ok {
+			helpers.Logf(helpers.ERROR, "[Kick] ChatMessageEvent: invalid sender type")
+			return
+		}
+		senderId, _ := sender["id"].(float64)
+		username, _ := sender["username"].(string)
+		msgId, _ := data["id"].(string)
+		content, _ := data["content"].(string)
+		identity, _ := sender["identity"].(map[string]any)
+
 		socketdata := globals.MessageFromStream{
 			Source:    "kick",
 			Channel:   km.Channel,
-			UserId:    strconv.FormatFloat(sender["id"].(float64), 'f', 0, 64),
-			User:      sender["username"].(string),
-			MessageId: data["id"].(string),
-			Message:   data["content"].(string),
-			Metadata:  sender["identity"].(map[string]any),
+			UserId:    strconv.FormatFloat(senderId, 'f', 0, 64),
+			User:      username,
+			MessageId: msgId,
+			Message:   content,
+			Metadata:  identity,
 		}
 		globals.ChatQueue <- socketdata
 	},
 	"App\\Events\\MessageDeletedEvent": func(km KickMessage, data map[string]any) {
-		globals.EventQueue <- globals.Event{Type: "user-message-delete", Data: map[string]any{"messageId": data["message"].(map[string]any)["id"]}}
+		msgData, ok := data["message"].(map[string]any)
+		if !ok {
+			return
+		}
+		globals.EventQueue <- globals.Event{Type: "user-message-delete", Data: map[string]any{"messageId": msgData["id"]}}
 	},
 }
 
@@ -102,10 +116,10 @@ func FindChannelByID(id string) *IrcChannel {
 func Connect() error {
 	token := GetKickToken()
 	if token == "" {
-		return fmt.Errorf("kick Token não encontrado")
+		return fmt.Errorf("kick Token not found")
 	}
 
-	url := "wss://ws-us2.pusher.com/app/32cbd69e4b950bf97679?protocol=7&client=js&version=8.4.0-rc2&flash=false" // endpoint do chat Kick
+	url := "wss://ws-us2.pusher.com/app/32cbd69e4b950bf97679?protocol=7&client=js&version=8.4.0-rc2&flash=false" // Kick chat endpoint
 	conn, _, err := websocket.DefaultDialer.Dial(url, nil)
 	if err != nil {
 		return err
@@ -115,7 +129,7 @@ func Connect() error {
 		Conn.Close()
 	}
 	Conn = conn
-	log.Printf("[Kick IRC] Connectado ao IRC")
+	log.Printf("[Kick IRC] Connected to IRC")
 
 	go reader()
 	go writer()
@@ -131,13 +145,13 @@ func Connect() error {
 }
 
 func JoinChannel(channel string) {
-	helpers.Logf(helpers.DEBUG, "[Kick IRC] Conectando ao canal: %s", channel)
+	helpers.Logf(helpers.DEBUG, "[Kick IRC] Connecting to channel: %s", channel)
 	token := GetKickToken()
 	if token == "" {
-		helpers.Logf(helpers.ERROR, "[Kick IRC] Token não encontrado")
+		helpers.Logf(helpers.ERROR, "[Kick IRC] Token not found")
 		return
 	}
-	// Inscrição no chat autenticado
+	// Subscribe to authenticated chat
 	subscribe := map[string]interface{}{
 		"event": "pusher:subscribe",
 		"data": map[string]interface{}{
@@ -146,7 +160,7 @@ func JoinChannel(channel string) {
 		},
 	}
 	if err := Conn.WriteJSON(subscribe); err != nil {
-		log.Println("[Kick IRC] Erro ao enviar subscribe:", err)
+		log.Println("[Kick IRC] Error sending subscribe:", err)
 		return
 	}
 }
@@ -161,10 +175,10 @@ func reader() {
 		}
 		helpers.Printf(helpers.Kick, "[Kick IRC] Message: %s", msg)
 
-		// Parse da mensagem JSON
+		// Parse JSON message
 		var km KickMessage
 		if err := json.Unmarshal(msg, &km); err != nil {
-			helpers.Logf(helpers.ERROR, "[Kick IRC] Erro ao parsear JSON: %v", err)
+			helpers.Logf(helpers.ERROR, "[Kick IRC] Error parsing JSON: %v", err)
 			continue
 		}
 
@@ -187,7 +201,7 @@ func writer() {
 func SendMessageIfChannelExist(msg string, channel string) {
 	c := FindChannelByID(channel)
 	if c == nil {
-		helpers.Logf(helpers.ERROR, "[Kick] Canal não encontrado: %s", channel)
+		helpers.Logf(helpers.ERROR, "[Kick] Channel not found: %s", channel)
 		return
 	}
 	SendMessage(msg, *c)

@@ -16,6 +16,11 @@ import (
 	"github.com/gorilla/websocket"
 )
 
+type SocketRequestMetadata struct {
+	Tag int    `json:"tag"`
+	ID  string `json:"id"`
+}
+
 var upgrader = websocket.Upgrader{
 	CheckOrigin: func(r *http.Request) bool {
 		return true
@@ -27,8 +32,8 @@ var lastTagIndex = 0
 var wsClients = make(map[*websocket.Conn]int)
 var wsClientsUpgraded = make(map[string][]*websocket.Conn)
 
-var SocketHandlers = map[string]func(*websocket.Conn, map[string]any, int){
-	"init": func(c *websocket.Conn, m map[string]any, mytag int) {
+var SocketHandlers = map[string]func(*websocket.Conn, map[string]any, *SocketRequestMetadata){
+	"init": func(c *websocket.Conn, m map[string]any, md *SocketRequestMetadata) {
 		globals.WsBroadcast <- globals.SocketMessage{
 			Type: "init",
 			Data: map[string]any{
@@ -44,14 +49,14 @@ var SocketHandlers = map[string]func(*websocket.Conn, map[string]any, int){
 				"twitch_eventsubs":       globals.GetState().GetData("TwitchSubEventsConnectedEvents"),
 				"interface_config":       globals.GetState().GetData("htmlinterface"),
 			},
-			Respond: mytag,
+			SocketTag: md.Tag,
 		}
 	},
-	"upgrade-conn": func(c *websocket.Conn, m map[string]any, mytag int) {
+	"upgrade-conn": func(c *websocket.Conn, m map[string]any, md *SocketRequestMetadata) {
 		data := globals.SocketMessage{
-			Type:    "response-upgrade",
-			Data:    "",
-			Respond: mytag,
+			Type:      "response-upgrade",
+			Data:      "",
+			SocketTag: md.Tag,
 		}
 		if m["conn"] != nil {
 			connVal, ok := m["conn"].(string)
@@ -111,7 +116,9 @@ func StartHTTPServer() {
 			//helpers.Logf(helpers.Cyan, "[Socket] Message: %s", string(msg))
 			m := string(msg)
 			if m == "init" {
-				SocketHandlers["init"](conn, nil, mytag)
+				SocketHandlers["init"](conn, nil, &SocketRequestMetadata{
+					Tag: mytag,
+				})
 				continue
 			}
 			var data globals.SocketMessage
@@ -133,7 +140,10 @@ func StartHTTPServer() {
 					helpers.Logf(helpers.ERROR, "[WebSocket] Invalid message data type")
 					continue
 				}
-				handler(conn, dataMap, mytag)
+				handler(conn, dataMap, &SocketRequestMetadata{
+					Tag: mytag,
+					ID:  data.ResponseMessageID,
+				})
 				continue
 			}
 		}
@@ -216,7 +226,6 @@ func StartHTTPServer() {
 		for msg := range globals.WsBroadcast {
 
 			if msg.Filter != "" {
-				//helpers.Logf(helpers.Cyan, "[WebSocket] Message filter %s: %s - %s", msg.Filter, msg.Type, msg.Data)
 				mu.RLock()
 				wsList := append([]*websocket.Conn(nil), wsClientsUpgraded[msg.Filter]...)
 				mu.RUnlock()
@@ -246,8 +255,8 @@ func StartHTTPServer() {
 				if tag == -1 {
 					continue
 				}
-				if msg.Respond != 0 && msg.Respond != -1 {
-					if msg.Respond != tag {
+				if msg.SocketTag != 0 && msg.SocketTag != -1 {
+					if msg.SocketTag != tag {
 						continue
 					}
 				}

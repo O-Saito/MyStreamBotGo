@@ -13,7 +13,7 @@ import (
 )
 
 func RegisterSocketHandlers() {
-	goweb.SocketHandlers["connect-chat-kick"] = func(c *websocket.Conn, data map[string]any, tag int) {
+	goweb.SocketHandlers["connect-chat-kick"] = func(c *websocket.Conn, data map[string]any, md *goweb.SocketRequestMetadata) {
 		roomId, ok := data["roomId"].(string)
 		if !ok {
 			helpers.Logf(helpers.ERROR, "[Socket Handler] connect-chat-kick: invalid roomId type")
@@ -32,7 +32,7 @@ func RegisterSocketHandlers() {
 		kick.JoinChannel(roomId)
 	}
 
-	goweb.SocketHandlers["connect-chat-twitch"] = func(c *websocket.Conn, data map[string]any, tag int) {
+	goweb.SocketHandlers["connect-chat-twitch"] = func(c *websocket.Conn, data map[string]any, md *goweb.SocketRequestMetadata) {
 		channel, ok := data["channel"].(string)
 		if !ok {
 			helpers.Logf(helpers.ERROR, "[Socket Handler] connect-chat-twitch: invalid channel type")
@@ -42,7 +42,7 @@ func RegisterSocketHandlers() {
 		twitch.JoinChannel(channel)
 	}
 
-	goweb.SocketHandlers["connect-chat-youtube"] = func(c *websocket.Conn, data map[string]any, tag int) {
+	goweb.SocketHandlers["connect-chat-youtube"] = func(c *websocket.Conn, data map[string]any, md *goweb.SocketRequestMetadata) {
 		channel, ok := data["channel"].(string)
 		if !ok {
 			helpers.Logf(helpers.ERROR, "[Socket Handler] connect-chat-youtube: invalid channel type")
@@ -81,13 +81,13 @@ func RegisterSocketHandlers() {
 		globals.GetState().SetData("youtube-lives", connectedChatTyped)
 
 		globals.WsBroadcast <- globals.SocketMessage{
-			Respond: tag,
-			Type:    "result-connect-chat-youtube",
-			Data:    connectedChat,
+			SocketTag: md.Tag,
+			Type:      "result-connect-chat-youtube",
+			Data:      connectedChat,
 		}
 	}
 
-	goweb.SocketHandlers["get-next-streams-youtube"] = func(c *websocket.Conn, data map[string]any, tag int) {
+	goweb.SocketHandlers["get-next-streams-youtube"] = func(c *websocket.Conn, data map[string]any, md *goweb.SocketRequestMetadata) {
 		channel, ok := data["channel"].(string)
 		if !ok {
 			helpers.Logf(helpers.ERROR, "[Socket Handler] get-next-streams-youtube: invalid channel type")
@@ -123,13 +123,13 @@ func RegisterSocketHandlers() {
 		globals.GetState().SetData("youtube-preview-lives", previewsTyped)
 
 		globals.WsBroadcast <- globals.SocketMessage{
-			Respond: tag,
-			Type:    "result-get-next-streams-youtube",
-			Data:    previews,
+			SocketTag: md.Tag,
+			Type:      "result-get-next-streams-youtube",
+			Data:      previews,
 		}
 	}
 
-	goweb.SocketHandlers["connect-to-preview-youtube"] = func(c *websocket.Conn, data map[string]any, tag int) {
+	goweb.SocketHandlers["connect-to-preview-youtube"] = func(c *websocket.Conn, data map[string]any, md *goweb.SocketRequestMetadata) {
 		liveChatId, ok := data["liveChatId"].(string)
 		if !ok {
 			helpers.Logf(helpers.ERROR, "[Socket Handler] connect-to-preview-youtube: invalid liveChatId type")
@@ -180,13 +180,13 @@ func RegisterSocketHandlers() {
 		}
 
 		globals.WsBroadcast <- globals.SocketMessage{
-			Respond: tag,
-			Type:    "result-connect-chat-youtube",
-			Data:    connectedChatTyped,
+			SocketTag: md.Tag,
+			Type:      "result-connect-chat-youtube",
+			Data:      connectedChatTyped,
 		}
 	}
 
-	goweb.SocketHandlers["send-chat-message"] = func(c *websocket.Conn, data map[string]any, tag int) {
+	goweb.SocketHandlers["send-chat-message"] = func(c *websocket.Conn, data map[string]any, md *goweb.SocketRequestMetadata) {
 		text, ok := data["text"].(string)
 		if !ok {
 			helpers.Logf(helpers.ERROR, "[Socket Handler] send-chat-message: invalid text type")
@@ -212,7 +212,7 @@ func RegisterSocketHandlers() {
 		}
 	}
 
-	goweb.SocketHandlers["query-stream-game"] = func(c *websocket.Conn, m map[string]any, tag int) {
+	goweb.SocketHandlers["query-stream-game"] = func(c *websocket.Conn, m map[string]any, md *goweb.SocketRequestMetadata) {
 		q, ok := m["q"].(string)
 		if !ok {
 			helpers.Logf(helpers.ERROR, "[Socket Handler] query-stream-game: invalid q type")
@@ -220,15 +220,15 @@ func RegisterSocketHandlers() {
 		}
 		games, _ := twitch.GetListOfGames(q)
 		globals.WsBroadcast <- globals.SocketMessage{
-			Respond: tag,
-			Type:    "result-query-stream-games",
+			SocketTag: md.Tag,
+			Type:      "result-query-stream-games",
 			Data: map[string]any{
 				"list": games,
 			},
 		}
 	}
 
-	goweb.SocketHandlers["get-streamer-data"] = func(c *websocket.Conn, m map[string]any, tag int) {
+	goweb.SocketHandlers["get-streamer-data"] = func(c *websocket.Conn, m map[string]any, md *goweb.SocketRequestMetadata) {
 		twitchData, _ := twitch.GetStreamData(globals.GetState().GetTwitchUser().UserID)
 
 		ytData := []any{}
@@ -247,8 +247,8 @@ func RegisterSocketHandlers() {
 		}
 
 		globals.WsBroadcast <- globals.SocketMessage{
-			Respond: tag,
-			Type:    "result-get-streamer-data",
+			SocketTag: md.Tag,
+			Type:      "result-get-streamer-data",
 			Data: map[string]any{
 				"twitch":  twitchData,
 				"youtube": ytData,
@@ -256,13 +256,22 @@ func RegisterSocketHandlers() {
 		}
 	}
 
-	goweb.SocketHandlers["get-dy-statistics"] = func(c *websocket.Conn, m map[string]any, tag int) {
+	goweb.SocketHandlers["get-dy-statistics"] = func(c *websocket.Conn, m map[string]any, md *goweb.SocketRequestMetadata) {
 		events := mlua.ListDynamicEvents()
 
 		globals.WsBroadcast <- globals.SocketMessage{
-			Respond: tag,
-			Type:    "result-get-dy-statistics",
-			Data:    events,
+			SocketTag: md.Tag,
+			Type:      "result-get-dy-statistics",
+			Data:      events,
+		}
+	}
+
+	goweb.SocketHandlers["test"] = func(c *websocket.Conn, m map[string]any, md *goweb.SocketRequestMetadata) {
+		globals.WsBroadcast <- globals.SocketMessage{
+			SocketTag:         md.Tag,
+			ResponseMessageID: md.ID,
+			Type:              "result-test",
+			Data:              map[string]any{"message": "tested"},
 		}
 	}
 }

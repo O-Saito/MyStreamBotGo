@@ -32,14 +32,6 @@ type PaginationRequest struct {
 	Quantity int
 }
 
-type RequestOptions struct {
-	UserID        string
-	BroadcasterID string
-	ModeratorID   string
-	First         int
-	After         string
-}
-
 func AddAuthHeaders(req *http.Request) {
 	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", globals.GetState().GetTwitchUser().Token))
 	req.Header.Set("Client-ID", globals.GetConfig().TwitchClientID)
@@ -76,28 +68,12 @@ func DoRequest(req *http.Request) (*http.Response, error) {
 	return resp, nil
 }
 
-func BuildURL(base string, opts RequestOptions) string {
+func BuildURL(base string, opts map[string]any) string {
 	url := base
 	hasParams := false
 
-	if opts.UserID != "" {
-		url += fmt.Sprintf("%suser_id=%s", ternary(hasParams, "&", "?"), opts.UserID)
-		hasParams = true
-	}
-	if opts.BroadcasterID != "" {
-		url += fmt.Sprintf("%sbroadcaster_id=%s", ternary(hasParams, "&", "?"), opts.BroadcasterID)
-		hasParams = true
-	}
-	if opts.ModeratorID != "" {
-		url += fmt.Sprintf("%smoderator_id=%s", ternary(hasParams, "&", "?"), opts.ModeratorID)
-		hasParams = true
-	}
-	if opts.First > 0 {
-		url += fmt.Sprintf("%sfirst=%d", ternary(hasParams, "&", "?"), opts.First)
-		hasParams = true
-	}
-	if opts.After != "" {
-		url += fmt.Sprintf("%safter=%s", ternary(hasParams, "&", "?"), opts.After)
+	for k, v := range opts {
+		url += fmt.Sprintf("%s%s=%s", ternary(hasParams, "&", "?"), k, v)
 		hasParams = true
 	}
 
@@ -255,12 +231,12 @@ func getDefaultBroadcasterID() string {
 	return globals.GetState().GetTwitchUser().UserID
 }
 
-func getRequestOpts(opts RequestOptions) RequestOptions {
-	if opts.BroadcasterID == "" {
-		opts.BroadcasterID = getDefaultBroadcasterID()
+func getRequestOpts(opts *map[string]any) *map[string]any {
+	if (*opts)["broadcaster_id"] == "" {
+		(*opts)["broadcaster_id"] = getDefaultBroadcasterID()
 	}
-	if opts.ModeratorID == "" {
-		opts.ModeratorID = getDefaultBroadcasterID()
+	if (*opts)["moderator_id"] == "" {
+		(*opts)["moderator_id"] = getDefaultBroadcasterID()
 	}
 	return opts
 }

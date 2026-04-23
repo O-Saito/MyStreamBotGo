@@ -4,71 +4,47 @@ import (
 	"MyStreamBot/globals"
 	"MyStreamBot/helpers"
 	twitch "MyStreamBot/services/twitch"
-	"encoding/json"
-	"fmt"
-	"io"
-	"net/http"
 )
 
-var urlAPITags = "https://api.twitch.tv/helix/tags"
-
 type StreamTag struct {
-	TagID          string `json:"tag_id"`
-	IsAuto         bool   `json:"is_auto"`
-	LocalizationNames map[string]string `json:"localization_names"`
+	TagID                    string            `json:"tag_id"`
+	IsAuto                   bool              `json:"is_auto"`
+	LocalizationNames        map[string]string `json:"localization_names"`
 	LocalizationDescriptions map[string]string `json:"localization_descriptions"`
 }
 
-type GetAllStreamTagsResponse struct {
-	Data       []StreamTag `json:"data"`
-	Pagination Pagination  `json:"pagination"`
-}
+func GetAllStreamTags(tagIDs []string, req *twitch.PaginationRequest) (*twitch.PaginationData[StreamTag], error) {
+	opts := map[string]any{}
 
-func GetAllStreamTags(first int, after string) ([]StreamTag, error) {
-	url := urlAPITags + "/streams"
-	if first > 0 {
-		url += fmt.Sprintf("?first=%d", first)
-		if after != "" {
-			url += "&after=" + after
+	if req != nil {
+		if req.Cursor != "" {
+			opts["after"] = req.Cursor
 		}
-	} else if after != "" {
-		url += "?after=" + after
+		if req.Quantity > 0 {
+			opts["first"] = req.Quantity
+		}
 	}
 
-	req, err := http.NewRequest("GET", url, nil)
-	if err != nil {
-		helpers.Logf(helpers.ERROR, "[TWITCH] GetAllStreamTags http.NewRequest failed: %v", err)
-		return nil, err
+	if tagIDs != nil {
+		opts["tag_id"] = tagIDs
 	}
 
-	resp, err := twitch.DoRequest(req)
+	url := twitch.BuildURL(twitch.HelixBaseURL+"/tags/streams", opts)
+
+	result, err := twitch.ExecuteRequest[twitch.PaginationData[StreamTag]]("GET", url, 200)
 	if err != nil {
 		helpers.Logf(helpers.DEBUG, "[TWITCH] GetAllStreamTags: no params")
 		return nil, err
 	}
-	defer resp.Body.Close()
 
-	if resp.StatusCode != 200 {
-		body, err := io.ReadAll(resp.Body)
-		if err != nil {
-			helpers.Logf(helpers.ERROR, "[TWITCH] GetAllStreamTags io.ReadAll failed: %v", err)
-			return nil, err
-		}
-		return nil, fmt.Errorf("GetAllStreamTags: failed: %s", body)
+	result.GetNext = func() *twitch.PaginationData[StreamTag] {
+		GetAllStreamTags(tagIDs, &twitch.PaginationRequest{
+			Cursor: result.Pagination.Cursor,
+		})
+		return result
 	}
 
-	var result GetAllStreamTagsResponse
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		helpers.Logf(helpers.ERROR, "[TWITCH] GetAllStreamTags io.ReadAll failed: %v", err)
-		return nil, err
-	}
-	if err := json.Unmarshal(body, &result); err != nil {
-		helpers.Logf(helpers.ERROR, "[TWITCH] GetAllStreamTags json.Unmarshal failed: %v", err)
-		return nil, err
-	}
-
-	return result.Data, nil
+	return result, nil
 }
 
 func GetStreamTags(broadcasterID string) ([]StreamTag, error) {
@@ -77,37 +53,17 @@ func GetStreamTags(broadcasterID string) ([]StreamTag, error) {
 		broadcasterID = user.UserID
 	}
 
-	url := fmt.Sprintf("%s/streams?broadcaster_id=%s", urlAPITags, broadcasterID)
-	req, err := http.NewRequest("GET", url, nil)
-	if err != nil {
-		helpers.Logf(helpers.ERROR, "[TWITCH] GetStreamTags http.NewRequest failed: %v", err)
-		return nil, err
+	opts := map[string]any{
+		"broadcaster_id": broadcasterID,
 	}
 
-	resp, err := twitch.DoRequest(req)
+	url := twitch.BuildURL(twitch.HelixBaseURL+"/streams/tags", opts)
+
+	result, err := twitch.ExecuteRequest[struct {
+		Data []StreamTag `json:"data"`
+	}]("GET", url, 200)
 	if err != nil {
 		helpers.Logf(helpers.DEBUG, "[TWITCH] GetStreamTags: broadcasterID=%v", broadcasterID)
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != 200 {
-		body, err := io.ReadAll(resp.Body)
-		if err != nil {
-			helpers.Logf(helpers.ERROR, "[TWITCH] GetStreamTags io.ReadAll failed: %v", err)
-			return nil, err
-		}
-		return nil, fmt.Errorf("GetStreamTags: failed: %s", body)
-	}
-
-	var result GetAllStreamTagsResponse
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		helpers.Logf(helpers.ERROR, "[TWITCH] GetStreamTags io.ReadAll failed: %v", err)
-		return nil, err
-	}
-	if err := json.Unmarshal(body, &result); err != nil {
-		helpers.Logf(helpers.ERROR, "[TWITCH] GetStreamTags json.Unmarshal failed: %v", err)
 		return nil, err
 	}
 

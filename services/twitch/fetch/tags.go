@@ -38,10 +38,10 @@ func GetAllStreamTags(tagIDs []string, req *twitch.PaginationRequest) (*twitch.P
 	}
 
 	result.GetNext = func() *twitch.PaginationData[StreamTag] {
-		GetAllStreamTags(tagIDs, &twitch.PaginationRequest{
+		n, _ := GetAllStreamTags(tagIDs, &twitch.PaginationRequest{
 			Cursor: result.Pagination.Cursor,
 		})
-		return result
+		return n
 	}
 
 	return result, nil

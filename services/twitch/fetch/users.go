@@ -184,11 +184,11 @@ func GetUserBlockList(targetUserID string, req *twitch.PaginationRequest) (*twit
 		if req != nil {
 			quantity = req.Quantity
 		}
-		GetUserBlockList(targetUserID, &twitch.PaginationRequest{
+		n, _ := GetUserBlockList(targetUserID, &twitch.PaginationRequest{
 			Cursor:   result.Pagination.Cursor,
 			Quantity: quantity,
 		})
-		return result
+		return n
 	}
 
 	return result, nil

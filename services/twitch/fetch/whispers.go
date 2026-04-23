@@ -6,8 +6,6 @@ import (
 	twitch "MyStreamBot/services/twitch"
 )
 
-var urlAPIWhispers = "https://api.twitch.tv/helix/whispers"
-
 func SendWhisper(toUserID, message string) error {
 	user := globals.GetState().GetTwitchUser()
 
@@ -18,7 +16,8 @@ func SendWhisper(toUserID, message string) error {
 
 	url := twitch.BuildURL(twitch.HelixBaseURL+"/whispers", opts)
 
-	_, err := twitch.ExecuteRequest[map[string]any]("POST", url, 200)
+	body := map[string]any{"message": message}
+	_, err := twitch.ExecuteJSONRequest[struct{}]("POST", url, body, 204)
 	if err != nil {
 		helpers.Logf(helpers.ERROR, "[TWITCH] SendWhisper failed: %v", err)
 		return err

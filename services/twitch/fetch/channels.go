@@ -131,12 +131,18 @@ func GetFollowedChannels(broadcaster_id string, first int, after string) ([]Foll
 	return result.Data, nil
 }
 
-func GetChannelFollowers(userId string) ([]twitch.TwitchViewerData, error) {
+func GetChannelFollowers(userId string, req *twitch.PaginationRequest) (*twitch.PaginationData[twitch.TwitchViewerData], error) {
 	user := globals.GetState().GetTwitchUser()
 	opts := twitch.RequestOptions{
 		UserID:        userId,
 		BroadcasterID: user.UserID,
 	}
+
+	if req != nil {
+		opts.After = req.Cursor
+		opts.First = req.Quantity
+	}
+
 	url := twitch.BuildURL(twitch.HelixBaseURL+"/channels/followers", opts)
 
 	result, err := twitch.ExecuteRequest[twitch.PaginationData[twitch.TwitchViewerData]]("GET", url, 200)
@@ -145,5 +151,13 @@ func GetChannelFollowers(userId string) ([]twitch.TwitchViewerData, error) {
 		return nil, err
 	}
 
-	return result.Data, nil
+	result.GetNext = func() *twitch.PaginationData[twitch.TwitchViewerData] {
+		GetChannelFollowers(userId, &twitch.PaginationRequest{
+			Cursor:   result.Pagination.Cursor,
+			Quantity: opts.First,
+		})
+		return result
+	}
+
+	return result, nil
 }

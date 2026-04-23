@@ -20,10 +20,16 @@ type PaginationData[Data any] struct {
 	Data       []Data     `json:"data"`
 	Pagination Pagination `json:"pagination"`
 	Total      int        `json:"total"`
+	GetNext    func() *PaginationData[Data]
 }
 
 type Pagination struct {
 	Cursor string `json:"cursor"`
+}
+
+type PaginationRequest struct {
+	Cursor   string
+	Quantity int
 }
 
 type RequestOptions struct {

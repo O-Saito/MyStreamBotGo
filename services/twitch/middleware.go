@@ -16,6 +16,12 @@ var (
 	IDBaseURL    = "https://id.twitch.tv"
 )
 
+type PaginationData[Data any] struct {
+	Data       []Data     `json:"data"`
+	Pagination Pagination `json:"pagination"`
+	Total      int        `json:"total"`
+}
+
 type Pagination struct {
 	Cursor string `json:"cursor"`
 }
@@ -68,6 +74,10 @@ func BuildURL(base string, opts RequestOptions) string {
 	url := base
 	hasParams := false
 
+	if opts.UserID != "" {
+		url += fmt.Sprintf("%suser_id=%s", ternary(hasParams, "&", "?"), opts.UserID)
+		hasParams = true
+	}
 	if opts.BroadcasterID != "" {
 		url += fmt.Sprintf("%sbroadcaster_id=%s", ternary(hasParams, "&", "?"), opts.BroadcasterID)
 		hasParams = true

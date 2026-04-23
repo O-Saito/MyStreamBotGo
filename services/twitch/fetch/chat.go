@@ -20,6 +20,7 @@ var urlAPIChatters = "https://api.twitch.tv/helix/chat/chatters"
 var urlAPIEmotes = "https://api.twitch.tv/helix/chat/emotes"
 var urlAPIEmotesSets = "https://api.twitch.tv/helix/chat/emotes/set"
 var urlAPIChatBadges = "https://api.twitch.tv/helix/chat/badges"
+var urlAPISharedChat = "https://api.twitch.tv/helix/chat/shared_chat"
 
 type ChatSettings struct {
 	EmoteOnly             bool   `json:"emote_only"`
@@ -656,4 +657,96 @@ func DeleteMessage(msgID string) error {
 		return fmt.Errorf("DeleteMessage(%s): failed to delete message: %s", msgID, body)
 	}
 	return nil
+}
+
+type SharedChatSession struct {
+	SharedChatEnabled bool   `json:"shared_chat_enabled"`
+	Color           string `json:"color"`
+	EmoteSetID      string `json:"emote_set_id"`
+	DisplayName     string `json:"display_name"`
+	Login           string `json:"login"`
+	UserID          string `json:"user_id"`
+}
+
+type GetSharedChatSessionResponse struct {
+	Data []SharedChatSession `json:"data"`
+}
+
+func GetSharedChatSession(broadcasterID, userID string) (*SharedChatSession, error) {
+	user := globals.GetState().GetTwitchUser()
+	if userID == "" {
+		userID = user.UserID
+	}
+	if broadcasterID == "" {
+		broadcasterID = user.UserID
+	}
+
+	url := fmt.Sprintf("%s?broadcaster_id=%s&user_id=%s", urlAPISharedChat, broadcasterID, userID)
+	resp, err := twitch.ExecuteRequest[GetSharedChatSessionResponse]("GET", url, 200)
+	if err != nil {
+		helpers.Logf(helpers.DEBUG, "[TWITCH] GetSharedChatSession: broadcasterID=%v, userID=%v", broadcasterID, userID)
+		return nil, err
+	}
+
+	if len(resp.Data) == 0 {
+		return nil, nil
+	}
+	return &resp.Data[0], nil
+}
+
+type UserEmote struct {
+	ID        string `json:"id"`
+	Name      string `json:"name"`
+	Images   EmoteImages `json:"images"`
+	Tier     string `json:"tier"`
+	Format   []string `json:"format"`
+	Scale    []string `json:"scale"`
+	ThemeMode []string `json:"theme_mode"`
+}
+
+type GetUserEmotesResponse struct {
+	Data []UserEmote `json:"data"`
+}
+
+func GetUserEmotes(userID string) ([]UserEmote, error) {
+	if userID == "" {
+		user := globals.GetState().GetTwitchUser()
+		userID = user.UserID
+	}
+
+	url := fmt.Sprintf("%s?user_id=%s", urlAPIEmotes, userID)
+	resp, err := twitch.ExecuteRequest[GetUserEmotesResponse]("GET", url, 200)
+	if err != nil {
+		helpers.Logf(helpers.DEBUG, "[TWITCH] GetUserEmotes: userID=%v", userID)
+		return nil, err
+	}
+
+	return resp.Data, nil
+}
+
+func GetUserChatColor(userID string) (map[string]string, error) {
+	if userID == "" {
+		user := globals.GetState().GetTwitchUser()
+		userID = user.UserID
+	}
+
+	url := fmt.Sprintf("%s?user_id=%s", urlAPIChatColor, userID)
+	resp, err := twitch.ExecuteRequest[struct {
+		Data []struct {
+			UserID    string `json:"user_id"`
+			UserName  string `json:"user_name"`
+			UserLogin string `json:"user_login"`
+			Color    string `json:"color"`
+		} `json:"data"`
+	}]("GET", url, 200)
+	if err != nil {
+		helpers.Logf(helpers.DEBUG, "[TWITCH] GetUserChatColor: userID=%v", userID)
+		return nil, err
+	}
+
+	result := make(map[string]string)
+	for _, c := range resp.Data {
+		result[c.UserID] = c.Color
+	}
+	return result, nil
 }

@@ -69,15 +69,23 @@ func DoRequest(req *http.Request) (*http.Response, error) {
 }
 
 func BuildURL(base string, opts map[string]any) string {
-	url := base
+	var url strings.Builder
+	url.WriteString(base)
 	hasParams := false
 
 	for k, v := range opts {
-		url += fmt.Sprintf("%s%s=%s", ternary(hasParams, "&", "?"), k, v)
+		if _, ok := v.([]any); ok {
+			for _, d := range v.([]any) {
+				url.WriteString(fmt.Sprintf("%s%s=%s", ternary(hasParams, "&", "?"), k, d))
+				hasParams = true
+			}
+			continue
+		}
+		url.WriteString(fmt.Sprintf("%s%s=%s", ternary(hasParams, "&", "?"), k, v))
 		hasParams = true
 	}
 
-	return url
+	return url.String()
 }
 
 func AddIDParam(base, paramName string, id string) string {

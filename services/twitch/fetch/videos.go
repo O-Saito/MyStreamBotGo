@@ -9,22 +9,22 @@ import (
 var urlAPIVideos = "https://api.twitch.tv/helix/videos"
 
 type Video struct {
-	ID             string    `json:"id"`
-	StreamID      string    `json:"stream_id"`
-	BroadcasterID string    `json:"broadcaster_id"`
-	BroadcasterLogin string `json:"broadcaster_login"`
-	BroadcasterName string `json:"broadcaster_name"`
-	Title         string    `json:"title"`
-	Description  string    `json:"description"`
-	CreatedAt    time.Time  `json:"created_at"`
-	PublishedAt  time.Time  `json:"published_at"`
-	URL          string    `json:"url"`
-	ThumbnailURL string    `json:"thumbnail_url"`
-	Viewable     string    `json:"viewable"`
-	ViewCount    int       `json:"view_count"`
-	Language     string    `json:"language"`
-	Type         string    `json:"type"`
-	Duration    int       `json:"duration"`
+	ID            string              `json:"id"`
+	StreamID      string              `json:"stream_id"`
+	UserID        string              `json:"user_id"`
+	UserLogin     string              `json:"user_login"`
+	UserName      string              `json:"user_name"`
+	Title         string              `json:"title"`
+	Description   string              `json:"description"`
+	CreatedAt     time.Time           `json:"created_at"`
+	PublishedAt   time.Time           `json:"published_at"`
+	URL           string              `json:"url"`
+	ThumbnailURL  string              `json:"thumbnail_url"`
+	Viewable      string              `json:"viewable"`
+	ViewCount     int                 `json:"view_count"`
+	Language      string              `json:"language"`
+	Type          string              `json:"type"`
+	Duration      string              `json:"duration"`
 	MutedSegments []VideoMutedSegment `json:"muted_segments"`
 }
 
@@ -33,50 +33,56 @@ type VideoMutedSegment struct {
 	Offset   int `json:"offset"`
 }
 
-type GetVideosResponse struct {
-	Data       []Video       `json:"data"`
-	Pagination Pagination   `json:"pagination"`
+type GetVideosRequest struct {
+	VideoIDs []string
+	UserID   string
+	GameID   string
+	Period   string
+	Sort     string
+	Type     string
 }
 
-func GetVideos(videoIDs []string, userID, gameID string, req *twitch.PaginationRequest) (*twitch.PaginationData[Video], error) {
+type GetVideosResponse struct {
+	Data       []Video    `json:"data"`
+	Pagination Pagination `json:"pagination"`
+}
+
+func GetVideos(req GetVideosRequest) (*twitch.PaginationData[Video], error) {
 	opts := map[string]any{}
 
-	if req != nil {
-		if req.Cursor != "" {
-			opts["after"] = req.Cursor
-		}
-		if req.Quantity > 0 {
-			opts["first"] = req.Quantity
-		}
+	if req.VideoIDs != nil {
+		opts["id"] = req.VideoIDs
+	}
+	if req.UserID != "" {
+		opts["user_id"] = req.UserID
+	}
+	if req.GameID != "" {
+		opts["game_id"] = req.GameID
+	}
+	if req.Period != "" {
+		opts["period"] = req.Period
+	}
+	if req.Sort != "" {
+		opts["sort"] = req.Sort
+	}
+	if req.Type != "" {
+		opts["type"] = req.Type
 	}
 
 	url := twitch.BuildURL(twitch.HelixBaseURL+"/videos", opts)
 
-	for _, id := range videoIDs {
-		url += "&id=" + id
-	}
-	if userID != "" {
-		url += "&user_id=" + userID
-	}
-	if gameID != "" {
-		url += "&game_id=" + gameID
-	}
-
-	result, err := twitch.ExecuteRequest[twitch.PaginationData[Video]]("GET", url, 200)
+	result, err := twitch.ExecuteRequest[GetVideosResponse]("GET", url, 200)
 	if err != nil {
-		helpers.Logf(helpers.DEBUG, "[TWITCH] GetVideos: videoIDs=%v", videoIDs)
+		helpers.Logf(helpers.DEBUG, "[TWITCH] GetVideos: userID=%v, gameID=%v", req.UserID, req.GameID)
 		return nil, err
 	}
 
-	result.GetNext = func() *twitch.PaginationData[Video] {
-		GetVideos(videoIDs, userID, gameID, &twitch.PaginationRequest{
-			Cursor:   result.Pagination.Cursor,
-			Quantity: req.Quantity,
-		})
-		return result
+	pagData := &twitch.PaginationData[Video]{
+		Data: result.Data,
 	}
+	pagData.Pagination.Cursor = result.Pagination.Cursor
 
-	return result, nil
+	return pagData, nil
 }
 
 func DeleteVideos(videoIDs []string) error {

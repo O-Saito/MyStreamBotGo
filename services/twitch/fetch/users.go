@@ -18,7 +18,7 @@ type User struct {
 	Description     string `json:"description"`
 	ProfileImageURL string `json:"profile_image_url"`
 	OfflineImageURL string `json:"offline_image_url"`
-	ViewCount       int    `json:"view_count"`
+	ViewCount       int    `json:"view_count"` // decrapted
 	Email           string `json:"email"`
 	CreatedAt       string `json:"created_at"`
 }
@@ -91,10 +91,6 @@ type GetUsersResponse struct {
 	Data []User `json:"data"`
 }
 
-type GetUserBlockListResponse struct {
-	Data []UserBlock `json:"data"`
-}
-
 type GetUserExtensionsResponse struct {
 	Data []UserExtension `json:"data"`
 }
@@ -103,12 +99,33 @@ type GetUserAuthorizationResponse struct {
 	Data []UserAuthorization `json:"data"`
 }
 
-func UpdateUser(description string) (*User, error) {
-	opts := map[string]any{}
+func GetUser(id, login []string) (*User, error) {
+	opts := map[string]any{
+		"id":    id,
+		"login": login,
+	}
 	url := twitch.BuildURL(urlAPIUsers, opts)
 
-	body := map[string]any{"description": description}
-	result, err := twitch.ExecuteJSONRequest[GetUsersResponse, map[string]any]("PUT", url, body, 200)
+	result, err := twitch.ExecuteRequest[GetUsersResponse]("GET", url, 200)
+	if err != nil {
+		helpers.Logf(helpers.DEBUG, "[TWITCH] GetUser: id=%v", id)
+		return nil, err
+	}
+
+	if len(result.Data) == 0 {
+		helpers.Logf(helpers.DEBUG, "[TWITCH] GetUser: id=%v", id)
+		return nil, nil
+	}
+
+	return &result.Data[0], nil
+}
+
+func UpdateUser(description string) (*User, error) {
+	opts := map[string]any{"description": description}
+	url := twitch.BuildURL(urlAPIUsers, opts)
+
+	body := map[string]any{}
+	result, err := twitch.ExecuteJSONRequest[GetUsersResponse]("PUT", url, body, 200)
 	if err != nil {
 		helpers.Logf(helpers.ERROR, "[TWITCH] UpdateUser: description=%v", description)
 		return nil, err
@@ -121,15 +138,15 @@ func UpdateUser(description string) (*User, error) {
 	return &result.Data[0], nil
 }
 
-func GetAuthorizationByUser(userID string) (*UserAuthorization, error) {
+func GetAuthorizationByUser(userIDs []string) (*UserAuthorization, error) {
 	opts := map[string]any{
-		"id": userID,
+		"iser_id": userIDs,
 	}
-	url := twitch.BuildURL(twitch.HelixBaseURL+"/users/authorized", opts)
+	url := twitch.BuildURL(twitch.HelixBaseURL+"authorization/users", opts)
 
 	result, err := twitch.ExecuteRequest[GetUserAuthorizationResponse]("GET", url, 200)
 	if err != nil {
-		helpers.Logf(helpers.DEBUG, "[TWITCH] GetAuthorizationByUser: userID=%v", userID)
+		helpers.Logf(helpers.DEBUG, "[TWITCH] GetAuthorizationByUser: userID=%v", userIDs)
 		return nil, err
 	}
 
@@ -140,30 +157,58 @@ func GetAuthorizationByUser(userID string) (*UserAuthorization, error) {
 	return &result.Data[0], nil
 }
 
-func GetUserBlockList(targetUserID string) ([]UserBlock, error) {
+func GetUserBlockList(targetUserID string, req *twitch.PaginationRequest) (*twitch.PaginationData[UserBlock], error) {
 	opts := map[string]any{
 		"target_user_id": targetUserID,
 	}
+
+	if req != nil {
+		if req.Cursor != "" {
+			opts["after"] = req.Cursor
+		}
+		if req.Quantity > 0 {
+			opts["first"] = req.Quantity
+		}
+	}
+
 	url := twitch.BuildURL(urlAPIUserBlock, opts)
 
-	result, err := twitch.ExecuteRequest[GetUserBlockListResponse]("GET", url, 200)
+	result, err := twitch.ExecuteRequest[twitch.PaginationData[UserBlock]]("GET", url, 200)
 	if err != nil {
 		helpers.Logf(helpers.DEBUG, "[TWITCH] GetUserBlockList: targetUserID=%v", targetUserID)
 		return nil, err
 	}
 
-	return result.Data, nil
+	result.GetNext = func() *twitch.PaginationData[UserBlock] {
+		quantity := 0
+		if req != nil {
+			quantity = req.Quantity
+		}
+		GetUserBlockList(targetUserID, &twitch.PaginationRequest{
+			Cursor:   result.Pagination.Cursor,
+			Quantity: quantity,
+		})
+		return result
+	}
+
+	return result, nil
 }
 
-func BlockUser(targetUserID string) error {
+func BlockUser(targetUserID string, sourceContext string, reason string) error {
 	opts := map[string]any{
 		"target_user_id": targetUserID,
+	}
+	if sourceContext != "" {
+		opts["source_context"] = sourceContext
+	}
+	if reason != "" {
+		opts["reason"] = reason
 	}
 	url := twitch.BuildURL(urlAPIUserBlock, opts)
 
 	_, err := twitch.ExecuteRequest[struct{}]("PUT", url, 204)
 	if err != nil {
-		helpers.Logf(helpers.DEBUG, "[TWITCH] BlockUser: targetUserID=%v", targetUserID)
+		helpers.Logf(helpers.DEBUG, "[TWITCH] BlockUser: targetUserID=%v sourceContext=%v reason=%v", targetUserID, sourceContext, reason)
 		return err
 	}
 
@@ -183,46 +228,6 @@ func UnblockUser(targetUserID string) error {
 	}
 
 	return nil
-}
-
-func GetUserData(login string) (*User, error) {
-	opts := map[string]any{
-		"login": login,
-	}
-	url := twitch.BuildURL(urlAPIUsers, opts)
-
-	result, err := twitch.ExecuteRequest[GetUsersResponse]("GET", url, 200)
-	if err != nil {
-		helpers.Logf(helpers.DEBUG, "[TWITCH] GetUserData: login=%v", login)
-		return nil, err
-	}
-
-	if len(result.Data) == 0 {
-		helpers.Logf(helpers.DEBUG, "[TWITCH] GetUserData: login=%v", login)
-		return nil, nil
-	}
-
-	return &result.Data[0], nil
-}
-
-func GetUserDataById(id string) (*User, error) {
-	opts := map[string]any{
-		"id": id,
-	}
-	url := twitch.BuildURL(urlAPIUsers, opts)
-
-	result, err := twitch.ExecuteRequest[GetUsersResponse]("GET", url, 200)
-	if err != nil {
-		helpers.Logf(helpers.DEBUG, "[TWITCH] GetUserDataById: id=%v", id)
-		return nil, err
-	}
-
-	if len(result.Data) == 0 {
-		helpers.Logf(helpers.DEBUG, "[TWITCH] GetUserDataById: id=%v", id)
-		return nil, nil
-	}
-
-	return &result.Data[0], nil
 }
 
 func GetUserExtensions() ([]UserExtension, error) {

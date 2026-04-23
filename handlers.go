@@ -81,9 +81,10 @@ func RegisterSocketHandlers() {
 		globals.GetState().SetData("youtube-lives", connectedChatTyped)
 
 		globals.WsBroadcast <- globals.SocketMessage{
-			SocketTag: md.Tag,
-			Type:      "result-connect-chat-youtube",
-			Data:      connectedChat,
+			SocketTag:         md.Tag,
+			ResponseMessageID: md.ID,
+			Type:              "result-connect-chat-youtube",
+			Data:              connectedChat,
 		}
 	}
 
@@ -123,9 +124,10 @@ func RegisterSocketHandlers() {
 		globals.GetState().SetData("youtube-preview-lives", previewsTyped)
 
 		globals.WsBroadcast <- globals.SocketMessage{
-			SocketTag: md.Tag,
-			Type:      "result-get-next-streams-youtube",
-			Data:      previews,
+			SocketTag:         md.Tag,
+			ResponseMessageID: md.ID,
+			Type:              "result-get-next-streams-youtube",
+			Data:              previews,
 		}
 	}
 
@@ -180,9 +182,10 @@ func RegisterSocketHandlers() {
 		}
 
 		globals.WsBroadcast <- globals.SocketMessage{
-			SocketTag: md.Tag,
-			Type:      "result-connect-chat-youtube",
-			Data:      connectedChatTyped,
+			SocketTag:         md.Tag,
+			ResponseMessageID: md.ID,
+			Type:              "result-connect-chat-youtube",
+			Data:              connectedChatTyped,
 		}
 	}
 
@@ -220,8 +223,9 @@ func RegisterSocketHandlers() {
 		}
 		games, _ := twitch.GetListOfGames(q)
 		globals.WsBroadcast <- globals.SocketMessage{
-			SocketTag: md.Tag,
-			Type:      "result-query-stream-games",
+			SocketTag:         md.Tag,
+			ResponseMessageID: md.ID,
+			Type:              "result-query-stream-games",
 			Data: map[string]any{
 				"list": games,
 			},
@@ -247,8 +251,9 @@ func RegisterSocketHandlers() {
 		}
 
 		globals.WsBroadcast <- globals.SocketMessage{
-			SocketTag: md.Tag,
-			Type:      "result-get-streamer-data",
+			SocketTag:         md.Tag,
+			ResponseMessageID: md.ID,
+			Type:              "result-get-streamer-data",
 			Data: map[string]any{
 				"twitch":  twitchData,
 				"youtube": ytData,
@@ -260,18 +265,11 @@ func RegisterSocketHandlers() {
 		events := mlua.ListDynamicEvents()
 
 		globals.WsBroadcast <- globals.SocketMessage{
-			SocketTag: md.Tag,
-			Type:      "result-get-dy-statistics",
-			Data:      events,
+			SocketTag:         md.Tag,
+			ResponseMessageID: md.ID,
+			Type:              "result-get-dy-statistics",
+			Data:              events,
 		}
 	}
 
-	goweb.SocketHandlers["test"] = func(c *websocket.Conn, m map[string]any, md *goweb.SocketRequestMetadata) {
-		globals.WsBroadcast <- globals.SocketMessage{
-			SocketTag:         md.Tag,
-			ResponseMessageID: md.ID,
-			Type:              "result-test",
-			Data:              map[string]any{"message": "tested"},
-		}
-	}
 }

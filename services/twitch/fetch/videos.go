@@ -3,7 +3,6 @@ package twitch
 import (
 	"MyStreamBot/helpers"
 	twitch "MyStreamBot/services/twitch"
-	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -42,8 +41,15 @@ type GetVideosResponse struct {
 	Pagination Pagination  `json:"pagination"`
 }
 
-func GetVideos(videoIDs []string, userID, gameID string, first int, after string) ([]Video, error) {
-	url := urlAPIVideos + "?"
+func GetVideos(videoIDs []string, userID, gameID string, req *twitch.PaginationRequest) (*twitch.PaginationData[Video], error) {
+	opts := twitch.RequestOptions{}
+
+	if req != nil {
+		opts.After = req.Cursor
+		opts.First = req.Quantity
+	}
+
+	url := twitch.BuildURL(twitch.HelixBaseURL+"/videos", opts)
 
 	for _, id := range videoIDs {
 		url += fmt.Sprintf("&id=%s", id)
@@ -54,47 +60,22 @@ func GetVideos(videoIDs []string, userID, gameID string, first int, after string
 	if gameID != "" {
 		url += "&game_id=" + gameID
 	}
-	if first > 0 {
-		url += fmt.Sprintf("&first=%d", first)
-	}
-	if after != "" {
-		url += "&after=" + after
-	}
 
-	req, err := http.NewRequest("GET", url, nil)
-	if err != nil {
-		helpers.Logf(helpers.ERROR, "[TWITCH] GetVideos http.NewRequest failed: %v", err)
-		return nil, err
-	}
-
-	resp, err := twitch.DoRequest(req)
+	result, err := twitch.ExecuteRequest[twitch.PaginationData[Video]]("GET", url, 200)
 	if err != nil {
 		helpers.Logf(helpers.DEBUG, "[TWITCH] GetVideos: videoIDs=%v", videoIDs)
 		return nil, err
 	}
-	defer resp.Body.Close()
 
-	if resp.StatusCode != 200 {
-		body, err := io.ReadAll(resp.Body)
-		if err != nil {
-			helpers.Logf(helpers.ERROR, "[TWITCH] GetVideos io.ReadAll failed: %v", err)
-			return nil, err
-		}
-		return nil, fmt.Errorf("GetVideos: failed: %s", body)
+	result.GetNext = func() *twitch.PaginationData[Video] {
+		GetVideos(videoIDs, userID, gameID, &twitch.PaginationRequest{
+			Cursor:   result.Pagination.Cursor,
+			Quantity: opts.First,
+		})
+		return result
 	}
 
-	var result GetVideosResponse
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		helpers.Logf(helpers.ERROR, "[TWITCH] GetVideos io.ReadAll failed: %v", err)
-		return nil, err
-	}
-	if err := json.Unmarshal(body, &result); err != nil {
-		helpers.Logf(helpers.ERROR, "[TWITCH] GetVideos json.Unmarshal failed: %v", err)
-		return nil, err
-	}
-
-	return result.Data, nil
+	return result, nil
 }
 
 func DeleteVideos(videoIDs []string) error {

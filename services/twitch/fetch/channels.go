@@ -111,24 +111,36 @@ type GetFollowedChannelsResponse struct {
 	Pagination twitch.Pagination `json:"pagination"`
 }
 
-func GetFollowedChannels(broadcaster_id string, first int, after string) ([]FollowedChannel, error) {
+func GetFollowedChannels(broadcasterID string, req *twitch.PaginationRequest) (*twitch.PaginationData[FollowedChannel], error) {
 	user := globals.GetState().GetTwitchUser()
 
 	opts := twitch.RequestOptions{
 		UserID:        user.UserID,
-		BroadcasterID: broadcaster_id,
-		First:         first,
-		After:         after,
+		BroadcasterID: broadcasterID,
 	}
+
+	if req != nil {
+		opts.After = req.Cursor
+		opts.First = req.Quantity
+	}
+
 	url := twitch.BuildURL(twitch.HelixBaseURL+"/channels/followed", opts)
 
-	result, err := twitch.ExecuteRequest[GetFollowedChannelsResponse]("GET", url, 200)
+	result, err := twitch.ExecuteRequest[twitch.PaginationData[FollowedChannel]]("GET", url, 200)
 	if err != nil {
-		helpers.Logf(helpers.DEBUG, "[TWITCH] GetFollowedChannels: userID=%v", user.UserID)
+		helpers.Logf(helpers.DEBUG, "[TWITCH] GetFollowedChannels: broadcasterID=%v", broadcasterID)
 		return nil, err
 	}
 
-	return result.Data, nil
+	result.GetNext = func() *twitch.PaginationData[FollowedChannel] {
+		GetFollowedChannels(broadcasterID, &twitch.PaginationRequest{
+			Cursor:   result.Pagination.Cursor,
+			Quantity: opts.First,
+		})
+		return result
+	}
+
+	return result, nil
 }
 
 func GetChannelFollowers(userId string, req *twitch.PaginationRequest) (*twitch.PaginationData[twitch.TwitchViewerData], error) {

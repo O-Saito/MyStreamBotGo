@@ -110,7 +110,7 @@ type GetChatSettingsResponse struct {
 	Data []ChatSettings `json:"data"`
 }
 
-func GetChatters(broadcasterID, moderatorID string, first int, after string) ([]Chatter, error) {
+func GetChatters(broadcasterID, moderatorID string, req *twitch.PaginationRequest) (*twitch.PaginationData[Chatter], error) {
 	user := globals.GetState().GetTwitchUser()
 	if broadcasterID == "" {
 		broadcasterID = user.UserID
@@ -119,48 +119,33 @@ func GetChatters(broadcasterID, moderatorID string, first int, after string) ([]
 		moderatorID = user.UserID
 	}
 
-	url := fmt.Sprintf("%s?broadcaster_id=%s&moderator_id=%s", urlAPIChatters, broadcasterID, moderatorID)
-	if first > 0 {
-		url += fmt.Sprintf("&first=%d", first)
-	}
-	if after != "" {
-		url += "&after=" + after
+	opts := twitch.RequestOptions{
+		BroadcasterID: broadcasterID,
+		ModeratorID:  moderatorID,
 	}
 
-	req, err := http.NewRequest("GET", url, nil)
-	if err != nil {
-		helpers.Logf(helpers.ERROR, "[TWITCH] GetChatters http.NewRequest failed: %v", err)
-		return nil, err
+	if req != nil {
+		opts.After = req.Cursor
+		opts.First = req.Quantity
 	}
 
-	resp, err := twitch.DoRequest(req)
+	url := twitch.BuildURL(twitch.HelixBaseURL+"/chat/chatters", opts)
+
+	result, err := twitch.ExecuteRequest[twitch.PaginationData[Chatter]]("GET", url, 200)
 	if err != nil {
 		helpers.Logf(helpers.DEBUG, "[TWITCH] GetChatters: broadcasterID=%v", broadcasterID)
 		return nil, err
 	}
-	defer resp.Body.Close()
 
-	if resp.StatusCode != 200 {
-		body, err := io.ReadAll(resp.Body)
-		if err != nil {
-			helpers.Logf(helpers.ERROR, "[TWITCH] GetChatters io.ReadAll failed: %v", err)
-			return nil, err
-		}
-		return nil, fmt.Errorf("GetChatters: failed: %s", body)
+	result.GetNext = func() *twitch.PaginationData[Chatter] {
+		GetChatters(broadcasterID, moderatorID, &twitch.PaginationRequest{
+			Cursor:   result.Pagination.Cursor,
+			Quantity: opts.First,
+		})
+		return result
 	}
 
-	var result GetChattersResponse
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		helpers.Logf(helpers.ERROR, "[TWITCH] GetChatters io.ReadAll failed: %v", err)
-		return nil, err
-	}
-	if err := json.Unmarshal(body, &result); err != nil {
-		helpers.Logf(helpers.ERROR, "[TWITCH] GetChatters json.Unmarshal failed: %v", err)
-		return nil, err
-	}
-
-	return result.Data, nil
+	return result, nil
 }
 
 func GetChannelEmotes(broadcasterID string) ([]ChannelEmote, error) {

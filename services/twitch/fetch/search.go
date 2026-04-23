@@ -3,10 +3,7 @@ package twitch
 import (
 	"MyStreamBot/helpers"
 	twitch "MyStreamBot/services/twitch"
-	"encoding/json"
 	"fmt"
-	"io"
-	"net/http"
 )
 
 var urlAPISearch = "https://api.twitch.tv/helix/search"
@@ -40,95 +37,61 @@ type GetSearchChannelsResponse struct {
 	Pagination Pagination      `json:"pagination"`
 }
 
-func SearchCategories(query string, first int, after string) ([]SearchCategory, error) {
-	url := fmt.Sprintf("%s/categories?query=%s", urlAPISearch, query)
-	if first > 0 {
-		url += fmt.Sprintf("&first=%d", first)
-	}
-	if after != "" {
-		url += "&after=" + after
+func SearchCategories(query string, req *twitch.PaginationRequest) (*twitch.PaginationData[SearchCategory], error) {
+	opts := twitch.RequestOptions{}
+
+	if req != nil {
+		opts.After = req.Cursor
+		opts.First = req.Quantity
 	}
 
-	req, err := http.NewRequest("GET", url, nil)
-	if err != nil {
-		helpers.Logf(helpers.ERROR, "[TWITCH] SearchCategories http.NewRequest failed: %v", err)
-		return nil, err
-	}
+	url := twitch.BuildURL(twitch.HelixBaseURL+"/search/categories", opts)
+	url += fmt.Sprintf("&query=%s", query)
 
-	resp, err := twitch.DoRequest(req)
+	result, err := twitch.ExecuteRequest[twitch.PaginationData[SearchCategory]]("GET", url, 200)
 	if err != nil {
 		helpers.Logf(helpers.DEBUG, "[TWITCH] SearchCategories: query=%v", query)
 		return nil, err
 	}
-	defer resp.Body.Close()
 
-	if resp.StatusCode != 200 {
-		body, err := io.ReadAll(resp.Body)
-		if err != nil {
-			helpers.Logf(helpers.ERROR, "[TWITCH] SearchCategories io.ReadAll failed: %v", err)
-			return nil, err
-		}
-		return nil, fmt.Errorf("SearchCategories: failed: %s", body)
+	result.GetNext = func() *twitch.PaginationData[SearchCategory] {
+		SearchCategories(query, &twitch.PaginationRequest{
+			Cursor:   result.Pagination.Cursor,
+			Quantity: opts.First,
+		})
+		return result
 	}
 
-	var result GetSearchCategoriesResponse
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		helpers.Logf(helpers.ERROR, "[TWITCH] SearchCategories io.ReadAll failed: %v", err)
-		return nil, err
-	}
-	if err := json.Unmarshal(body, &result); err != nil {
-		helpers.Logf(helpers.ERROR, "[TWITCH] SearchCategories json.Unmarshal failed: %v", err)
-		return nil, err
-	}
-
-	return result.Data, nil
+	return result, nil
 }
 
-func SearchChannels(query string, first int, after string, liveOnly bool) ([]SearchChannel, error) {
-	url := fmt.Sprintf("%s/channels?query=%s", urlAPISearch, query)
-	if first > 0 {
-		url += fmt.Sprintf("&first=%d", first)
+func SearchChannels(query string, liveOnly bool, req *twitch.PaginationRequest) (*twitch.PaginationData[SearchChannel], error) {
+	opts := twitch.RequestOptions{}
+
+	if req != nil {
+		opts.After = req.Cursor
+		opts.First = req.Quantity
 	}
-	if after != "" {
-		url += "&after=" + after
-	}
+
+	url := twitch.BuildURL(twitch.HelixBaseURL+"/search/channels", opts)
+	url += fmt.Sprintf("&query=%s", query)
 	if liveOnly {
 		url += "&live_only=true"
 	}
 
-	req, err := http.NewRequest("GET", url, nil)
-	if err != nil {
-		helpers.Logf(helpers.ERROR, "[TWITCH] SearchChannels http.NewRequest failed: %v", err)
-		return nil, err
-	}
-
-	resp, err := twitch.DoRequest(req)
+	result, err := twitch.ExecuteRequest[twitch.PaginationData[SearchChannel]]("GET", url, 200)
 	if err != nil {
 		helpers.Logf(helpers.DEBUG, "[TWITCH] SearchChannels: query=%v", query)
 		return nil, err
 	}
-	defer resp.Body.Close()
 
-	if resp.StatusCode != 200 {
-		body, err := io.ReadAll(resp.Body)
-		if err != nil {
-			helpers.Logf(helpers.ERROR, "[TWITCH] SearchChannels io.ReadAll failed: %v", err)
-			return nil, err
-		}
-		return nil, fmt.Errorf("SearchChannels: failed: %s", body)
+	result.GetNext = func() *twitch.PaginationData[SearchChannel] {
+		SearchChannels(query, liveOnly, &twitch.PaginationRequest{
+			Cursor:   result.Pagination.Cursor,
+			Quantity: opts.First,
+		})
+		return result
 	}
 
-	var result GetSearchChannelsResponse
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		helpers.Logf(helpers.ERROR, "[TWITCH] SearchChannels io.ReadAll failed: %v", err)
-		return nil, err
-	}
-	if err := json.Unmarshal(body, &result); err != nil {
-		helpers.Logf(helpers.ERROR, "[TWITCH] SearchChannels json.Unmarshal failed: %v", err)
-		return nil, err
-	}
-
-	return result.Data, nil
+	return result, nil
 }

@@ -37,57 +37,41 @@ type CheckUserSubscriptionResponse struct {
 	Data []Subscription `json:"data"`
 }
 
-func GetBroadcasterSubscriptions(broadcasterID string, userIDs []string, first int, after string) ([]Subscription, error) {
+func GetBroadcasterSubscriptions(broadcasterID string, userIDs []string, req *twitch.PaginationRequest) (*twitch.PaginationData[Subscription], error) {
 	user := globals.GetState().GetTwitchUser()
 	if broadcasterID == "" {
 		broadcasterID = user.UserID
 	}
 
-	url := fmt.Sprintf("%s?broadcaster_id=%s", urlAPISubscriptions, broadcasterID)
+	opts := twitch.RequestOptions{
+		BroadcasterID: broadcasterID,
+	}
+
+	if req != nil {
+		opts.After = req.Cursor
+		opts.First = req.Quantity
+	}
+
+	url := twitch.BuildURL(twitch.HelixBaseURL+"/subscriptions", opts)
 	for _, id := range userIDs {
 		url += fmt.Sprintf("&user_id=%s", id)
 	}
-	if first > 0 {
-		url += fmt.Sprintf("&first=%d", first)
-	}
-	if after != "" {
-		url += "&after=" + after
-	}
 
-	req, err := http.NewRequest("GET", url, nil)
-	if err != nil {
-		helpers.Logf(helpers.ERROR, "[TWITCH] GetBroadcasterSubscriptions http.NewRequest failed: %v", err)
-		return nil, err
-	}
-
-	resp, err := twitch.DoRequest(req)
+	result, err := twitch.ExecuteRequest[twitch.PaginationData[Subscription]]("GET", url, 200)
 	if err != nil {
 		helpers.Logf(helpers.DEBUG, "[TWITCH] GetBroadcasterSubscriptions: broadcasterID=%v", broadcasterID)
 		return nil, err
 	}
-	defer resp.Body.Close()
 
-	if resp.StatusCode != 200 {
-		body, err := io.ReadAll(resp.Body)
-		if err != nil {
-			helpers.Logf(helpers.ERROR, "[TWITCH] GetBroadcasterSubscriptions io.ReadAll failed: %v", err)
-			return nil, err
-		}
-		return nil, fmt.Errorf("GetBroadcasterSubscriptions: failed: %s", body)
+	result.GetNext = func() *twitch.PaginationData[Subscription] {
+		GetBroadcasterSubscriptions(broadcasterID, userIDs, &twitch.PaginationRequest{
+			Cursor:   result.Pagination.Cursor,
+			Quantity: opts.First,
+		})
+		return result
 	}
 
-	var result GetBroadcasterSubscriptionsResponse
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		helpers.Logf(helpers.ERROR, "[TWITCH] GetBroadcasterSubscriptions io.ReadAll failed: %v", err)
-		return nil, err
-	}
-	if err := json.Unmarshal(body, &result); err != nil {
-		helpers.Logf(helpers.ERROR, "[TWITCH] GetBroadcasterSubscriptions json.Unmarshal failed: %v", err)
-		return nil, err
-	}
-
-	return result.Data, nil
+	return result, nil
 }
 
 func CheckUserSubscription(broadcasterID, userID string) (*Subscription, error) {

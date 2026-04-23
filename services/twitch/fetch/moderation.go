@@ -356,57 +356,41 @@ func UpdateAutoModSettings(broadcasterID, moderatorID string, req UpdateAutoModS
 	return nil
 }
 
-func GetBannedUsers(broadcasterID string, userIDs []string, first int, after string) ([]BannedUser, error) {
+func GetBannedUsers(broadcasterID string, userIDs []string, req *twitch.PaginationRequest) (*twitch.PaginationData[BannedUser], error) {
 	user := globals.GetState().GetTwitchUser()
 	if broadcasterID == "" {
 		broadcasterID = user.UserID
 	}
 
-	url := fmt.Sprintf("%s?broadcaster_id=%s", urlAPIBanned, broadcasterID)
+	opts := twitch.RequestOptions{
+		BroadcasterID: broadcasterID,
+	}
+
+	if req != nil {
+		opts.After = req.Cursor
+		opts.First = req.Quantity
+	}
+
+	url := twitch.BuildURL(twitch.HelixBaseURL+"/moderation/banned", opts)
 	for _, id := range userIDs {
 		url += fmt.Sprintf("&user_id=%s", id)
 	}
-	if first > 0 {
-		url += fmt.Sprintf("&first=%d", first)
-	}
-	if after != "" {
-		url += "&after=" + after
-	}
 
-	req, err := http.NewRequest("GET", url, nil)
-	if err != nil {
-		helpers.Logf(helpers.ERROR, "[TWITCH] GetBannedUsers http.NewRequest failed: %v", err)
-		return nil, err
-	}
-
-	resp, err := twitch.DoRequest(req)
+	result, err := twitch.ExecuteRequest[twitch.PaginationData[BannedUser]]("GET", url, 200)
 	if err != nil {
 		helpers.Logf(helpers.DEBUG, "[TWITCH] GetBannedUsers: broadcasterID=%v", broadcasterID)
 		return nil, err
 	}
-	defer resp.Body.Close()
 
-	if resp.StatusCode != 200 {
-		body, err := io.ReadAll(resp.Body)
-		if err != nil {
-			helpers.Logf(helpers.ERROR, "[TWITCH] GetBannedUsers io.ReadAll failed: %v", err)
-			return nil, err
-		}
-		return nil, fmt.Errorf("GetBannedUsers: failed: %s", body)
+	result.GetNext = func() *twitch.PaginationData[BannedUser] {
+		GetBannedUsers(broadcasterID, userIDs, &twitch.PaginationRequest{
+			Cursor:   result.Pagination.Cursor,
+			Quantity: opts.First,
+		})
+		return result
 	}
 
-	var result GetBannedUsersResponse
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		helpers.Logf(helpers.ERROR, "[TWITCH] GetBannedUsers io.ReadAll failed: %v", err)
-		return nil, err
-	}
-	if err := json.Unmarshal(body, &result); err != nil {
-		helpers.Logf(helpers.ERROR, "[TWITCH] GetBannedUsers json.Unmarshal failed: %v", err)
-		return nil, err
-	}
-
-	return result.Data, nil
+	return result, nil
 }
 
 func UnbanUser(broadcasterID, userID string) error {
@@ -489,54 +473,38 @@ func BanUser(userId string, duration int32, reason string) (string, error) {
 	return string(body), nil
 }
 
-func GetBlockedTerms(broadcasterID string, first int, after string) ([]BlockedTerm, error) {
+func GetBlockedTerms(broadcasterID string, req *twitch.PaginationRequest) (*twitch.PaginationData[BlockedTerm], error) {
 	user := globals.GetState().GetTwitchUser()
 	if broadcasterID == "" {
 		broadcasterID = user.UserID
 	}
 
-	url := fmt.Sprintf("%s?broadcaster_id=%s", urlAPIBlockTerms, broadcasterID)
-	if first > 0 {
-		url += fmt.Sprintf("&first=%d", first)
-	}
-	if after != "" {
-		url += "&after=" + after
+	opts := twitch.RequestOptions{
+		BroadcasterID: broadcasterID,
 	}
 
-	req, err := http.NewRequest("GET", url, nil)
-	if err != nil {
-		helpers.Logf(helpers.ERROR, "[TWITCH] GetBlockedTerms http.NewRequest failed: %v", err)
-		return nil, err
+	if req != nil {
+		opts.After = req.Cursor
+		opts.First = req.Quantity
 	}
 
-	resp, err := twitch.DoRequest(req)
+	url := twitch.BuildURL(twitch.HelixBaseURL+"/moderation/blocked_terms", opts)
+
+	result, err := twitch.ExecuteRequest[twitch.PaginationData[BlockedTerm]]("GET", url, 200)
 	if err != nil {
 		helpers.Logf(helpers.DEBUG, "[TWITCH] GetBlockedTerms: broadcasterID=%v", broadcasterID)
 		return nil, err
 	}
-	defer resp.Body.Close()
 
-	if resp.StatusCode != 200 {
-		body, err := io.ReadAll(resp.Body)
-		if err != nil {
-			helpers.Logf(helpers.ERROR, "[TWITCH] GetBlockedTerms io.ReadAll failed: %v", err)
-			return nil, err
-		}
-		return nil, fmt.Errorf("GetBlockedTerms: failed: %s", body)
+	result.GetNext = func() *twitch.PaginationData[BlockedTerm] {
+		GetBlockedTerms(broadcasterID, &twitch.PaginationRequest{
+			Cursor:   result.Pagination.Cursor,
+			Quantity: opts.First,
+		})
+		return result
 	}
 
-	var result GetBlockedTermsResponse
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		helpers.Logf(helpers.ERROR, "[TWITCH] GetBlockedTerms io.ReadAll failed: %v", err)
-		return nil, err
-	}
-	if err := json.Unmarshal(body, &result); err != nil {
-		helpers.Logf(helpers.ERROR, "[TWITCH] GetBlockedTerms json.Unmarshal failed: %v", err)
-		return nil, err
-	}
-
-	return result.Data, nil
+	return result, nil
 }
 
 func AddBlockedTerm(broadcasterID, text string, duration int) (*BlockedTerm, error) {
@@ -682,57 +650,41 @@ func GetModeratedChannels(userID string) ([]string, error) {
 	return channels, nil
 }
 
-func GetModerators(broadcasterID string, userIDs []string, first int, after string) ([]Moderator, error) {
+func GetModerators(broadcasterID string, userIDs []string, req *twitch.PaginationRequest) (*twitch.PaginationData[Moderator], error) {
 	user := globals.GetState().GetTwitchUser()
 	if broadcasterID == "" {
 		broadcasterID = user.UserID
 	}
 
-	url := fmt.Sprintf("%s?broadcaster_id=%s", urlAPIModerators, broadcasterID)
+	opts := twitch.RequestOptions{
+		BroadcasterID: broadcasterID,
+	}
+
+	if req != nil {
+		opts.After = req.Cursor
+		opts.First = req.Quantity
+	}
+
+	url := twitch.BuildURL(twitch.HelixBaseURL+"/moderation/moderators", opts)
 	for _, id := range userIDs {
 		url += fmt.Sprintf("&user_id=%s", id)
 	}
-	if first > 0 {
-		url += fmt.Sprintf("&first=%d", first)
-	}
-	if after != "" {
-		url += "&after=" + after
-	}
 
-	req, err := http.NewRequest("GET", url, nil)
-	if err != nil {
-		helpers.Logf(helpers.ERROR, "[TWITCH] GetModerators http.NewRequest failed: %v", err)
-		return nil, err
-	}
-
-	resp, err := twitch.DoRequest(req)
+	result, err := twitch.ExecuteRequest[twitch.PaginationData[Moderator]]("GET", url, 200)
 	if err != nil {
 		helpers.Logf(helpers.DEBUG, "[TWITCH] GetModerators: broadcasterID=%v", broadcasterID)
 		return nil, err
 	}
-	defer resp.Body.Close()
 
-	if resp.StatusCode != 200 {
-		body, err := io.ReadAll(resp.Body)
-		if err != nil {
-			helpers.Logf(helpers.ERROR, "[TWITCH] GetModerators io.ReadAll failed: %v", err)
-			return nil, err
-		}
-		return nil, fmt.Errorf("GetModerators: failed: %s", body)
+	result.GetNext = func() *twitch.PaginationData[Moderator] {
+		GetModerators(broadcasterID, userIDs, &twitch.PaginationRequest{
+			Cursor:   result.Pagination.Cursor,
+			Quantity: opts.First,
+		})
+		return result
 	}
 
-	var result GetModeratorsResponse
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		helpers.Logf(helpers.ERROR, "[TWITCH] GetModerators io.ReadAll failed: %v", err)
-		return nil, err
-	}
-	if err := json.Unmarshal(body, &result); err != nil {
-		helpers.Logf(helpers.ERROR, "[TWITCH] GetModerators json.Unmarshal failed: %v", err)
-		return nil, err
-	}
-
-	return result.Data, nil
+	return result, nil
 }
 
 func AddChannelModerator(broadcasterID, userID string) error {
@@ -799,57 +751,41 @@ func RemoveChannelModerator(broadcasterID, userID string) error {
 	return nil
 }
 
-func GetVIPs(broadcasterID string, userIDs []string, first int, after string) ([]VIP, error) {
+func GetVIPs(broadcasterID string, userIDs []string, req *twitch.PaginationRequest) (*twitch.PaginationData[VIP], error) {
 	user := globals.GetState().GetTwitchUser()
 	if broadcasterID == "" {
 		broadcasterID = user.UserID
 	}
 
-	url := fmt.Sprintf("%s?broadcaster_id=%s", urlAPIVIPs, broadcasterID)
+	opts := twitch.RequestOptions{
+		BroadcasterID: broadcasterID,
+	}
+
+	if req != nil {
+		opts.After = req.Cursor
+		opts.First = req.Quantity
+	}
+
+	url := twitch.BuildURL(twitch.HelixBaseURL+"/moderation/vips", opts)
 	for _, id := range userIDs {
 		url += fmt.Sprintf("&user_id=%s", id)
 	}
-	if first > 0 {
-		url += fmt.Sprintf("&first=%d", first)
-	}
-	if after != "" {
-		url += "&after=" + after
-	}
 
-	req, err := http.NewRequest("GET", url, nil)
-	if err != nil {
-		helpers.Logf(helpers.ERROR, "[TWITCH] GetVIPs http.NewRequest failed: %v", err)
-		return nil, err
-	}
-
-	resp, err := twitch.DoRequest(req)
+	result, err := twitch.ExecuteRequest[twitch.PaginationData[VIP]]("GET", url, 200)
 	if err != nil {
 		helpers.Logf(helpers.DEBUG, "[TWITCH] GetVIPs: broadcasterID=%v", broadcasterID)
 		return nil, err
 	}
-	defer resp.Body.Close()
 
-	if resp.StatusCode != 200 {
-		body, err := io.ReadAll(resp.Body)
-		if err != nil {
-			helpers.Logf(helpers.ERROR, "[TWITCH] GetVIPs io.ReadAll failed: %v", err)
-			return nil, err
-		}
-		return nil, fmt.Errorf("GetVIPs: failed: %s", body)
+	result.GetNext = func() *twitch.PaginationData[VIP] {
+		GetVIPs(broadcasterID, userIDs, &twitch.PaginationRequest{
+			Cursor:   result.Pagination.Cursor,
+			Quantity: opts.First,
+		})
+		return result
 	}
 
-	var result GetVIPsResponse
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		helpers.Logf(helpers.ERROR, "[TWITCH] GetVIPs io.ReadAll failed: %v", err)
-		return nil, err
-	}
-	if err := json.Unmarshal(body, &result); err != nil {
-		helpers.Logf(helpers.ERROR, "[TWITCH] GetVIPs json.Unmarshal failed: %v", err)
-		return nil, err
-	}
-
-	return result.Data, nil
+	return result, nil
 }
 
 func AddChannelVIP(broadcasterID, userID string) error {
@@ -1144,60 +1080,42 @@ func RemoveSuspiciousStatusFromChatUser(broadcasterID, moderatorID, userID strin
 	return nil
 }
 
-func GetUnbanRequests(broadcasterID string, userID, status string, first int, after string) ([]UnbanRequest, error) {
+func GetUnbanRequests(broadcasterID string, userID, status string, req *twitch.PaginationRequest) (*twitch.PaginationData[UnbanRequest], error) {
 	user := globals.GetState().GetTwitchUser()
 	if broadcasterID == "" {
 		broadcasterID = user.UserID
 	}
 
-	url := fmt.Sprintf("%s?broadcaster_id=%s", urlAPIUnbanRequests, broadcasterID)
-	if userID != "" {
-		url += "&user_id=" + userID
+	opts := twitch.RequestOptions{
+		BroadcasterID: broadcasterID,
+		UserID:     userID,
 	}
+
+	if req != nil {
+		opts.After = req.Cursor
+		opts.First = req.Quantity
+	}
+
+	url := twitch.BuildURL(twitch.HelixBaseURL+"/moderation/unban_requests", opts)
 	if status != "" {
-		url += "&status=" + status
-	}
-	if first > 0 {
-		url += fmt.Sprintf("&first=%d", first)
-	}
-	if after != "" {
-		url += "&after=" + after
+		url += fmt.Sprintf("&status=%s", status)
 	}
 
-	req, err := http.NewRequest("GET", url, nil)
-	if err != nil {
-		helpers.Logf(helpers.ERROR, "[TWITCH] GetUnbanRequests http.NewRequest failed: %v", err)
-		return nil, err
-	}
-
-	resp, err := twitch.DoRequest(req)
+	result, err := twitch.ExecuteRequest[twitch.PaginationData[UnbanRequest]]("GET", url, 200)
 	if err != nil {
 		helpers.Logf(helpers.DEBUG, "[TWITCH] GetUnbanRequests: broadcasterID=%v", broadcasterID)
 		return nil, err
 	}
-	defer resp.Body.Close()
 
-	if resp.StatusCode != 200 {
-		body, err := io.ReadAll(resp.Body)
-		if err != nil {
-			helpers.Logf(helpers.ERROR, "[TWITCH] GetUnbanRequests io.ReadAll failed: %v", err)
-			return nil, err
-		}
-		return nil, fmt.Errorf("GetUnbanRequests: failed: %s", body)
+	result.GetNext = func() *twitch.PaginationData[UnbanRequest] {
+		GetUnbanRequests(broadcasterID, userID, status, &twitch.PaginationRequest{
+			Cursor:   result.Pagination.Cursor,
+			Quantity: opts.First,
+		})
+		return result
 	}
 
-	var result GetUnbanRequestsResponse
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		helpers.Logf(helpers.ERROR, "[TWITCH] GetUnbanRequests io.ReadAll failed: %v", err)
-		return nil, err
-	}
-	if err := json.Unmarshal(body, &result); err != nil {
-		helpers.Logf(helpers.ERROR, "[TWITCH] GetUnbanRequests json.Unmarshal failed: %v", err)
-		return nil, err
-	}
-
-	return result.Data, nil
+	return result, nil
 }
 
 func ResolveUnbanRequest(broadcasterID, requestID, action, resolutionText string) error {

@@ -157,27 +157,39 @@ func UpdateCustomReward(rewardID string, req UpdateCustomRewardRequest) error {
 	return nil
 }
 
-func GetCustomRewardRedemptions(rewardID, status string, first int, after string) ([]CustomRewardRedemption, error) {
+func GetCustomRewardRedemptions(rewardID, status string, req *twitch.PaginationRequest) (*twitch.PaginationData[CustomRewardRedemption], error) {
 	user := globals.GetState().GetTwitchUser()
 
-	url := fmt.Sprintf("%s/redemptions?broadcaster_id=%s&reward_id=%s", twitch.HelixBaseURL+"/channel_points", user.UserID, rewardID)
-	if status != "" {
-		url += "&status=" + status
-	}
-	if first > 0 {
-		url += fmt.Sprintf("&first=%d", first)
-	}
-	if after != "" {
-		url += "&after=" + after
+	opts := twitch.RequestOptions{
+		BroadcasterID: user.UserID,
+		First:     req.Quantity,
+		After:     req.Cursor,
 	}
 
-	result, err := twitch.ExecuteRequest[GetCustomRewardRedemptionsResponse]("GET", url, 200)
+	if rewardID != "" {
+		opts.UserID = rewardID
+	}
+	if status != "" {
+		opts.ModeratorID = status
+	}
+
+	url := twitch.BuildURL(twitch.HelixBaseURL+"/channel_points/redemptions", opts)
+
+	result, err := twitch.ExecuteRequest[twitch.PaginationData[CustomRewardRedemption]]("GET", url, 200)
 	if err != nil {
 		helpers.Logf(helpers.DEBUG, "[TWITCH] GetCustomRewardRedemptions: rewardID=%v, status=%v", rewardID, status)
 		return nil, err
 	}
 
-	return result.Data, nil
+	result.GetNext = func() *twitch.PaginationData[CustomRewardRedemption] {
+		GetCustomRewardRedemptions(rewardID, status, &twitch.PaginationRequest{
+			Cursor:   result.Pagination.Cursor,
+			Quantity: opts.First,
+		})
+		return result
+	}
+
+	return result, nil
 }
 
 func UpdateRedemptionStatus(rewardID, redemptionID string, status string) error {

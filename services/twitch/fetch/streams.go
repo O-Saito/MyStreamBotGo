@@ -107,8 +107,15 @@ func GetStreamKey(broadcasterID string) (string, error) {
 	return result.Data[0].StreamKey, nil
 }
 
-func GetStreams(userIDs []string, gameIDs []string, languages []string, first int, after string) ([]Stream, error) {
-	url := urlAPIStreams + "?"
+func GetStreams(userIDs []string, gameIDs []string, languages []string, req *twitch.PaginationRequest) (*twitch.PaginationData[Stream], error) {
+	opts := twitch.RequestOptions{}
+
+	if req != nil {
+		opts.After = req.Cursor
+		opts.First = req.Quantity
+	}
+
+	url := twitch.BuildURL(twitch.HelixBaseURL+"/streams", opts)
 
 	for _, id := range userIDs {
 		url += fmt.Sprintf("&user_id=%s", id)
@@ -119,97 +126,56 @@ func GetStreams(userIDs []string, gameIDs []string, languages []string, first in
 	for _, lang := range languages {
 		url += fmt.Sprintf("&language=%s", lang)
 	}
-	if first > 0 {
-		url += fmt.Sprintf("&first=%d", first)
-	}
-	if after != "" {
-		url += "&after=" + after
-	}
 
-	req, err := http.NewRequest("GET", url, nil)
-	if err != nil {
-		helpers.Logf(helpers.ERROR, "[TWITCH] GetStreams http.NewRequest failed: %v", err)
-		return nil, err
-	}
-
-	resp, err := twitch.DoRequest(req)
+	result, err := twitch.ExecuteRequest[twitch.PaginationData[Stream]]("GET", url, 200)
 	if err != nil {
 		helpers.Logf(helpers.DEBUG, "[TWITCH] GetStreams: userIDs=%v", userIDs)
 		return nil, err
 	}
-	defer resp.Body.Close()
 
-	if resp.StatusCode != 200 {
-		body, err := io.ReadAll(resp.Body)
-		if err != nil {
-			helpers.Logf(helpers.ERROR, "[TWITCH] GetStreams io.ReadAll failed: %v", err)
-			return nil, err
-		}
-		return nil, fmt.Errorf("GetStreams: failed: %s", body)
+	result.GetNext = func() *twitch.PaginationData[Stream] {
+		GetStreams(userIDs, gameIDs, languages, &twitch.PaginationRequest{
+			Cursor:   result.Pagination.Cursor,
+			Quantity: opts.First,
+		})
+		return result
 	}
 
-	var result GetStreamsResponse
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		helpers.Logf(helpers.ERROR, "[TWITCH] GetStreams io.ReadAll failed: %v", err)
-		return nil, err
-	}
-	if err := json.Unmarshal(body, &result); err != nil {
-		helpers.Logf(helpers.ERROR, "[TWITCH] GetStreams json.Unmarshal failed: %v", err)
-		return nil, err
-	}
-
-	return result.Data, nil
+	return result, nil
 }
 
-func GetFollowedStreams(userID string, first int, after string) ([]Stream, error) {
+func GetFollowedStreams(userID string, req *twitch.PaginationRequest) (*twitch.PaginationData[Stream], error) {
 	user := globals.GetState().GetTwitchUser()
 	if userID == "" {
 		userID = user.UserID
 	}
 
-	url := fmt.Sprintf("%s/followed?user_id=%s", urlAPIStreams, userID)
-	if first > 0 {
-		url += fmt.Sprintf("&first=%d", first)
-	}
-	if after != "" {
-		url += "&after=" + after
+	opts := twitch.RequestOptions{
+		UserID: userID,
 	}
 
-	req, err := http.NewRequest("GET", url, nil)
-	if err != nil {
-		helpers.Logf(helpers.ERROR, "[TWITCH] GetFollowedStreams http.NewRequest failed: %v", err)
-		return nil, err
+	if req != nil {
+		opts.After = req.Cursor
+		opts.First = req.Quantity
 	}
 
-	resp, err := twitch.DoRequest(req)
+	url := twitch.BuildURL(twitch.HelixBaseURL+"/streams/followed", opts)
+
+	result, err := twitch.ExecuteRequest[twitch.PaginationData[Stream]]("GET", url, 200)
 	if err != nil {
 		helpers.Logf(helpers.DEBUG, "[TWITCH] GetFollowedStreams: userID=%v", userID)
 		return nil, err
 	}
-	defer resp.Body.Close()
 
-	if resp.StatusCode != 200 {
-		body, err := io.ReadAll(resp.Body)
-		if err != nil {
-			helpers.Logf(helpers.ERROR, "[TWITCH] GetFollowedStreams io.ReadAll failed: %v", err)
-			return nil, err
-		}
-		return nil, fmt.Errorf("GetFollowedStreams: failed: %s", body)
+	result.GetNext = func() *twitch.PaginationData[Stream] {
+		GetFollowedStreams(userID, &twitch.PaginationRequest{
+			Cursor:   result.Pagination.Cursor,
+			Quantity: opts.First,
+		})
+		return result
 	}
 
-	var result GetStreamsResponse
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		helpers.Logf(helpers.ERROR, "[TWITCH] GetFollowedStreams io.ReadAll failed: %v", err)
-		return nil, err
-	}
-	if err := json.Unmarshal(body, &result); err != nil {
-		helpers.Logf(helpers.ERROR, "[TWITCH] GetFollowedStreams json.Unmarshal failed: %v", err)
-		return nil, err
-	}
-
-	return result.Data, nil
+	return result, nil
 }
 
 type CreateStreamMarkerRequest struct {
@@ -255,54 +221,36 @@ func CreateStreamMarker(broadcasterID string, req CreateStreamMarkerRequest) err
 	return nil
 }
 
-func GetStreamMarkers(broadcasterID, videoID string, first int, after string) ([]GetStreamMarkersResponse, error) {
+func GetStreamMarkers(broadcasterID, videoID string, req *twitch.PaginationRequest) (*twitch.PaginationData[GetStreamMarkersResponse], error) {
 	user := globals.GetState().GetTwitchUser()
 	if broadcasterID == "" {
 		broadcasterID = user.UserID
 	}
 
-	url := fmt.Sprintf("%s?broadcaster_id=%s", urlAPIStreamMarkers, broadcasterID)
-	if videoID != "" {
-		url += "&video_id=" + videoID
-	}
-	if first > 0 {
-		url += fmt.Sprintf("&first=%d", first)
-	}
-	if after != "" {
-		url += "&after=" + after
+	opts := twitch.RequestOptions{
+		BroadcasterID: broadcasterID,
+		UserID:     videoID,
 	}
 
-	req, err := http.NewRequest("GET", url, nil)
-	if err != nil {
-		helpers.Logf(helpers.ERROR, "[TWITCH] GetStreamMarkers http.NewRequest failed: %v", err)
-		return nil, err
+	if req != nil {
+		opts.After = req.Cursor
+		opts.First = req.Quantity
 	}
 
-	resp, err := twitch.DoRequest(req)
+	url := twitch.BuildURL(twitch.HelixBaseURL+"/streams/markers", opts)
+
+	result, err := twitch.ExecuteRequest[twitch.PaginationData[GetStreamMarkersResponse]]("GET", url, 200)
 	if err != nil {
 		helpers.Logf(helpers.DEBUG, "[TWITCH] GetStreamMarkers: broadcasterID=%v", broadcasterID)
 		return nil, err
 	}
-	defer resp.Body.Close()
 
-	if resp.StatusCode != 200 {
-		body, err := io.ReadAll(resp.Body)
-		if err != nil {
-			helpers.Logf(helpers.ERROR, "[TWITCH] GetStreamMarkers io.ReadAll failed: %v", err)
-			return nil, err
-		}
-		return nil, fmt.Errorf("GetStreamMarkers: failed: %s", body)
-	}
-
-	var result []GetStreamMarkersResponse
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		helpers.Logf(helpers.ERROR, "[TWITCH] GetStreamMarkers io.ReadAll failed: %v", err)
-		return nil, err
-	}
-	if err := json.Unmarshal(body, &result); err != nil {
-		helpers.Logf(helpers.ERROR, "[TWITCH] GetStreamMarkers json.Unmarshal failed: %v", err)
-		return nil, err
+	result.GetNext = func() *twitch.PaginationData[GetStreamMarkersResponse] {
+		GetStreamMarkers(broadcasterID, videoID, &twitch.PaginationRequest{
+			Cursor:   result.Pagination.Cursor,
+			Quantity: opts.First,
+		})
+		return result
 	}
 
 	return result, nil

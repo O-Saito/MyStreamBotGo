@@ -64,25 +64,36 @@ func GetCharityCampaign(broadcasterID string) (*CharityCampaign, error) {
 	return &result.Data[0], nil
 }
 
-func GetCharityCampaignDonations(broadcasterID string, first int, after string) ([]CharityDonation, error) {
+func GetCharityCampaignDonations(broadcasterID string, req *twitch.PaginationRequest) (*twitch.PaginationData[CharityDonation], error) {
 	user := globals.GetState().GetTwitchUser()
 	if broadcasterID == "" {
 		broadcasterID = user.UserID
 	}
 
-	url := fmt.Sprintf("%s/donations?broadcaster_id=%s", urlAPICharity, broadcasterID)
-	if first > 0 {
-		url += fmt.Sprintf("&first=%d", first)
-	}
-	if after != "" {
-		url += "&after=" + after
+	opts := twitch.RequestOptions{
+		BroadcasterID: broadcasterID,
 	}
 
-	result, err := twitch.ExecuteRequest[GetCharityDonationsResponse]("GET", url, http.StatusOK)
+	if req != nil {
+		opts.After = req.Cursor
+		opts.First = req.Quantity
+	}
+
+	url := twitch.BuildURL(twitch.HelixBaseURL+"/charity/donations", opts)
+
+	result, err := twitch.ExecuteRequest[twitch.PaginationData[CharityDonation]]("GET", url, http.StatusOK)
 	if err != nil {
 		helpers.Logf(helpers.DEBUG, "[TWITCH] GetCharityCampaignDonations: broadcasterID=%v", broadcasterID)
 		return nil, err
 	}
 
-	return result.Data, nil
+	result.GetNext = func() *twitch.PaginationData[CharityDonation] {
+		GetCharityCampaignDonations(broadcasterID, &twitch.PaginationRequest{
+			Cursor:   result.Pagination.Cursor,
+			Quantity: opts.First,
+		})
+		return result
+	}
+
+	return result, nil
 }

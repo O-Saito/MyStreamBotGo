@@ -4,6 +4,7 @@
  * @typedef SocketMessage
  * @property {string} type
  * @property {string} filter
+ * @property {string|undefined} responseClientID
  * @property {any} data
  * 
  * @typedef EventSubcriber
@@ -147,6 +148,14 @@ function webSocketConnect() {
             });
             return;
         }
+
+        if (data.responseClientID && waitingResponseFunctions[data.responseClientID]) {
+            const f = waitingResponseFunctions[data.responseClientID];
+            delete waitingResponseFunctions[data.responseClientID];
+            f(data.data);
+            return;
+        }
+
         if (!handlers[data.type]) {
             console.warn("Handler not found:", data.type);
             return;
@@ -162,6 +171,8 @@ function webSocketConnect() {
     };
 }
 
+/** @type {Object.<string, Function>} */
+const waitingResponseFunctions = {};
 
 export default {
     connect: () => {
@@ -211,8 +222,15 @@ export default {
     /**
      * @param {string} eventType 
      * @param {Object} data 
+     * @param {Function|undefined} func 
      */
-    send: (eventType, data) => {
+    send: (eventType, data, func) => {
+        if (func) {
+            const id = crypto.randomUUID();
+            waitingResponseFunctions[id] = func;
+            ws.send(JSON.stringify({ type: eventType, data: data, responseClientID: id }));
+            return
+        }
         ws.send(JSON.stringify({ type: eventType, data: data }));
     },
     /**

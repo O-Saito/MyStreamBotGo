@@ -562,6 +562,10 @@
                 }
             }
             w.send("get-streamer-data", {});
+            w.send('test', {}, (d) => { 
+                console.log(d) 
+                w.send('test', {}, (d) => { console.log("teste2", d) })
+            });
         });
 
         w.on('twitch-connection', (data) => {

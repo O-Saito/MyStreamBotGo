@@ -543,7 +543,10 @@
 
             updateKickConnectionDetails(data.kick?.connected_as);
             loadDyModules(data.custom_events_modules);
-            w.send("get-dy-statistics", {});
+            
+            w.send("get-streamer-data", {}, resultGetStreamerData);
+            w.send("get-dy-statistics", {}, resultGetDyStatistics);
+
             if (data.interface_config) {
                 try {
                     const config = JSON.parse(data.interface_config);
@@ -561,11 +564,6 @@
                     throw e;
                 }
             }
-            w.send("get-streamer-data", {});
-            w.send('test', {}, (d) => { 
-                console.log(d) 
-                w.send('test', {}, (d) => { console.log("teste2", d) })
-            });
         });
 
         w.on('twitch-connection', (data) => {
@@ -601,38 +599,14 @@
                 });
             }
         });
-        w.on('result-query-stream-games', (data) => {
-            document.getElementById('twitch-game-list').innerHTML = data.map(x => `<option data-id="${x.id}" data-name="${x.name}">${x.name}</option>`).join('');
-        });
+
         w.on('twitch-eventsub-keepalive', (data) => {
             const date = new Date(data?.metadata?.message_timestamp);
             if (!isNaN(date)) {
                 twitchLastEventsub.textContent = `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}:${date.getSeconds().toString().padStart(2, '0')}`;
             }
         });
-        w.on('result-connect-chat-youtube', (data) => syncYouTubeChatConnections(data));
-        w.on('result-get-next-streams-youtube', (data) => {
-            data.forEach(item => {
-                if (!streams.youtube.previewStreams[item.id]) {
-                    streams.youtube.previewStreams[item.id] = {
-                        channelId: "",
-                        description: "",
-                        liveChatId: "",
-                        publishedAt: "",
-                        thumbnail: "",
-                        title: "",
-                    };
-                }
-                const current = streams.youtube.previewStreams[item.id];
-                current.channelId = item.snippet.channelId;
-                current.title = item.snippet.title;
-                current.description = item.snippet.description;
-                current.liveChatId = item.snippet.liveChatId;
-                current.publishedAt = item.snippet.publishedAt;
-                current.thumbnail = item.snippet.thumbnails?.medium?.url || item.snippet.thumbnails?.default?.url || "";
-            });
-            updateYouTubeConnectionDetails();
-        });
+
         w.on('youtube-live-offline', (data) => {
             const item = document.querySelector(`#chat-connection-youtube [data-live-id="${data?.liveId}"]`);
             if (item) item.classList.add('live-off');
@@ -750,7 +724,65 @@
             el.innerHTML = `<span><span class="user">${fromName}</span> está raidando ${toName} com ${viewers} viewers!</span>`;
             eventDiv.appendChild(el);
         });
-        w.on('result-get-streamer-data', (data) => {
+
+        //w.on('result-get-streamer-data', resultGetStreamerData);
+        //w.on('result-get-dy-statistics', resultGetDyStatistics);
+        //w.on('result-query-stream-games', resultQueryStreamGames);
+        //w.on('result-connect-chat-youtube', resultConnectChatYoutube);
+        //w.on('result-get-next-streams-youtube', resultGetNextStreamsYoutube);
+
+        try {
+            w.connect();
+        } catch (e) {
+            window.onerror?.(`Socket connection error: ${e.message}`, '', 0, 0, e);
+        }
+
+        let timeToUpdateData = 0;
+        setInterval(() => {
+            if (++timeToUpdateData >= 60) {
+                timeToUpdateData = 0;
+                w.send("get-streamer-data", {}, resultGetStreamerData);
+                w.send("get-dy-statistics", {}, resultGetDyStatistics);
+            }
+            updateViewCount();
+        }, 1000);
+
+        function resultGetNextStreamsYoutube(data) {
+            data.forEach(item => {
+                if (!streams.youtube.previewStreams[item.id]) {
+                    streams.youtube.previewStreams[item.id] = {
+                        channelId: "",
+                        description: "",
+                        liveChatId: "",
+                        publishedAt: "",
+                        thumbnail: "",
+                        title: "",
+                    };
+                }
+                const current = streams.youtube.previewStreams[item.id];
+                current.channelId = item.snippet.channelId;
+                current.title = item.snippet.title;
+                current.description = item.snippet.description;
+                current.liveChatId = item.snippet.liveChatId;
+                current.publishedAt = item.snippet.publishedAt;
+                current.thumbnail = item.snippet.thumbnails?.medium?.url || item.snippet.thumbnails?.default?.url || "";
+            });
+            updateYouTubeConnectionDetails();
+        }
+
+        function resultConnectChatYoutube(data) {
+            syncYouTubeChatConnections(data);
+        }
+
+        function resultQueryStreamGames(data) {
+            document.getElementById('twitch-game-list').innerHTML = data.map(x => `<option data-id="${x.id}" data-name="${x.name}">${x.name}</option>`).join('');
+        }
+
+        function resultGetDyStatistics(data) {
+            updateDyStatistics(data);
+        }
+
+        function resultGetStreamerData(data) {
             if (!data) return;
             const { twitch, youtube } = data;
 
@@ -779,27 +811,7 @@
             }
 
             updateViewCount();
-        });
-
-        w.on('result-get-dy-statistics', (data) => {
-            updateDyStatistics(data);
-        });
-
-        try {
-            w.connect();
-        } catch (e) {
-            window.onerror?.(`Socket connection error: ${e.message}`, '', 0, 0, e);
         }
-
-        let timeToUpdateData = 0;
-        setInterval(() => {
-            if (++timeToUpdateData >= 60) {
-                timeToUpdateData = 0;
-                w.send("get-streamer-data", {});
-                w.send("get-dy-statistics", {});
-            }
-            updateViewCount();
-        }, 1000);
 
         function checkuserReference(text) {
             const t1 = `@${streams.twitch.data?.userLogin || ''}`;
@@ -811,9 +823,9 @@
 
         function connectToTwitchChat(slug) { w.send('connect-chat-twitch', { channel: slug }); }
 
-        function connectToYouTubeChat(id) { w.send('connect-chat-youtube', { channel: id }); }
+        function connectToYouTubeChat(id) { w.send('connect-chat-youtube', { channel: id }, resultConnectChatYoutube); }
 
-        function getNextYouTubeStreams(id) { w.send('get-next-streams-youtube', { channel: id }); }
+        function getNextYouTubeStreams(id) { w.send('get-next-streams-youtube', { channel: id }, resultGetNextStreamsYoutube); }
 
         function deleteTwitchMessage(e) {
             e.preventDefault();

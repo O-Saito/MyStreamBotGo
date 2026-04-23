@@ -58,13 +58,10 @@ type GetStreamMarkersResponse struct {
 	} `json:"data"`
 }
 
-func GetStreamKey(broadcasterID string) (string, error) {
+func GetStreamKey() (string, error) {
 	user := globals.GetState().GetTwitchUser()
-	if broadcasterID == "" {
-		broadcasterID = user.UserID
-	}
 
-	url := fmt.Sprintf("%s?broadcaster_id=%s", urlAPIStreamKey, broadcasterID)
+	url := fmt.Sprintf("%s?broadcaster_id=%s", urlAPIStreamKey, user.UserID)
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		helpers.Logf(helpers.ERROR, "[TWITCH] GetStreamKey http.NewRequest failed: %v", err)
@@ -73,7 +70,7 @@ func GetStreamKey(broadcasterID string) (string, error) {
 
 	resp, err := twitch.DoRequest(req)
 	if err != nil {
-		helpers.Logf(helpers.DEBUG, "[TWITCH] GetStreamKey: broadcasterID=%v", broadcasterID)
+		helpers.Logf(helpers.DEBUG, "[TWITCH] GetStreamKey: broadcasterID=%v", user.UserID)
 		return "", err
 	}
 	defer resp.Body.Close()

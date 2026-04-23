@@ -411,14 +411,8 @@ type UpdateChatSettingsRequest struct {
 	SubsOnly              *bool `json:"subs_only,omitempty"`
 }
 
-func UpdateChatSettings(broadcasterID, moderatorID string, req UpdateChatSettingsRequest) error {
+func UpdateChatSettings(req UpdateChatSettingsRequest) error {
 	user := globals.GetState().GetTwitchUser()
-	if broadcasterID == "" {
-		broadcasterID = user.UserID
-	}
-	if moderatorID == "" {
-		moderatorID = user.UserID
-	}
 
 	data, err := json.Marshal(req)
 	if err != nil {
@@ -426,7 +420,7 @@ func UpdateChatSettings(broadcasterID, moderatorID string, req UpdateChatSetting
 		return err
 	}
 
-	url := fmt.Sprintf("%s?broadcaster_id=%s&moderator_id=%s", urlAPIChatSettings, broadcasterID, moderatorID)
+	url := fmt.Sprintf("%s?broadcaster_id=%s&moderator_id=%s", urlAPIChatSettings, user.UserID, user.UserID)
 	httpReq, err := http.NewRequest("PATCH", url, bytes.NewBuffer(data))
 	if err != nil {
 		helpers.Logf(helpers.ERROR, "[TWITCH] UpdateChatSettings http.NewRequest failed: %v", err)
@@ -436,7 +430,7 @@ func UpdateChatSettings(broadcasterID, moderatorID string, req UpdateChatSetting
 
 	resp, err := twitch.DoRequest(httpReq)
 	if err != nil {
-		helpers.Logf(helpers.DEBUG, "[TWITCH] UpdateChatSettings: broadcasterID=%v", broadcasterID)
+		helpers.Logf(helpers.DEBUG, "[TWITCH] UpdateChatSettings: broadcasterID=%v", user.UserID)
 		return err
 	}
 	defer resp.Body.Close()
@@ -453,19 +447,13 @@ func UpdateChatSettings(broadcasterID, moderatorID string, req UpdateChatSetting
 	return nil
 }
 
-func SendChatAnnouncement(broadcasterID, moderatorID, message, color string) error {
+func SendChatAnnouncement(message, color string) error {
 	user := globals.GetState().GetTwitchUser()
-	if broadcasterID == "" {
-		broadcasterID = user.UserID
-	}
-	if moderatorID == "" {
-		moderatorID = user.UserID
-	}
 
 	data := map[string]any{
-		"message":      message,
-		"broadcaster_id": broadcasterID,
-		"moderator_id": moderatorID,
+		"message":       message,
+		"broadcaster_id": user.UserID,
+		"moderator_id":  user.UserID,
 	}
 	if color != "" {
 		data["color"] = color
@@ -486,7 +474,7 @@ func SendChatAnnouncement(broadcasterID, moderatorID, message, color string) err
 
 	resp, err := twitch.DoRequest(req)
 	if err != nil {
-		helpers.Logf(helpers.DEBUG, "[TWITCH] SendChatAnnouncement: broadcasterID=%v, message=%v", broadcasterID, message)
+		helpers.Logf(helpers.DEBUG, "[TWITCH] SendChatAnnouncement: broadcasterID=%v, message=%v", user.UserID, message)
 		return err
 	}
 	defer resp.Body.Close()

@@ -238,16 +238,10 @@ func ManageHeldAutoModMessages(msgID, action string) error {
 	return nil
 }
 
-func GetAutoModSettings(broadcasterID, moderatorID string) (*AutoModSettings, error) {
+func GetAutoModSettings() (*AutoModSettings, error) {
 	user := globals.GetState().GetTwitchUser()
-	if broadcasterID == "" {
-		broadcasterID = user.UserID
-	}
-	if moderatorID == "" {
-		moderatorID = user.UserID
-	}
 
-	url := fmt.Sprintf("%s?broadcaster_id=%s&moderator_id=%s", urlAPIAutoModSettings, broadcasterID, moderatorID)
+	url := fmt.Sprintf("%s?broadcaster_id=%s&moderator_id=%s", urlAPIAutoModSettings, user.UserID, user.UserID)
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		helpers.Logf(helpers.ERROR, "[TWITCH] GetAutoModSettings http.NewRequest failed: %v", err)
@@ -256,7 +250,7 @@ func GetAutoModSettings(broadcasterID, moderatorID string) (*AutoModSettings, er
 
 	resp, err := twitch.DoRequest(req)
 	if err != nil {
-		helpers.Logf(helpers.DEBUG, "[TWITCH] GetAutoModSettings: broadcasterID=%v", broadcasterID)
+		helpers.Logf(helpers.DEBUG, "[TWITCH] GetAutoModSettings: broadcasterID=%v", user.UserID)
 		return nil, err
 	}
 	defer resp.Body.Close()
@@ -314,14 +308,8 @@ type UpdateAutoModSettingsRequest struct {
 	Words        *bool `json:"words,omitempty"`
 }
 
-func UpdateAutoModSettings(broadcasterID, moderatorID string, req UpdateAutoModSettingsRequest) error {
+func UpdateAutoModSettings(req UpdateAutoModSettingsRequest) error {
 	user := globals.GetState().GetTwitchUser()
-	if broadcasterID == "" {
-		broadcasterID = user.UserID
-	}
-	if moderatorID == "" {
-		moderatorID = user.UserID
-	}
 
 	data, err := json.Marshal(req)
 	if err != nil {
@@ -329,7 +317,7 @@ func UpdateAutoModSettings(broadcasterID, moderatorID string, req UpdateAutoModS
 		return err
 	}
 
-	url := fmt.Sprintf("%s?broadcaster_id=%s&moderator_id=%s", urlAPIAutoModSettings, broadcasterID, moderatorID)
+	url := fmt.Sprintf("%s?broadcaster_id=%s&moderator_id=%s", urlAPIAutoModSettings, user.UserID, user.UserID)
 	httpReq, err := http.NewRequest("PATCH", url, bytes.NewBuffer(data))
 	if err != nil {
 		helpers.Logf(helpers.ERROR, "[TWITCH] UpdateAutoModSettings http.NewRequest failed: %v", err)
@@ -339,7 +327,7 @@ func UpdateAutoModSettings(broadcasterID, moderatorID string, req UpdateAutoModS
 
 	resp, err := twitch.DoRequest(httpReq)
 	if err != nil {
-		helpers.Logf(helpers.DEBUG, "[TWITCH] UpdateAutoModSettings: broadcasterID=%v", broadcasterID)
+		helpers.Logf(helpers.DEBUG, "[TWITCH] UpdateAutoModSettings: broadcasterID=%v", user.UserID)
 		return err
 	}
 	defer resp.Body.Close()
@@ -356,14 +344,11 @@ func UpdateAutoModSettings(broadcasterID, moderatorID string, req UpdateAutoModS
 	return nil
 }
 
-func GetBannedUsers(broadcasterID string, userIDs []string, req *twitch.PaginationRequest) (*twitch.PaginationData[BannedUser], error) {
+func GetBannedUsers(userIDs []string, req *twitch.PaginationRequest) (*twitch.PaginationData[BannedUser], error) {
 	user := globals.GetState().GetTwitchUser()
-	if broadcasterID == "" {
-		broadcasterID = user.UserID
-	}
 
 	opts := twitch.RequestOptions{
-		BroadcasterID: broadcasterID,
+		BroadcasterID: user.UserID,
 	}
 
 	if req != nil {
@@ -378,12 +363,12 @@ func GetBannedUsers(broadcasterID string, userIDs []string, req *twitch.Paginati
 
 	result, err := twitch.ExecuteRequest[twitch.PaginationData[BannedUser]]("GET", url, 200)
 	if err != nil {
-		helpers.Logf(helpers.DEBUG, "[TWITCH] GetBannedUsers: broadcasterID=%v", broadcasterID)
+		helpers.Logf(helpers.DEBUG, "[TWITCH] GetBannedUsers: broadcasterID=%v", user.UserID)
 		return nil, err
 	}
 
 	result.GetNext = func() *twitch.PaginationData[BannedUser] {
-		GetBannedUsers(broadcasterID, userIDs, &twitch.PaginationRequest{
+		GetBannedUsers(userIDs, &twitch.PaginationRequest{
 			Cursor:   result.Pagination.Cursor,
 			Quantity: opts.First,
 		})
@@ -473,14 +458,11 @@ func BanUser(userId string, duration int32, reason string) (string, error) {
 	return string(body), nil
 }
 
-func GetBlockedTerms(broadcasterID string, req *twitch.PaginationRequest) (*twitch.PaginationData[BlockedTerm], error) {
+func GetBlockedTerms(req *twitch.PaginationRequest) (*twitch.PaginationData[BlockedTerm], error) {
 	user := globals.GetState().GetTwitchUser()
-	if broadcasterID == "" {
-		broadcasterID = user.UserID
-	}
 
 	opts := twitch.RequestOptions{
-		BroadcasterID: broadcasterID,
+		BroadcasterID: user.UserID,
 	}
 
 	if req != nil {
@@ -492,12 +474,12 @@ func GetBlockedTerms(broadcasterID string, req *twitch.PaginationRequest) (*twit
 
 	result, err := twitch.ExecuteRequest[twitch.PaginationData[BlockedTerm]]("GET", url, 200)
 	if err != nil {
-		helpers.Logf(helpers.DEBUG, "[TWITCH] GetBlockedTerms: broadcasterID=%v", broadcasterID)
+		helpers.Logf(helpers.DEBUG, "[TWITCH] GetBlockedTerms: broadcasterID=%v", user.UserID)
 		return nil, err
 	}
 
 	result.GetNext = func() *twitch.PaginationData[BlockedTerm] {
-		GetBlockedTerms(broadcasterID, &twitch.PaginationRequest{
+		GetBlockedTerms(&twitch.PaginationRequest{
 			Cursor:   result.Pagination.Cursor,
 			Quantity: opts.First,
 		})
@@ -507,16 +489,13 @@ func GetBlockedTerms(broadcasterID string, req *twitch.PaginationRequest) (*twit
 	return result, nil
 }
 
-func AddBlockedTerm(broadcasterID, text string, duration int) (*BlockedTerm, error) {
+func AddBlockedTerm(text string, duration int) (*BlockedTerm, error) {
 	user := globals.GetState().GetTwitchUser()
-	if broadcasterID == "" {
-		broadcasterID = user.UserID
-	}
 
 	data := map[string]any{
-		"broadcaster_id": broadcasterID,
-		"moderator_id":   user.UserID,
-		"text":           text,
+		"broadcaster_id": user.UserID,
+		"moderator_id":  user.UserID,
+		"text":          text,
 	}
 	if duration > 0 {
 		data["duration_seconds"] = duration
@@ -537,7 +516,7 @@ func AddBlockedTerm(broadcasterID, text string, duration int) (*BlockedTerm, err
 
 	resp, err := twitch.DoRequest(req)
 	if err != nil {
-		helpers.Logf(helpers.DEBUG, "[TWITCH] AddBlockedTerm: broadcasterID=%v, text=%v", broadcasterID, text)
+		helpers.Logf(helpers.DEBUG, "[TWITCH] AddBlockedTerm: broadcasterID=%v, text=%v", user.UserID, text)
 		return nil, err
 	}
 	defer resp.Body.Close()
@@ -571,13 +550,10 @@ func AddBlockedTerm(broadcasterID, text string, duration int) (*BlockedTerm, err
 	return &result.Data[0], nil
 }
 
-func RemoveBlockedTerm(broadcasterID, termID string) error {
+func RemoveBlockedTerm(termID string) error {
 	user := globals.GetState().GetTwitchUser()
-	if broadcasterID == "" {
-		broadcasterID = user.UserID
-	}
 
-	url := fmt.Sprintf("%s?broadcaster_id=%s&moderator_id=%s&id=%s", urlAPIBlockTerms, broadcasterID, user.UserID, termID)
+	url := fmt.Sprintf("%s?broadcaster_id=%s&moderator_id=%s&id=%s", urlAPIBlockTerms, user.UserID, user.UserID, termID)
 	req, err := http.NewRequest("DELETE", url, nil)
 	if err != nil {
 		helpers.Logf(helpers.ERROR, "[TWITCH] RemoveBlockedTerm http.NewRequest failed: %v", err)
@@ -586,7 +562,7 @@ func RemoveBlockedTerm(broadcasterID, termID string) error {
 
 	resp, err := twitch.DoRequest(req)
 	if err != nil {
-		helpers.Logf(helpers.DEBUG, "[TWITCH] RemoveBlockedTerm: broadcasterID=%v, termID=%v", broadcasterID, termID)
+		helpers.Logf(helpers.DEBUG, "[TWITCH] RemoveBlockedTerm: broadcasterID=%v, termID=%v", user.UserID, termID)
 		return err
 	}
 	defer resp.Body.Close()
@@ -650,14 +626,11 @@ func GetModeratedChannels(userID string) ([]string, error) {
 	return channels, nil
 }
 
-func GetModerators(broadcasterID string, userIDs []string, req *twitch.PaginationRequest) (*twitch.PaginationData[Moderator], error) {
+func GetModerators(userIDs []string, req *twitch.PaginationRequest) (*twitch.PaginationData[Moderator], error) {
 	user := globals.GetState().GetTwitchUser()
-	if broadcasterID == "" {
-		broadcasterID = user.UserID
-	}
 
 	opts := twitch.RequestOptions{
-		BroadcasterID: broadcasterID,
+		BroadcasterID: user.UserID,
 	}
 
 	if req != nil {
@@ -672,12 +645,12 @@ func GetModerators(broadcasterID string, userIDs []string, req *twitch.Paginatio
 
 	result, err := twitch.ExecuteRequest[twitch.PaginationData[Moderator]]("GET", url, 200)
 	if err != nil {
-		helpers.Logf(helpers.DEBUG, "[TWITCH] GetModerators: broadcasterID=%v", broadcasterID)
+		helpers.Logf(helpers.DEBUG, "[TWITCH] GetModerators: broadcasterID=%v", user.UserID)
 		return nil, err
 	}
 
 	result.GetNext = func() *twitch.PaginationData[Moderator] {
-		GetModerators(broadcasterID, userIDs, &twitch.PaginationRequest{
+		GetModerators(userIDs, &twitch.PaginationRequest{
 			Cursor:   result.Pagination.Cursor,
 			Quantity: opts.First,
 		})
@@ -751,14 +724,11 @@ func RemoveChannelModerator(broadcasterID, userID string) error {
 	return nil
 }
 
-func GetVIPs(broadcasterID string, userIDs []string, req *twitch.PaginationRequest) (*twitch.PaginationData[VIP], error) {
+func GetVIPs(userIDs []string, req *twitch.PaginationRequest) (*twitch.PaginationData[VIP], error) {
 	user := globals.GetState().GetTwitchUser()
-	if broadcasterID == "" {
-		broadcasterID = user.UserID
-	}
 
 	opts := twitch.RequestOptions{
-		BroadcasterID: broadcasterID,
+		BroadcasterID: user.UserID,
 	}
 
 	if req != nil {
@@ -773,12 +743,12 @@ func GetVIPs(broadcasterID string, userIDs []string, req *twitch.PaginationReque
 
 	result, err := twitch.ExecuteRequest[twitch.PaginationData[VIP]]("GET", url, 200)
 	if err != nil {
-		helpers.Logf(helpers.DEBUG, "[TWITCH] GetVIPs: broadcasterID=%v", broadcasterID)
+		helpers.Logf(helpers.DEBUG, "[TWITCH] GetVIPs: broadcasterID=%v", user.UserID)
 		return nil, err
 	}
 
 	result.GetNext = func() *twitch.PaginationData[VIP] {
-		GetVIPs(broadcasterID, userIDs, &twitch.PaginationRequest{
+		GetVIPs(userIDs, &twitch.PaginationRequest{
 			Cursor:   result.Pagination.Cursor,
 			Quantity: opts.First,
 		})
@@ -852,16 +822,10 @@ func RemoveChannelVIP(broadcasterID, userID string) error {
 	return nil
 }
 
-func GetShieldModeStatus(broadcasterID, moderatorID string) (*ShieldModeStatus, error) {
+func GetShieldModeStatus() (*ShieldModeStatus, error) {
 	user := globals.GetState().GetTwitchUser()
-	if broadcasterID == "" {
-		broadcasterID = user.UserID
-	}
-	if moderatorID == "" {
-		moderatorID = user.UserID
-	}
 
-	url := fmt.Sprintf("%s?broadcaster_id=%s&moderator_id=%s", urlAPIShieldMode, broadcasterID, moderatorID)
+	url := fmt.Sprintf("%s?broadcaster_id=%s&moderator_id=%s", urlAPIShieldMode, user.UserID, user.UserID)
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		helpers.Logf(helpers.ERROR, "[TWITCH] GetShieldModeStatus http.NewRequest failed: %v", err)
@@ -870,7 +834,7 @@ func GetShieldModeStatus(broadcasterID, moderatorID string) (*ShieldModeStatus, 
 
 	resp, err := twitch.DoRequest(req)
 	if err != nil {
-		helpers.Logf(helpers.DEBUG, "[TWITCH] GetShieldModeStatus: broadcasterID=%v", broadcasterID)
+		helpers.Logf(helpers.DEBUG, "[TWITCH] GetShieldModeStatus: broadcasterID=%v", user.UserID)
 		return nil, err
 	}
 	defer resp.Body.Close()
@@ -902,14 +866,8 @@ func GetShieldModeStatus(broadcasterID, moderatorID string) (*ShieldModeStatus, 
 	return &result.Data[0], nil
 }
 
-func UpdateShieldModeStatus(broadcasterID, moderatorID string, isActive bool) error {
+func UpdateShieldModeStatus(isActive bool) error {
 	user := globals.GetState().GetTwitchUser()
-	if broadcasterID == "" {
-		broadcasterID = user.UserID
-	}
-	if moderatorID == "" {
-		moderatorID = user.UserID
-	}
 
 	data := map[string]any{
 		"is_active": isActive,
@@ -921,7 +879,7 @@ func UpdateShieldModeStatus(broadcasterID, moderatorID string, isActive bool) er
 		return err
 	}
 
-	url := fmt.Sprintf("%s?broadcaster_id=%s&moderator_id=%s", urlAPIShieldMode, broadcasterID, moderatorID)
+	url := fmt.Sprintf("%s?broadcaster_id=%s&moderator_id=%s", urlAPIShieldMode, user.UserID, user.UserID)
 	req, err := http.NewRequest("PUT", url, bytes.NewBuffer(jsonData))
 	if err != nil {
 		helpers.Logf(helpers.ERROR, "[TWITCH] UpdateShieldModeStatus http.NewRequest failed: %v", err)
@@ -931,7 +889,7 @@ func UpdateShieldModeStatus(broadcasterID, moderatorID string, isActive bool) er
 
 	resp, err := twitch.DoRequest(req)
 	if err != nil {
-		helpers.Logf(helpers.DEBUG, "[TWITCH] UpdateShieldModeStatus: broadcasterID=%v, isActive=%v", broadcasterID, isActive)
+		helpers.Logf(helpers.DEBUG, "[TWITCH] UpdateShieldModeStatus: broadcasterID=%v, isActive=%v", user.UserID, isActive)
 		return err
 	}
 	defer resp.Body.Close()
@@ -948,20 +906,14 @@ func UpdateShieldModeStatus(broadcasterID, moderatorID string, isActive bool) er
 	return nil
 }
 
-func WarnChatUser(broadcasterID, moderatorID, userID, reason string) error {
+func WarnChatUser(userID, reason string) error {
 	user := globals.GetState().GetTwitchUser()
-	if broadcasterID == "" {
-		broadcasterID = user.UserID
-	}
-	if moderatorID == "" {
-		moderatorID = user.UserID
-	}
 
 	data := map[string]any{
-		"broadcaster_id": broadcasterID,
-		"moderator_id":   moderatorID,
-		"user_id":        userID,
-		"reason":         reason,
+		"broadcaster_id": user.UserID,
+		"moderator_id":  user.UserID,
+		"user_id":       userID,
+		"reason":       reason,
 	}
 
 	jsonData, err := json.Marshal(data)
@@ -980,7 +932,7 @@ func WarnChatUser(broadcasterID, moderatorID, userID, reason string) error {
 
 	resp, err := twitch.DoRequest(req)
 	if err != nil {
-		helpers.Logf(helpers.DEBUG, "[TWITCH] WarnChatUser: broadcasterID=%v, userID=%v", broadcasterID, userID)
+		helpers.Logf(helpers.DEBUG, "[TWITCH] WarnChatUser: broadcasterID=%v, userID=%v", user.UserID, userID)
 		return err
 	}
 	defer resp.Body.Close()
@@ -1080,15 +1032,12 @@ func RemoveSuspiciousStatusFromChatUser(broadcasterID, moderatorID, userID strin
 	return nil
 }
 
-func GetUnbanRequests(broadcasterID string, userID, status string, req *twitch.PaginationRequest) (*twitch.PaginationData[UnbanRequest], error) {
+func GetUnbanRequests(userID, status string, req *twitch.PaginationRequest) (*twitch.PaginationData[UnbanRequest], error) {
 	user := globals.GetState().GetTwitchUser()
-	if broadcasterID == "" {
-		broadcasterID = user.UserID
-	}
 
 	opts := twitch.RequestOptions{
-		BroadcasterID: broadcasterID,
-		UserID:     userID,
+		BroadcasterID: user.UserID,
+		UserID:      userID,
 	}
 
 	if req != nil {
@@ -1103,12 +1052,12 @@ func GetUnbanRequests(broadcasterID string, userID, status string, req *twitch.P
 
 	result, err := twitch.ExecuteRequest[twitch.PaginationData[UnbanRequest]]("GET", url, 200)
 	if err != nil {
-		helpers.Logf(helpers.DEBUG, "[TWITCH] GetUnbanRequests: broadcasterID=%v", broadcasterID)
+		helpers.Logf(helpers.DEBUG, "[TWITCH] GetUnbanRequests: broadcasterID=%v", user.UserID)
 		return nil, err
 	}
 
 	result.GetNext = func() *twitch.PaginationData[UnbanRequest] {
-		GetUnbanRequests(broadcasterID, userID, status, &twitch.PaginationRequest{
+		GetUnbanRequests(userID, status, &twitch.PaginationRequest{
 			Cursor:   result.Pagination.Cursor,
 			Quantity: opts.First,
 		})
@@ -1118,11 +1067,8 @@ func GetUnbanRequests(broadcasterID string, userID, status string, req *twitch.P
 	return result, nil
 }
 
-func ResolveUnbanRequest(broadcasterID, requestID, action, resolutionText string) error {
+func ResolveUnbanRequest(requestID, action, resolutionText string) error {
 	user := globals.GetState().GetTwitchUser()
-	if broadcasterID == "" {
-		broadcasterID = user.UserID
-	}
 
 	data := map[string]any{
 		"status":          action,
@@ -1135,7 +1081,7 @@ func ResolveUnbanRequest(broadcasterID, requestID, action, resolutionText string
 		return err
 	}
 
-	url := fmt.Sprintf("%s?broadcaster_id=%s&id=%s", urlAPIUnbanRequests, broadcasterID, requestID)
+	url := fmt.Sprintf("%s?broadcaster_id=%s&id=%s", urlAPIUnbanRequests, user.UserID, requestID)
 	req, err := http.NewRequest("PATCH", url, bytes.NewBuffer(jsonData))
 	if err != nil {
 		helpers.Logf(helpers.ERROR, "[TWITCH] ResolveUnbanRequest http.NewRequest failed: %v", err)
@@ -1145,7 +1091,7 @@ func ResolveUnbanRequest(broadcasterID, requestID, action, resolutionText string
 
 	resp, err := twitch.DoRequest(req)
 	if err != nil {
-		helpers.Logf(helpers.DEBUG, "[TWITCH] ResolveUnbanRequest: broadcasterID=%v, requestID=%v, action=%v", broadcasterID, requestID, action)
+		helpers.Logf(helpers.DEBUG, "[TWITCH] ResolveUnbanRequest: broadcasterID=%v, requestID=%v, action=%v", user.UserID, requestID, action)
 		return err
 	}
 	defer resp.Body.Close()

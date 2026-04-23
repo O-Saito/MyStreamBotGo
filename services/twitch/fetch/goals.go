@@ -23,16 +23,13 @@ type GetCreatorGoalsResponse struct {
 	Data []Goal `json:"data"`
 }
 
-func GetCreatorGoals(broadcasterID string) ([]Goal, error) {
+func GetCreatorGoals() ([]Goal, error) {
 	user := globals.GetState().GetTwitchUser()
-	if broadcasterID == "" {
-		broadcasterID = user.UserID
-	}
 
-	url := twitch.HelixBaseURL + "/goals?broadcaster_id=" + broadcasterID
+	url := twitch.HelixBaseURL + "/goals?broadcaster_id=" + user.UserID
 	result, err := twitch.ExecuteRequest[GetCreatorGoalsResponse]("GET", url, 200)
 	if err != nil {
-		helpers.Logf(helpers.DEBUG, "[TWITCH] GetCreatorGoals: broadcasterID=%v", broadcasterID)
+		helpers.Logf(helpers.DEBUG, "[TWITCH] GetCreatorGoals: broadcasterID=%v", user.UserID)
 		return nil, err
 	}
 

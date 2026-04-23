@@ -124,20 +124,17 @@ func DeleteCustomReward(rewardID string) error {
 	return nil
 }
 
-func GetCustomRewards(broadcasterID string, onlyManageable bool) ([]CustomReward, error) {
+func GetCustomRewards(onlyManageable bool) ([]CustomReward, error) {
 	user := globals.GetState().GetTwitchUser()
-	if broadcasterID == "" {
-		broadcasterID = user.UserID
-	}
 
-	url := fmt.Sprintf("%s?broadcaster_id=%s", twitch.HelixBaseURL+"/channel_points", broadcasterID)
+	url := fmt.Sprintf("%s?broadcaster_id=%s", twitch.HelixBaseURL+"/channel_points", user.UserID)
 	if onlyManageable {
 		url += "&manageable=true"
 	}
 
 	result, err := twitch.ExecuteRequest[GetCustomRewardsResponse]("GET", url, 200)
 	if err != nil {
-		helpers.Logf(helpers.DEBUG, "[TWITCH] GetCustomRewards: broadcasterID=%v", broadcasterID)
+		helpers.Logf(helpers.DEBUG, "[TWITCH] GetCustomRewards: broadcasterID=%v", user.UserID)
 		return nil, err
 	}
 

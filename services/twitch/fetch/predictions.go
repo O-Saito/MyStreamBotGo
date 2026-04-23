@@ -58,13 +58,10 @@ type CreatePredictionRequest struct {
 	Duration         int      `json:"duration"`
 }
 
-func GetPredictions(broadcasterID string, predictionIDs []string) ([]Prediction, error) {
+func GetPredictions(predictionIDs []string) ([]Prediction, error) {
 	user := globals.GetState().GetTwitchUser()
-	if broadcasterID == "" {
-		broadcasterID = user.UserID
-	}
 
-	url := fmt.Sprintf("%s?broadcaster_id=%s", urlAPIPredictions, broadcasterID)
+	url := fmt.Sprintf("%s?broadcaster_id=%s", urlAPIPredictions, user.UserID)
 	for _, id := range predictionIDs {
 		url += fmt.Sprintf("&id=%s", id)
 	}
@@ -77,7 +74,7 @@ func GetPredictions(broadcasterID string, predictionIDs []string) ([]Prediction,
 
 	resp, err := twitch.DoRequest(req)
 	if err != nil {
-		helpers.Logf(helpers.DEBUG, "[TWITCH] GetPredictions: broadcasterID=%v", broadcasterID)
+	helpers.Logf(helpers.DEBUG, "[TWITCH] GetPredictions: broadcasterID=%v", user.UserID)
 		return nil, err
 	}
 	defer resp.Body.Close()
@@ -105,11 +102,8 @@ func GetPredictions(broadcasterID string, predictionIDs []string) ([]Prediction,
 	return result.Data, nil
 }
 
-func CreatePrediction(broadcasterID string, req CreatePredictionRequest) (*Prediction, error) {
+func CreatePrediction(req CreatePredictionRequest) (*Prediction, error) {
 	user := globals.GetState().GetTwitchUser()
-	if broadcasterID == "" {
-		broadcasterID = user.UserID
-	}
 
 	data, err := json.Marshal(req)
 	if err != nil {
@@ -117,7 +111,7 @@ func CreatePrediction(broadcasterID string, req CreatePredictionRequest) (*Predi
 		return nil, err
 	}
 
-	url := fmt.Sprintf("%s?broadcaster_id=%s", urlAPIPredictions, broadcasterID)
+	url := fmt.Sprintf("%s?broadcaster_id=%s", urlAPIPredictions, user.UserID)
 	httpReq, err := http.NewRequest("POST", url, bytes.NewBuffer(data))
 	if err != nil {
 		helpers.Logf(helpers.ERROR, "[TWITCH] CreatePrediction http.NewRequest failed: %v", err)
@@ -127,7 +121,7 @@ func CreatePrediction(broadcasterID string, req CreatePredictionRequest) (*Predi
 
 	resp, err := twitch.DoRequest(httpReq)
 	if err != nil {
-		helpers.Logf(helpers.DEBUG, "[TWITCH] CreatePrediction: broadcasterID=%v, title=%v", broadcasterID, req.Title)
+		helpers.Logf(helpers.DEBUG, "[TWITCH] CreatePrediction: broadcasterID=%v, title=%v", user.UserID, req.Title)
 		return nil, err
 	}
 	defer resp.Body.Close()
@@ -159,13 +153,10 @@ func CreatePrediction(broadcasterID string, req CreatePredictionRequest) (*Predi
 	return &result.Data[0], nil
 }
 
-func EndPrediction(broadcasterID, predictionID, outcomeID, status string) (*Prediction, error) {
+func EndPrediction(predictionID, outcomeID, status string) (*Prediction, error) {
 	user := globals.GetState().GetTwitchUser()
-	if broadcasterID == "" {
-		broadcasterID = user.UserID
-	}
 
-	url := fmt.Sprintf("%s?broadcaster_id=%s&id=%s", urlAPIPredictions, broadcasterID, predictionID)
+	url := fmt.Sprintf("%s?broadcaster_id=%s&id=%s", urlAPIPredictions, user.UserID, predictionID)
 	if outcomeID != "" {
 		url += "&outcome_id=" + outcomeID
 	}
@@ -181,7 +172,7 @@ func EndPrediction(broadcasterID, predictionID, outcomeID, status string) (*Pred
 
 	resp, err := twitch.DoRequest(req)
 	if err != nil {
-		helpers.Logf(helpers.DEBUG, "[TWITCH] EndPrediction: broadcasterID=%v, predictionID=%v", broadcasterID, predictionID)
+		helpers.Logf(helpers.DEBUG, "[TWITCH] EndPrediction: broadcasterID=%v, predictionID=%v", user.UserID, predictionID)
 		return nil, err
 	}
 	defer resp.Body.Close()

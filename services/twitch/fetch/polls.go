@@ -53,13 +53,10 @@ type CreatePollRequest struct {
 	ChannelPointsPerVote     *int              `json:"channel_points_per_vote,omitempty"`
 }
 
-func GetPolls(broadcasterID string, pollIDs []string) ([]Poll, error) {
+func GetPolls(pollIDs []string) ([]Poll, error) {
 	user := globals.GetState().GetTwitchUser()
-	if broadcasterID == "" {
-		broadcasterID = user.UserID
-	}
 
-	url := fmt.Sprintf("%s?broadcaster_id=%s", urlAPIPolls, broadcasterID)
+	url := fmt.Sprintf("%s?broadcaster_id=%s", urlAPIPolls, user.UserID)
 	for _, id := range pollIDs {
 		url += fmt.Sprintf("&id=%s", id)
 	}
@@ -72,7 +69,7 @@ func GetPolls(broadcasterID string, pollIDs []string) ([]Poll, error) {
 
 	resp, err := twitch.DoRequest(req)
 	if err != nil {
-		helpers.Logf(helpers.DEBUG, "[TWITCH] GetPolls: broadcasterID=%v", broadcasterID)
+		helpers.Logf(helpers.DEBUG, "[TWITCH] GetPolls: broadcasterID=%v", user.UserID)
 		return nil, err
 	}
 	defer resp.Body.Close()
@@ -100,11 +97,8 @@ func GetPolls(broadcasterID string, pollIDs []string) ([]Poll, error) {
 	return result.Data, nil
 }
 
-func CreatePoll(broadcasterID string, req CreatePollRequest) (*Poll, error) {
+func CreatePoll(req CreatePollRequest) (*Poll, error) {
 	user := globals.GetState().GetTwitchUser()
-	if broadcasterID == "" {
-		broadcasterID = user.UserID
-	}
 
 	data, err := json.Marshal(req)
 	if err != nil {
@@ -112,7 +106,7 @@ func CreatePoll(broadcasterID string, req CreatePollRequest) (*Poll, error) {
 		return nil, err
 	}
 
-	url := fmt.Sprintf("%s?broadcaster_id=%s", urlAPIPolls, broadcasterID)
+	url := fmt.Sprintf("%s?broadcaster_id=%s", urlAPIPolls, user.UserID)
 	httpReq, err := http.NewRequest("POST", url, bytes.NewBuffer(data))
 	if err != nil {
 		helpers.Logf(helpers.ERROR, "[TWITCH] CreatePoll http.NewRequest failed: %v", err)
@@ -122,7 +116,7 @@ func CreatePoll(broadcasterID string, req CreatePollRequest) (*Poll, error) {
 
 	resp, err := twitch.DoRequest(httpReq)
 	if err != nil {
-		helpers.Logf(helpers.DEBUG, "[TWITCH] CreatePoll: broadcasterID=%v, title=%v", broadcasterID, req.Title)
+		helpers.Logf(helpers.DEBUG, "[TWITCH] CreatePoll: broadcasterID=%v, title=%v", user.UserID, req.Title)
 		return nil, err
 	}
 	defer resp.Body.Close()
@@ -154,13 +148,10 @@ func CreatePoll(broadcasterID string, req CreatePollRequest) (*Poll, error) {
 	return &result.Data[0], nil
 }
 
-func EndPoll(broadcasterID, pollID string) (*Poll, error) {
+func EndPoll(pollID string) (*Poll, error) {
 	user := globals.GetState().GetTwitchUser()
-	if broadcasterID == "" {
-		broadcasterID = user.UserID
-	}
 
-	url := fmt.Sprintf("%s?broadcaster_id=%s&id=%s&status=ended", urlAPIPolls, broadcasterID, pollID)
+	url := fmt.Sprintf("%s?broadcaster_id=%s&id=%s&status=ended", urlAPIPolls, user.UserID, pollID)
 	req, err := http.NewRequest("PATCH", url, nil)
 	if err != nil {
 		helpers.Logf(helpers.ERROR, "[TWITCH] EndPoll http.NewRequest failed: %v", err)
@@ -169,7 +160,7 @@ func EndPoll(broadcasterID, pollID string) (*Poll, error) {
 
 	resp, err := twitch.DoRequest(req)
 	if err != nil {
-		helpers.Logf(helpers.DEBUG, "[TWITCH] EndPoll: broadcasterID=%v, pollID=%v", broadcasterID, pollID)
+		helpers.Logf(helpers.DEBUG, "[TWITCH] EndPoll: broadcasterID=%v, pollID=%v", user.UserID, pollID)
 		return nil, err
 	}
 	defer resp.Body.Close()

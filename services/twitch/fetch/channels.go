@@ -19,10 +19,10 @@ type ChannelEditor struct {
 }
 
 type ChannelInfo struct {
-	BroadcasterID               string   `json:"broadcaster_id"`
-	BroadcasterLogin            string   `json:"broadcaster_login"`
-	BroadcasterName             string   `json:"broadcaster_name"`
-	BroadcasterLanguage         string   `json:"broadcaster_language"`
+	BroadcasterID                 string   `json:"broadcaster_id"`
+	BroadcasterLogin              string   `json:"broadcaster_login"`
+	BroadcasterName              string   `json:"broadcaster_name"`
+	BroadcasterLanguage           string   `json:"broadcaster_language"`
 	GameID                      string   `json:"game_id"`
 	GameName                    string   `json:"game_name"`
 	Title                       string   `json:"title"`
@@ -36,24 +36,22 @@ type GetChannelEditorsResponse struct {
 }
 
 type UpdateChannelLabel struct {
-	// ID is one of (DebatedSocialIssuesAndPolitics, DrugsIntoxication, SexualThemes, ViolentGraphic, Gambling, ProfanityVulgarity)
 	ID        string `json:"id"`
 	IsEnabled bool   `json:"is_enabled"`
 }
 
 type UpdateChannelRequest struct {
 	BroadcasterLanguage         string               `json:"broadcaster_language,omitempty"`
-	GameID                      *string              `json:"game_id,omitempty"`
-	Title                       *string              `json:"title,omitempty"`
-	Delay                       *int                 `json:"delay,omitempty"`
-	Tags                        []string             `json:"tags,omitempty"`
+	GameID                *string              `json:"game_id,omitempty"`
+	Title                *string              `json:"title,omitempty"`
+	Delay                *int                 `json:"delay,omitempty"`
+	Tags                 []string             `json:"tags,omitempty"`
 	ContentClassificationLabels []UpdateChannelLabel `json:"content_classification_labels,omitempty"`
-	IsBrandedContent            bool                 `json:"is_branded_content,omitempty"`
+	IsBrandedContent    bool                 `json:"is_branded_content,omitempty"`
 }
 
 type ModifyChannelResponse struct{}
 
-// TODO: Check if has at least one broadcasterID
 func GetChannelInformation(broadcasterIDs []string) ([]ChannelInfo, error) {
 	url := twitch.HelixBaseURL + "/channels"
 	if len(broadcasterIDs) > 0 {
@@ -74,9 +72,12 @@ func GetChannelInformation(broadcasterIDs []string) ([]ChannelInfo, error) {
 func ModifyChannelInformation(req UpdateChannelRequest) error {
 	user := globals.GetState().GetTwitchUser()
 
-	url := twitch.AddIDParam(twitch.HelixBaseURL+"/channels", "broadcaster_id", user.UserID)
+	opts := map[string]any{
+		"broadcaster_id": user.UserID,
+	}
+	url := twitch.BuildURL(twitch.HelixBaseURL+"/channels", opts)
 
-	_, err := twitch.ExecuteJSONRequest[ModifyChannelResponse]("PATCH", url, req, 204)
+	_, err := twitch.ExecuteJSONRequest[ModifyChannelResponse, UpdateChannelRequest]("PATCH", url, req, 204)
 	if err != nil {
 		helpers.Logf(helpers.DEBUG, "[TWITCH] ModifyChannelInformation: broadcasterID=%v", user.UserID)
 		return err
@@ -88,7 +89,10 @@ func ModifyChannelInformation(req UpdateChannelRequest) error {
 func GetChannelEditors() ([]ChannelEditor, error) {
 	user := globals.GetState().GetTwitchUser()
 
-	url := twitch.AddIDParam(twitch.HelixBaseURL+"/channels/editors", "broadcaster_id", user.UserID)
+	opts := map[string]any{
+		"broadcaster_id": user.UserID,
+	}
+	url := twitch.BuildURL(twitch.HelixBaseURL+"/channels/editors", opts)
 
 	result, err := twitch.ExecuteRequest[GetChannelEditorsResponse]("GET", url, 200)
 	if err != nil {
@@ -102,8 +106,8 @@ func GetChannelEditors() ([]ChannelEditor, error) {
 type FollowedChannel struct {
 	BroadcasterID    string `json:"broadcaster_id"`
 	BroadcasterLogin string `json:"broadcaster_login"`
-	BroadcasterName  string `json:"broadcaster_name"`
-	FollowedAt       string `json:"followed_at"`
+	BroadcasterName string `json:"broadcaster_name"`
+	FollowedAt    string `json:"followed_at"`
 }
 
 type GetFollowedChannelsResponse struct {
@@ -114,14 +118,18 @@ type GetFollowedChannelsResponse struct {
 func GetFollowedChannels(broadcasterID string, req *twitch.PaginationRequest) (*twitch.PaginationData[FollowedChannel], error) {
 	user := globals.GetState().GetTwitchUser()
 
-	opts := twitch.RequestOptions{
-		UserID:        user.UserID,
-		BroadcasterID: broadcasterID,
+	opts := map[string]any{
+		"user_id":       user.UserID,
+		"broadcaster_id": broadcasterID,
 	}
 
 	if req != nil {
-		opts.After = req.Cursor
-		opts.First = req.Quantity
+		if req.Cursor != "" {
+			opts["after"] = req.Cursor
+		}
+		if req.Quantity > 0 {
+			opts["first"] = req.Quantity
+		}
 	}
 
 	url := twitch.BuildURL(twitch.HelixBaseURL+"/channels/followed", opts)
@@ -135,7 +143,7 @@ func GetFollowedChannels(broadcasterID string, req *twitch.PaginationRequest) (*
 	result.GetNext = func() *twitch.PaginationData[FollowedChannel] {
 		GetFollowedChannels(broadcasterID, &twitch.PaginationRequest{
 			Cursor:   result.Pagination.Cursor,
-			Quantity: opts.First,
+			Quantity: req.Quantity,
 		})
 		return result
 	}
@@ -145,14 +153,19 @@ func GetFollowedChannels(broadcasterID string, req *twitch.PaginationRequest) (*
 
 func GetChannelFollowers(userId string, req *twitch.PaginationRequest) (*twitch.PaginationData[twitch.TwitchViewerData], error) {
 	user := globals.GetState().GetTwitchUser()
-	opts := twitch.RequestOptions{
-		UserID:        userId,
-		BroadcasterID: user.UserID,
+
+	opts := map[string]any{
+		"user_id":       userId,
+		"broadcaster_id": user.UserID,
 	}
 
 	if req != nil {
-		opts.After = req.Cursor
-		opts.First = req.Quantity
+		if req.Cursor != "" {
+			opts["after"] = req.Cursor
+		}
+		if req.Quantity > 0 {
+			opts["first"] = req.Quantity
+		}
 	}
 
 	url := twitch.BuildURL(twitch.HelixBaseURL+"/channels/followers", opts)
@@ -166,7 +179,7 @@ func GetChannelFollowers(userId string, req *twitch.PaginationRequest) (*twitch.
 	result.GetNext = func() *twitch.PaginationData[twitch.TwitchViewerData] {
 		GetChannelFollowers(userId, &twitch.PaginationRequest{
 			Cursor:   result.Pagination.Cursor,
-			Quantity: opts.First,
+			Quantity: req.Quantity,
 		})
 		return result
 	}

@@ -4,35 +4,33 @@ import (
 	"MyStreamBot/globals"
 	"MyStreamBot/helpers"
 	twitch "MyStreamBot/services/twitch"
-	"fmt"
-	"net/http"
 )
 
 var urlAPICharity = twitch.HelixBaseURL + "/charity/campaigns"
 
 type CharityCampaign struct {
-	ID             string      `json:"id"`
-	BroadcasterID  string      `json:"broadcaster_id"`
-	BroadcasterName string     `json:"broadcaster_name"`
-	BroadcasterLogin string    `json:"broadcaster_login"`
-	CharityName    string      `json:"charity_name"`
-	Description    string      `json:"description"`
-	LogoURL        string      `json:"logo_url"`
-	WebsiteURL     string      `json:"website_url"`
-	TargetAmount   int         `json:"target_amount"`
-	CurrentAmount  int         `json:"current_amount"`
+	ID                     string `json:"id"`
+	BroadcasterID          string `json:"broadcaster_id"`
+	BroadcasterName      string `json:"broadcaster_name"`
+	BroadcasterLogin     string `json:"broadcaster_login"`
+	CharityName         string `json:"charity_name"`
+	Description        string `json:"description"`
+	LogoURL             string `json:"logo_url"`
+	WebsiteURL         string `json:"website_url"`
+	TargetAmount       int     `json:"target_amount"`
+	CurrentAmount     int     `json:"current_amount"`
 	CurrentAmountCurrency string `json:"current_amount_currency"`
 }
 
 type CharityDonation struct {
-	ID              string `json:"id"`
-	BroadcasterID   string `json:"broadcaster_id"`
-	UserID          string `json:"user_id"`
-	UserName        string `json:"user_name"`
-	UserLogin       string `json:"user_login"`
-	Amount          int    `json:"amount"`
-	Currency        string `json:"currency"`
-	Date            string `json:"date"`
+	ID            string `json:"id"`
+	BroadcasterID string `json:"broadcaster_id"`
+	UserID       string `json:"user_id"`
+	UserName     string `json:"user_name"`
+	UserLogin    string `json:"user_login"`
+	Amount       int    `json:"amount"`
+	Currency     string `json:"currency"`
+	Date         string `json:"date"`
 }
 
 type GetCharityCampaignResponse struct {
@@ -41,19 +39,21 @@ type GetCharityCampaignResponse struct {
 
 type GetCharityDonationsResponse struct {
 	Data       []CharityDonation `json:"data"`
-	Pagination twitch.Pagination  `json:"pagination"`
+	Pagination twitch.Pagination `json:"pagination"`
 }
 
-func GetCharityCampaign(broadcasterID string) (*CharityCampaign, error) {
+func GetCharityCampaign() (*CharityCampaign, error) {
 	user := globals.GetState().GetTwitchUser()
-	if broadcasterID == "" {
-		broadcasterID = user.UserID
+
+	opts := map[string]any{
+		"broadcaster_id": user.UserID,
 	}
 
-	url := fmt.Sprintf("%s?broadcaster_id=%s", urlAPICharity, broadcasterID)
-	result, err := twitch.ExecuteRequest[GetCharityCampaignResponse]("GET", url, http.StatusOK)
+	url := twitch.BuildURL(twitch.HelixBaseURL+"/charity/campaigns", opts)
+
+	result, err := twitch.ExecuteRequest[GetCharityCampaignResponse]("GET", url, 200)
 	if err != nil {
-		helpers.Logf(helpers.DEBUG, "[TWITCH] GetCharityCampaign: broadcasterID=%v", broadcasterID)
+		helpers.Logf(helpers.DEBUG, "[TWITCH] GetCharityCampaign: broadcasterID=%v", user.UserID)
 		return nil, err
 	}
 
@@ -64,33 +64,34 @@ func GetCharityCampaign(broadcasterID string) (*CharityCampaign, error) {
 	return &result.Data[0], nil
 }
 
-func GetCharityCampaignDonations(broadcasterID string, req *twitch.PaginationRequest) (*twitch.PaginationData[CharityDonation], error) {
+func GetCharityCampaignDonations(req *twitch.PaginationRequest) (*twitch.PaginationData[CharityDonation], error) {
 	user := globals.GetState().GetTwitchUser()
-	if broadcasterID == "" {
-		broadcasterID = user.UserID
-	}
 
-	opts := twitch.RequestOptions{
-		BroadcasterID: broadcasterID,
+	opts := map[string]any{
+		"broadcaster_id": user.UserID,
 	}
 
 	if req != nil {
-		opts.After = req.Cursor
-		opts.First = req.Quantity
+		if req.Cursor != "" {
+			opts["after"] = req.Cursor
+		}
+		if req.Quantity > 0 {
+			opts["first"] = req.Quantity
+		}
 	}
 
 	url := twitch.BuildURL(twitch.HelixBaseURL+"/charity/donations", opts)
 
-	result, err := twitch.ExecuteRequest[twitch.PaginationData[CharityDonation]]("GET", url, http.StatusOK)
+	result, err := twitch.ExecuteRequest[twitch.PaginationData[CharityDonation]]("GET", url, 200)
 	if err != nil {
-		helpers.Logf(helpers.DEBUG, "[TWITCH] GetCharityCampaignDonations: broadcasterID=%v", broadcasterID)
+		helpers.Logf(helpers.DEBUG, "[TWITCH] GetCharityCampaignDonations: broadcasterID=%v", user.UserID)
 		return nil, err
 	}
 
 	result.GetNext = func() *twitch.PaginationData[CharityDonation] {
-		GetCharityCampaignDonations(broadcasterID, &twitch.PaginationRequest{
+		GetCharityCampaignDonations(&twitch.PaginationRequest{
 			Cursor:   result.Pagination.Cursor,
-			Quantity: opts.First,
+			Quantity: req.Quantity,
 		})
 		return result
 	}

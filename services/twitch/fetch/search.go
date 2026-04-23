@@ -3,7 +3,6 @@ package twitch
 import (
 	"MyStreamBot/helpers"
 	twitch "MyStreamBot/services/twitch"
-	"fmt"
 )
 
 var urlAPISearch = "https://api.twitch.tv/helix/search"
@@ -15,17 +14,17 @@ type SearchCategory struct {
 }
 
 type SearchChannel struct {
-	ID              string `json:"id"`
-	BroadcasterLogin string `json:"broadcaster_login"`
-	BroadcasterName string `json:"broadcaster_name"`
+	ID              string   `json:"id"`
+	BroadcasterLogin string   `json:"broadcaster_login"`
+	BroadcasterName string   `json:"broadcaster_name"`
 	BroadcasterLanguage string `json:"broadcaster_language"`
-	GameID          string `json:"game_id"`
-	GameName        string `json:"game_name"`
-	Live            bool   `json:"is_live"`
-	Tags            []string `json:"tags"`
-	ThumbnailURL    string `json:"thumbnail_url"`
-	Title           string `json:"title"`
-	StartedAt        string `json:"started_at"`
+	GameID          string   `json:"game_id"`
+	GameName        string   `json:"game_name"`
+	Live           bool     `json:"is_live"`
+	Tags           []string `json:"tags"`
+	ThumbnailURL   string   `json:"thumbnail_url"`
+	Title          string   `json:"title"`
+	StartedAt      string   `json:"started_at"`
 }
 
 type GetSearchCategoriesResponse struct {
@@ -34,19 +33,23 @@ type GetSearchCategoriesResponse struct {
 
 type GetSearchChannelsResponse struct {
 	Data       []SearchChannel `json:"data"`
-	Pagination Pagination      `json:"pagination"`
+	Pagination Pagination       `json:"pagination"`
 }
 
 func SearchCategories(query string, req *twitch.PaginationRequest) (*twitch.PaginationData[SearchCategory], error) {
-	opts := twitch.RequestOptions{}
+	opts := map[string]any{}
 
 	if req != nil {
-		opts.After = req.Cursor
-		opts.First = req.Quantity
+		if req.Cursor != "" {
+			opts["after"] = req.Cursor
+		}
+		if req.Quantity > 0 {
+			opts["first"] = req.Quantity
+		}
 	}
 
 	url := twitch.BuildURL(twitch.HelixBaseURL+"/search/categories", opts)
-	url += fmt.Sprintf("&query=%s", query)
+	url += "&query=" + query
 
 	result, err := twitch.ExecuteRequest[twitch.PaginationData[SearchCategory]]("GET", url, 200)
 	if err != nil {
@@ -57,7 +60,7 @@ func SearchCategories(query string, req *twitch.PaginationRequest) (*twitch.Pagi
 	result.GetNext = func() *twitch.PaginationData[SearchCategory] {
 		SearchCategories(query, &twitch.PaginationRequest{
 			Cursor:   result.Pagination.Cursor,
-			Quantity: opts.First,
+			Quantity: req.Quantity,
 		})
 		return result
 	}
@@ -66,15 +69,19 @@ func SearchCategories(query string, req *twitch.PaginationRequest) (*twitch.Pagi
 }
 
 func SearchChannels(query string, liveOnly bool, req *twitch.PaginationRequest) (*twitch.PaginationData[SearchChannel], error) {
-	opts := twitch.RequestOptions{}
+	opts := map[string]any{}
 
 	if req != nil {
-		opts.After = req.Cursor
-		opts.First = req.Quantity
+		if req.Cursor != "" {
+			opts["after"] = req.Cursor
+		}
+		if req.Quantity > 0 {
+			opts["first"] = req.Quantity
+		}
 	}
 
 	url := twitch.BuildURL(twitch.HelixBaseURL+"/search/channels", opts)
-	url += fmt.Sprintf("&query=%s", query)
+	url += "&query=" + query
 	if liveOnly {
 		url += "&live_only=true"
 	}
@@ -88,7 +95,7 @@ func SearchChannels(query string, liveOnly bool, req *twitch.PaginationRequest) 
 	result.GetNext = func() *twitch.PaginationData[SearchChannel] {
 		SearchChannels(query, liveOnly, &twitch.PaginationRequest{
 			Cursor:   result.Pagination.Cursor,
-			Quantity: opts.First,
+			Quantity: req.Quantity,
 		})
 		return result
 	}

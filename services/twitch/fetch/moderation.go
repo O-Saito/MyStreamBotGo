@@ -347,13 +347,17 @@ func UpdateAutoModSettings(req UpdateAutoModSettingsRequest) error {
 func GetBannedUsers(userIDs []string, req *twitch.PaginationRequest) (*twitch.PaginationData[BannedUser], error) {
 	user := globals.GetState().GetTwitchUser()
 
-	opts := twitch.RequestOptions{
-		BroadcasterID: user.UserID,
+	opts := map[string]any{
+		"broadcaster_id": user.UserID,
 	}
 
 	if req != nil {
-		opts.After = req.Cursor
-		opts.First = req.Quantity
+		if req.Cursor != "" {
+			opts["after"] = req.Cursor
+		}
+		if req.Quantity > 0 {
+			opts["first"] = req.Quantity
+		}
 	}
 
 	url := twitch.BuildURL(twitch.HelixBaseURL+"/moderation/banned", opts)
@@ -370,7 +374,7 @@ func GetBannedUsers(userIDs []string, req *twitch.PaginationRequest) (*twitch.Pa
 	result.GetNext = func() *twitch.PaginationData[BannedUser] {
 		GetBannedUsers(userIDs, &twitch.PaginationRequest{
 			Cursor:   result.Pagination.Cursor,
-			Quantity: opts.First,
+			Quantity: req.Quantity,
 		})
 		return result
 	}
@@ -461,13 +465,17 @@ func BanUser(userId string, duration int32, reason string) (string, error) {
 func GetBlockedTerms(req *twitch.PaginationRequest) (*twitch.PaginationData[BlockedTerm], error) {
 	user := globals.GetState().GetTwitchUser()
 
-	opts := twitch.RequestOptions{
-		BroadcasterID: user.UserID,
+	opts := map[string]any{
+		"broadcaster_id": user.UserID,
 	}
 
 	if req != nil {
-		opts.After = req.Cursor
-		opts.First = req.Quantity
+		if req.Cursor != "" {
+			opts["after"] = req.Cursor
+		}
+		if req.Quantity > 0 {
+			opts["first"] = req.Quantity
+		}
 	}
 
 	url := twitch.BuildURL(twitch.HelixBaseURL+"/moderation/blocked_terms", opts)
@@ -481,7 +489,7 @@ func GetBlockedTerms(req *twitch.PaginationRequest) (*twitch.PaginationData[Bloc
 	result.GetNext = func() *twitch.PaginationData[BlockedTerm] {
 		GetBlockedTerms(&twitch.PaginationRequest{
 			Cursor:   result.Pagination.Cursor,
-			Quantity: opts.First,
+			Quantity: req.Quantity,
 		})
 		return result
 	}
@@ -629,13 +637,17 @@ func GetModeratedChannels(userID string) ([]string, error) {
 func GetModerators(userIDs []string, req *twitch.PaginationRequest) (*twitch.PaginationData[Moderator], error) {
 	user := globals.GetState().GetTwitchUser()
 
-	opts := twitch.RequestOptions{
-		BroadcasterID: user.UserID,
+	opts := map[string]any{
+		"broadcaster_id": user.UserID,
 	}
 
 	if req != nil {
-		opts.After = req.Cursor
-		opts.First = req.Quantity
+		if req.Cursor != "" {
+			opts["after"] = req.Cursor
+		}
+		if req.Quantity > 0 {
+			opts["first"] = req.Quantity
+		}
 	}
 
 	url := twitch.BuildURL(twitch.HelixBaseURL+"/moderation/moderators", opts)
@@ -652,7 +664,7 @@ func GetModerators(userIDs []string, req *twitch.PaginationRequest) (*twitch.Pag
 	result.GetNext = func() *twitch.PaginationData[Moderator] {
 		GetModerators(userIDs, &twitch.PaginationRequest{
 			Cursor:   result.Pagination.Cursor,
-			Quantity: opts.First,
+			Quantity: req.Quantity,
 		})
 		return result
 	}
@@ -727,13 +739,17 @@ func RemoveChannelModerator(broadcasterID, userID string) error {
 func GetVIPs(userIDs []string, req *twitch.PaginationRequest) (*twitch.PaginationData[VIP], error) {
 	user := globals.GetState().GetTwitchUser()
 
-	opts := twitch.RequestOptions{
-		BroadcasterID: user.UserID,
+	opts := map[string]any{
+		"broadcaster_id": user.UserID,
 	}
 
 	if req != nil {
-		opts.After = req.Cursor
-		opts.First = req.Quantity
+		if req.Cursor != "" {
+			opts["after"] = req.Cursor
+		}
+		if req.Quantity > 0 {
+			opts["first"] = req.Quantity
+		}
 	}
 
 	url := twitch.BuildURL(twitch.HelixBaseURL+"/moderation/vips", opts)
@@ -750,7 +766,7 @@ func GetVIPs(userIDs []string, req *twitch.PaginationRequest) (*twitch.Paginatio
 	result.GetNext = func() *twitch.PaginationData[VIP] {
 		GetVIPs(userIDs, &twitch.PaginationRequest{
 			Cursor:   result.Pagination.Cursor,
-			Quantity: opts.First,
+			Quantity: req.Quantity,
 		})
 		return result
 	}
@@ -1035,19 +1051,23 @@ func RemoveSuspiciousStatusFromChatUser(broadcasterID, moderatorID, userID strin
 func GetUnbanRequests(userID, status string, req *twitch.PaginationRequest) (*twitch.PaginationData[UnbanRequest], error) {
 	user := globals.GetState().GetTwitchUser()
 
-	opts := twitch.RequestOptions{
-		BroadcasterID: user.UserID,
-		UserID:      userID,
+	opts := map[string]any{
+		"broadcaster_id": user.UserID,
+		"user_id":       userID,
 	}
 
 	if req != nil {
-		opts.After = req.Cursor
-		opts.First = req.Quantity
+		if req.Cursor != "" {
+			opts["after"] = req.Cursor
+		}
+		if req.Quantity > 0 {
+			opts["first"] = req.Quantity
+		}
 	}
 
 	url := twitch.BuildURL(twitch.HelixBaseURL+"/moderation/unban_requests", opts)
 	if status != "" {
-		url += fmt.Sprintf("&status=%s", status)
+		url += "&status=" + status
 	}
 
 	result, err := twitch.ExecuteRequest[twitch.PaginationData[UnbanRequest]]("GET", url, 200)
@@ -1059,7 +1079,7 @@ func GetUnbanRequests(userID, status string, req *twitch.PaginationRequest) (*tw
 	result.GetNext = func() *twitch.PaginationData[UnbanRequest] {
 		GetUnbanRequests(userID, status, &twitch.PaginationRequest{
 			Cursor:   result.Pagination.Cursor,
-			Quantity: opts.First,
+			Quantity: req.Quantity,
 		})
 		return result
 	}

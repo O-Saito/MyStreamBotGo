@@ -3,7 +3,6 @@ package twitch
 import (
 	"MyStreamBot/helpers"
 	twitch "MyStreamBot/services/twitch"
-	"fmt"
 )
 
 type Game struct {
@@ -13,7 +12,7 @@ type Game struct {
 }
 
 type GetTopGamesResponse struct {
-	Data       []Game            `json:"data"`
+	Data       []Game           `json:"data"`
 	Pagination twitch.Pagination `json:"pagination"`
 }
 
@@ -22,11 +21,15 @@ type GetGamesResponse struct {
 }
 
 func GetTopGames(req *twitch.PaginationRequest) (*twitch.PaginationData[Game], error) {
-	opts := twitch.RequestOptions{}
+	opts := map[string]any{}
 
 	if req != nil {
-		opts.After = req.Cursor
-		opts.First = req.Quantity
+		if req.Cursor != "" {
+			opts["after"] = req.Cursor
+		}
+		if req.Quantity > 0 {
+			opts["first"] = req.Quantity
+		}
 	}
 
 	url := twitch.BuildURL(twitch.HelixBaseURL+"/games/top", opts)
@@ -40,7 +43,7 @@ func GetTopGames(req *twitch.PaginationRequest) (*twitch.PaginationData[Game], e
 	result.GetNext = func() *twitch.PaginationData[Game] {
 		GetTopGames(&twitch.PaginationRequest{
 			Cursor:   result.Pagination.Cursor,
-			Quantity: opts.First,
+			Quantity: req.Quantity,
 		})
 		return result
 	}
@@ -49,14 +52,16 @@ func GetTopGames(req *twitch.PaginationRequest) (*twitch.PaginationData[Game], e
 }
 
 func GetGames(gameIDs []string, names []string) ([]Game, error) {
-	url := twitch.HelixBaseURL + "/games?"
+	opts := map[string]any{}
 
 	for _, id := range gameIDs {
-		url += fmt.Sprintf("id=%s&", id)
+		opts["id"] = id
 	}
 	for _, name := range names {
-		url += fmt.Sprintf("name=%s&", name)
+		opts["name"] = name
 	}
+
+	url := twitch.BuildURL(twitch.HelixBaseURL+"/games", opts)
 
 	result, err := twitch.ExecuteRequest[GetGamesResponse]("GET", url, 200)
 	if err != nil {

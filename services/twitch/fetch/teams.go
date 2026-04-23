@@ -1,5 +1,7 @@
 package twitch
 
+// This is not tested neither validated, I do not see using it
+
 import (
 	"MyStreamBot/helpers"
 	twitch "MyStreamBot/services/twitch"
@@ -12,18 +14,18 @@ import (
 var urlAPITeams = "https://api.twitch.tv/helix/teams"
 
 type Team struct {
-	ID          string `json:"id"`
-	TeamName    string `json:"team_name"`
-	TeamDisplayName string `json:"team_display_name"`
-	BroadcasterID   string `json:"broadcaster_id"`
-	BroadcasterName string `json:"broadcaster_name"`
-	BroadcasterLogin string `json:"broadcaster_login"`
+	ID                 string `json:"id"`
+	TeamName           string `json:"team_name"`
+	TeamDisplayName    string `json:"team_display_name"`
+	BroadcasterID      string `json:"broadcaster_id"`
+	BroadcasterName    string `json:"broadcaster_name"`
+	BroadcasterLogin   string `json:"broadcaster_login"`
 	BackgroundImageURL string `json:"background_image_url"`
-	Banner     string `json:"banner"`
-	ThumbnailURL string `json:"thumbnail_url"`
-	CreatedAt  string `json:"created_at"`
-	UpdatedAt  string `json:"updated_at"`
-	Info       string `json:"info"`
+	Banner             string `json:"banner"`
+	ThumbnailURL       string `json:"thumbnail_url"`
+	CreatedAt          string `json:"created_at"`
+	UpdatedAt          string `json:"updated_at"`
+	Info               string `json:"info"`
 }
 
 type GetChannelTeamsResponse struct {

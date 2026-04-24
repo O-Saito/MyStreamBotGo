@@ -15,7 +15,41 @@ var (
 // commandTable *lua.LTable
 )
 
-func TableToMap(tbl *lua.LTable) map[string]interface{} {
+func IsArray(tbl *lua.LTable) bool {
+	max := 0
+	isArray := true
+	tbl.ForEach(func(key lua.LValue, _ lua.LValue) {
+		if k, ok := key.(lua.LNumber); ok {
+			if int(k) > max {
+				max = int(k)
+			}
+		} else {
+			isArray = false
+		}
+	})
+	return isArray && max > 0
+}
+
+func TableToMap(tbl *lua.LTable) interface{} {
+	if IsArray(tbl) {
+		arr := make([]interface{}, 0)
+		tbl.ForEach(func(_, value lua.LValue) {
+			switch v := value.(type) {
+			case lua.LString:
+				arr = append(arr, string(v))
+			case lua.LNumber:
+				arr = append(arr, float64(v))
+			case lua.LBool:
+				arr = append(arr, bool(v))
+			case *lua.LTable:
+				arr = append(arr, TableToMap(v))
+			default:
+				arr = append(arr, v.String())
+			}
+		})
+		return arr
+	}
+
 	result := make(map[string]interface{})
 	tbl.ForEach(func(key lua.LValue, value lua.LValue) {
 		switch v := value.(type) {
@@ -26,7 +60,7 @@ func TableToMap(tbl *lua.LTable) map[string]interface{} {
 		case lua.LBool:
 			result[key.String()] = bool(v)
 		case *lua.LTable:
-			result[key.String()] = TableToMap(v) // recursivo
+			result[key.String()] = TableToMap(v)
 		default:
 			result[key.String()] = v.String()
 		}
@@ -109,26 +143,10 @@ func FromLValue(L *lua.LState, lv lua.LValue) any {
 	case lua.LString:
 		return string(v)
 	case *lua.LTable:
-		// Decide if it's map or slice
-		// Check if there are sequential numeric indices
-		max := 0
-		isArray := true
-		v.ForEach(func(key, value lua.LValue) {
-			if k, ok := key.(lua.LNumber); ok {
-				if int(k) > max {
-					max = int(k)
-				}
-			} else {
-				isArray = false
-			}
-		})
-
-		if isArray && max > 0 {
-			arr := make([]any, max)
-			i := 0
+		if IsArray(v) {
+			arr := make([]any, 0)
 			v.ForEach(func(_, value lua.LValue) {
-				arr[i] = FromLValue(L, value)
-				i++
+				arr = append(arr, FromLValue(L, value))
 			})
 			return arr
 		}

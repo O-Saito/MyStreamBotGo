@@ -213,6 +213,15 @@
         const chatContent = document.querySelector('#chat .content');
         const eventsList = document.getElementById('events-list');
 
+        const twitchGameInput = document.getElementById('twitch-game');
+        if (twitchGameInput) {
+            twitchGameInput.addEventListener('input', (e) => {
+                if (e.target.value.length >= 3) {
+                    w.send('query-stream-game', { q: e.target.value });
+                }
+            });
+        }
+
         const defaultState = {
             sections: {
                 twitch: { collapsed: false },
@@ -351,9 +360,7 @@
         }
 
         // Preference handlers
-        chatAcompanhar.addEventListener('change', () => {
-            setPreference('acompanharChat', chatAcompanhar.checked);
-        });
+        chatAcompanhar.addEventListener('change', () => { setPreference('acompanharChat', chatAcompanhar.checked); });
 
         chkShowViewCount.addEventListener('change', () => {
             lblTwitchViewCount.style.color = chkShowViewCount.checked ? "" : "var(--bg-primary)";
@@ -380,9 +387,7 @@
             element.dispatchEvent(new Event('change'));
         }
 
-        document.querySelectorAll('.display-collapse').forEach(chk => {
-            setupCollapseHandler(chk, chk.closest('.areas').id);
-        });
+        document.querySelectorAll('.display-collapse').forEach(chk => { setupCollapseHandler(chk, chk.closest('.areas').id); });
 
         setupCollapseHandler(document.getElementById('toggle-dyevents'), 'dyevents-panel');
         setupCollapseHandler(document.getElementById('collapse-events'), 'events-panel');
@@ -391,9 +396,7 @@
         let draggedElement = null;
         let dragContainer = null;
 
-        function isClickableElement(target) {
-            return target.matches('input, a, button, label') || target.closest('label:has(input)');
-        }
+        function isClickableElement(target) { return target.matches('input, a, button, label') || target.closest('label:has(input)'); }
 
         function handleDragStart(e) {
             if (isClickableElement(e.target)) return;
@@ -410,9 +413,7 @@
             if (!draggedElement) return;
             const clientX = e.touches ? e.touches[0].clientX : e.clientX;
             const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-            document.querySelectorAll('.drag-over-above, .drag-over-below').forEach(el => {
-                el.classList.remove('drag-over-above', 'drag-over-below');
-            });
+            document.querySelectorAll('.drag-over-above, .drag-over-below').forEach(el => { el.classList.remove('drag-over-above', 'drag-over-below'); });
             const elements = Array.from(dragContainer.children).filter(el => el !== draggedElement && el.id);
             for (const el of elements) {
                 const rect = el.getBoundingClientRect();
@@ -431,9 +432,7 @@
         function handleDragEnd(e) {
             if (!draggedElement) return;
             draggedElement.classList.remove('dragging');
-            document.querySelectorAll('.drag-over-above, .drag-over-below').forEach(el => {
-                el.classList.remove('drag-over-above', 'drag-over-below');
-            });
+            document.querySelectorAll('.drag-over-above, .drag-over-below').forEach(el => { el.classList.remove('drag-over-above', 'drag-over-below'); });
             const target = document.elementFromPoint(e.changedTouches ? e.changedTouches[0].clientX : e.clientX, e.changedTouches ? e.changedTouches[0].clientY : e.clientY);
             const targetSection = target?.closest('[id]');
             console.log('Drag end:', { targetSection: targetSection?.id, draggedElement: draggedElement.id, parentMatch: targetSection?.parentElement === dragContainer });
@@ -467,9 +466,7 @@
             header.addEventListener('mousedown', handleDragStart);
             header.addEventListener('touchstart', handleDragStart, { passive: false });
             header.addEventListener('click', (e) => {
-                if (isClickableElement(e.target)) {
-                    e.stopPropagation();
-                }
+                if (isClickableElement(e.target)) { e.stopPropagation(); }
             });
         }
 
@@ -499,9 +496,7 @@
         }
 
         document.getElementById('msg-input').addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                sendMessage();
-            }
+            if (e.key === 'Enter') { sendMessage(); }
         });
 
         document.getElementById('btn-mandar-msg').addEventListener('click', (e) => {
@@ -543,7 +538,7 @@
 
             updateKickConnectionDetails(data.kick?.connected_as);
             loadDyModules(data.custom_events_modules);
-            
+
             w.send("get-streamer-data", {}, resultGetStreamerData);
             w.send("get-dy-statistics", {}, resultGetDyStatistics);
 
@@ -942,12 +937,6 @@
             document.getElementById('twitch-tags').innerHTML = (sd.tags || []).map(t => `<li>${t}</li>`).join('');
         }
 
-        // function updateTwitchLiveTimer() {
-        //     if (!streams.twitch?.data?.stream_details?.started_at) return;
-        //     const start = parseTimeZone(new Date(streams.twitch.data.stream_details.started_at));
-        //     twitchDiv.querySelector('.stream-time').textContent = getDateDiff(parseTimeZone(new Date()), start).toString();
-        // }
-
         function updateTwitchStreamOnlineStatus() {
             const data = streams.twitch.data;
             const sd = data?.stream_details;
@@ -1150,15 +1139,6 @@
                     return `<li data-live-id="${id}"><img src="${data.thumbnail}" alt="${data.title || id}" />${data.title || id}</li>`;
                 }).join('');
             }
-        }
-
-        const twitchGameInput = document.getElementById('twitch-game');
-        if (twitchGameInput) {
-            twitchGameInput.addEventListener('input', (e) => {
-                if (e.target.value.length >= 3) {
-                    w.send('query-stream-game', { q: e.target.value });
-                }
-            });
         }
 
         function parseText(data) {
@@ -1453,7 +1433,6 @@
                 }
             });
         }
-
 
     </script>
 </body>

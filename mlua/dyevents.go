@@ -294,6 +294,35 @@ func (dev *DynamicEvent) ProcessRequest(evm *globals.SocketMessage) {
 
 	tbl := ToLValue(LState, evm.Data)
 
+	socketTag := evm.SocketTag
+	responseMessageID := evm.ResponseMessageID
+	filter := evm.Filter
+	t := evm.Type
+	LState.SetField(tbl, "respond", LState.NewFunction(func(L *lua.LState) int {
+		if L.Get(1) == lua.LNil {
+			helpers.Printf(helpers.Lua, "[LUA] OnRequest no data passed!")
+			return -1
+		}
+
+		d := L.CheckTable(1)
+
+		if socketTag == 0 || responseMessageID == "" {
+			helpers.Printf(helpers.Lua, "[LUA] OnRequest nowhere to respond [%v:%v]", socketTag, responseMessageID)
+			return -1
+		}
+		data := TableToMap(d)
+
+		globals.WsBroadcast <- globals.SocketMessage{
+			SocketTag:         socketTag,
+			ResponseMessageID: responseMessageID,
+			Filter:            filter,
+			Type:              fmt.Sprintf("return-%s", t),
+			Data:              data,
+		}
+
+		return 0
+	}))
+
 	if err := LState.CallByParam(lua.P{Fn: f, NRet: 0, Protect: true}, lua.LString(evm.Type), tbl); err != nil {
 		helpers.Logf(helpers.ERROR, "[LUA EVENT ERROR] %s: %v", dev.Name, err)
 	}

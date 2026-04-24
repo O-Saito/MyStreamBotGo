@@ -213,8 +213,15 @@ export default {
             /**
              * @param {string} type 
              * @param {any} data 
+             * @param {Function|undefined} func 
              */
-            send: (type, data) => {
+            send: (type, data, func) => {
+                if (func) {
+                    const id = crypto.randomUUID();
+                    waitingResponseFunctions[id] = func;
+                    ws.send(JSON.stringify({ type: type, filter: event, data: data, responseClientID: id }));
+                    return
+                }
                 ws.send(JSON.stringify({ type: type, filter: event, data: data }));
             }
         };

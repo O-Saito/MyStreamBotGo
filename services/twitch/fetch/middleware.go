@@ -88,16 +88,34 @@ func BuildURL(base string, opts map[string]any) string {
 	hasParams := false
 
 	for k, v := range opts {
-		if _, ok := v.([]any); ok {
-			for _, d := range v.([]any) {
+
+		if v == nil || v == "" {
+			continue
+		}
+
+		strArr, ok := v.([]string)
+		if ok {
+			if len(strArr) == 0 {
+				continue
+			}
+			for _, d := range strArr {
 				url.WriteString(fmt.Sprintf("%s%s=%s", ternary(hasParams, "&", "?"), k, d))
 				hasParams = true
 			}
 			continue
 		}
-		if v == nil || v == "" {
+		intArr, ok := v.([]int)
+		if ok {
+			if len(intArr) == 0 {
+				continue
+			}
+			for _, d := range intArr {
+				url.WriteString(fmt.Sprintf("%s%s=%s", ternary(hasParams, "&", "?"), k, d))
+				hasParams = true
+			}
 			continue
 		}
+
 		url.WriteString(fmt.Sprintf("%s%s=%s", ternary(hasParams, "&", "?"), k, v))
 		hasParams = true
 	}

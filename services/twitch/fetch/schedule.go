@@ -3,11 +3,11 @@ package twitch
 import (
 	"MyStreamBot/globals"
 	"MyStreamBot/helpers"
-	twitch "MyStreamBot/services/twitch"
+	
 	"time"
 )
 
-var urlAPISchedule = twitch.HelixBaseURL + "/schedule"
+var urlAPISchedule = HelixBaseURL + "/schedule"
 
 type ScheduleSegment struct {
 	ID            string    `json:"id"`
@@ -47,10 +47,10 @@ type ScheduleData struct {
 
 type GetScheduleResponse struct {
 	Data       ScheduleData      `json:"data"`
-	Pagination twitch.Pagination `json:"pagination"`
+	Pagination Pagination `json:"pagination"`
 }
 
-func GetChannelStreamSchedule(broadcasterID string, ids []string, timezone string, startTime, endTime *time.Time, req *twitch.PaginationRequest) (*twitch.PaginationData[ScheduleData], error) {
+func GetChannelStreamSchedule(broadcasterID string, ids []string, timezone string, startTime, endTime *time.Time, req *PaginationRequest) (*PaginationData[ScheduleData], error) {
 	user := globals.GetState().GetTwitchUser()
 	if broadcasterID == "" {
 		broadcasterID = user.UserID
@@ -81,9 +81,9 @@ func GetChannelStreamSchedule(broadcasterID string, ids []string, timezone strin
 		}
 	}
 
-	url := twitch.BuildURL(twitch.HelixBaseURL+"/schedule", opts)
+	url := BuildURL(HelixBaseURL+"/schedule", opts)
 
-	result, err := twitch.ExecuteRequest[twitch.PaginationData[ScheduleData]]("GET", url, 200)
+	result, err := ExecuteRequest[PaginationData[ScheduleData]]("GET", url, 200)
 	if err != nil {
 		helpers.Logf(helpers.DEBUG, "[TWITCH] GetChannelStreamSchedule: broadcasterID=%v", broadcasterID)
 		return nil, err
@@ -93,8 +93,8 @@ func GetChannelStreamSchedule(broadcasterID string, ids []string, timezone strin
 	if req != nil {
 		quantity = req.Quantity
 	}
-	result.GetNext = func() *twitch.PaginationData[ScheduleData] {
-		r, _ := GetChannelStreamSchedule(broadcasterID, ids, timezone, startTime, endTime, &twitch.PaginationRequest{
+	result.GetNext = func() *PaginationData[ScheduleData] {
+		r, _ := GetChannelStreamSchedule(broadcasterID, ids, timezone, startTime, endTime, &PaginationRequest{
 			Cursor:   result.Pagination.Cursor,
 			Quantity: quantity,
 		})
@@ -123,9 +123,9 @@ func GetChanneliCalendar(broadcasterID string) (string, error) {
 		"broadcaster_id": broadcasterID,
 	}
 
-	url := twitch.BuildURL(urlAPISchedule+"/icalendar", opts)
+	url := BuildURL(urlAPISchedule+"/icalendar", opts)
 
-	result, err := twitch.ExecuteRequest[struct {
+	result, err := ExecuteRequest[struct {
 		Data string `json:"data"`
 	}]("GET", url, 200)
 	if err != nil {
@@ -163,9 +163,9 @@ func UpdateChannelStreamSchedule(req UpdateScheduleSettingsRequest) error {
 		opts["vacation_end_time"] = req.VacationEndTime.Format(time.RFC3339)
 	}
 
-	url := twitch.BuildURL(urlAPISchedule, opts)
+	url := BuildURL(urlAPISchedule, opts)
 
-	_, err := twitch.ExecuteRequest[struct{}]("PATCH", url, 204)
+	_, err := ExecuteRequest[struct{}]("PATCH", url, 204)
 	if err != nil {
 		helpers.Logf(helpers.DEBUG, "[TWITCH] UpdateChannelStreamSchedule: req=%v", req)
 		return err
@@ -208,9 +208,9 @@ func CreateChannelStreamScheduleSegment(req CreateScheduleSegmentRequest) (*Sche
 	opts := map[string]any{
 		"broadcaster_id": user.UserID,
 	}
-	url := twitch.BuildURL(twitch.HelixBaseURL+"/schedule/segments", opts)
+	url := BuildURL(HelixBaseURL+"/schedule/segments", opts)
 
-	result, err := twitch.ExecuteJSONRequest[CreateScheduleSegmentResponse]("POST", url, req, 201)
+	result, err := ExecuteJSONRequest[CreateScheduleSegmentResponse]("POST", url, req, 201)
 	if err != nil {
 		helpers.Logf(helpers.DEBUG, "[TWITCH] CreateChannelStreamScheduleSegment: req:%v", req)
 		return nil, err
@@ -230,9 +230,9 @@ func UpdateChannelStreamScheduleSegment(segmentID string, req UpdateScheduleSegm
 		"broadcaster_id": user.UserID,
 		"id":             segmentID,
 	}
-	url := twitch.BuildURL(twitch.HelixBaseURL+"/schedule/segments", opts)
+	url := BuildURL(HelixBaseURL+"/schedule/segments", opts)
 
-	result, err := twitch.ExecuteJSONRequest[UpdateScheduleSegmentResponse]("PATCH", url, req, 200)
+	result, err := ExecuteJSONRequest[UpdateScheduleSegmentResponse]("PATCH", url, req, 200)
 	if err != nil {
 		helpers.Logf(helpers.DEBUG, "[TWITCH] UpdateChannelStreamScheduleSegment: segmentID=%v", segmentID)
 		return nil, err
@@ -252,9 +252,9 @@ func DeleteChannelStreamScheduleSegment(segmentID string) error {
 		"broadcaster_id": user.UserID,
 		"id":             segmentID,
 	}
-	url := twitch.BuildURL(twitch.HelixBaseURL+"/schedule/segments", opts)
+	url := BuildURL(HelixBaseURL+"/schedule/segments", opts)
 
-	_, err := twitch.ExecuteRequest[struct{}]("DELETE", url, 204)
+	_, err := ExecuteRequest[struct{}]("DELETE", url, 204)
 	if err != nil {
 		helpers.Logf(helpers.DEBUG, "[TWITCH] DeleteChannelStreamScheduleSegment: broadcasterID=%v segmentID=%v", user.UserID, segmentID)
 		return err

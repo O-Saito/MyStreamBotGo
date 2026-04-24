@@ -8,7 +8,9 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"strings"
+	"time"
 )
 
 var (
@@ -35,6 +37,13 @@ type PaginationRequest struct {
 type DateRange struct {
 	StartedAt string `json:"started_at"`
 	EndedAt   string `json:"ended_at"`
+}
+
+type TwitchViewerData struct {
+	UserId     string `json:"user_id"`
+	UserName   string `json:"user_name"`
+	UserLogin  string `json:"user_login"`
+	FollowedAt string `json:"followed_at"`
 }
 
 func AddAuthHeaders(req *http.Request) {
@@ -84,6 +93,9 @@ func BuildURL(base string, opts map[string]any) string {
 				url.WriteString(fmt.Sprintf("%s%s=%s", ternary(hasParams, "&", "?"), k, d))
 				hasParams = true
 			}
+			continue
+		}
+		if v == nil || v == "" {
 			continue
 		}
 		url.WriteString(fmt.Sprintf("%s%s=%s", ternary(hasParams, "&", "?"), k, v))
@@ -238,6 +250,55 @@ func ExecuteRequestNoParse(method, url string, expectedStatus int) ([]byte, erro
 	}
 
 	return respBody, nil
+}
+
+func RefreshToken(refreshToken string) (*struct {
+	AccessToken  string `json:"access_token"`
+	Expires      int    `json:"expires_in"`
+	RefreshToken string `json:"refresh_token"`
+}, error) {
+	data := url.Values{}
+	data.Set("client_id", globals.GetConfig().TwitchClientID)
+	data.Set("client_secret", globals.GetConfig().TwitchClientSecret)
+	data.Set("grant_type", "refresh_token")
+	data.Set("refresh_token", refreshToken)
+
+	resp, err := http.PostForm("https://id.twitch.tv/oauth2/token", data)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		helpers.Logf(helpers.ERROR, "[TWITCH] login io.ReadAll failed: %v", err)
+		return nil, err
+	}
+
+	var tokenResp struct {
+		AccessToken  string `json:"access_token"`
+		Expires      int    `json:"expires_in"`
+		RefreshToken string `json:"refresh_token"`
+	}
+
+	if err := json.Unmarshal(body, &tokenResp); err != nil {
+		helpers.Logf(helpers.ERROR, "[TWITCH] login json.Unmarshal failed: %v", err)
+		return nil, err
+	}
+
+	if tokenResp.AccessToken == "" {
+		return nil, fmt.Errorf("[TWITCH] empty access token")
+	}
+
+	sqlErr := globals.GetGlobalDB().SaveToken("twitch", tokenResp.AccessToken, tokenResp.RefreshToken, time.Now().Add(time.Duration(tokenResp.Expires)*time.Second))
+	if sqlErr != nil {
+		helpers.Logf(helpers.ERROR, "[TWITCH] Failed to save token: %s", sqlErr.Error())
+	}
+
+	user := globals.GetState().GetTwitchUser()
+	user.Token = tokenResp.AccessToken
+	globals.GetState().SetTwitchUser(user)
+
+	return &tokenResp, nil
 }
 
 func getDefaultBroadcasterID() string {

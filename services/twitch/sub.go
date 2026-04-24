@@ -12,6 +12,8 @@ import (
 	"sync"
 	"time"
 
+	tf "MyStreamBot/services/twitch/fetch"
+
 	"github.com/gorilla/websocket"
 )
 
@@ -415,7 +417,7 @@ func subscribeToEvents() {
 			helpers.Logf(helpers.ERROR, "[TWITCH] subscribe http.NewRequest failed: %v", err)
 			continue
 		}
-		AddAuthHeaders(req)
+		tf.AddAuthHeaders(req)
 		req.Header.Set("Content-Type", "application/json")
 		resp, err := http.DefaultClient.Do(req)
 		if err != nil {

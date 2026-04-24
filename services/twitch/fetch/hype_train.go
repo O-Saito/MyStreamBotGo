@@ -3,7 +3,7 @@ package twitch
 import (
 	"MyStreamBot/globals"
 	"MyStreamBot/helpers"
-	twitch "MyStreamBot/services/twitch"
+	
 )
 
 type HypeTrain struct {
@@ -52,9 +52,9 @@ func GetHypeTrainStatus(broadcasterID string) (*HypeTrain, error) {
 		broadcasterID = user.UserID
 	}
 
-	url := twitch.HelixBaseURL + "/hype_train?broadcaster_id=" + broadcasterID
+	url := HelixBaseURL + "/hype_train?broadcaster_id=" + broadcasterID
 
-	result, err := twitch.ExecuteRequest[GetHypeTrainStatusResponse]("GET", url, 200)
+	result, err := ExecuteRequest[GetHypeTrainStatusResponse]("GET", url, 200)
 	if err != nil {
 		helpers.Logf(helpers.DEBUG, "[TWITCH] GetHypeTrainStatus: broadcasterID=%v", broadcasterID)
 		return nil, err

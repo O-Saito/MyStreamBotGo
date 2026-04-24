@@ -1,7 +1,7 @@
 package twitch
 
 import (
-	twitch "MyStreamBot/services/twitch"
+	
 )
 
 type DropEntitlement struct {
@@ -13,7 +13,7 @@ type DropEntitlement struct {
 	GrantedAt       string `json:"granted_at"`
 }
 
-func GetDropEntitlements(beneficiaryID, campaignID, gameID string, req *twitch.PaginationRequest) ([]DropEntitlement, error) {
+func GetDropEntitlements(beneficiaryID, campaignID, gameID string, req *PaginationRequest) ([]DropEntitlement, error) {
 	opts := map[string]any{}
 
 	if beneficiaryID != "" {
@@ -35,9 +35,9 @@ func GetDropEntitlements(beneficiaryID, campaignID, gameID string, req *twitch.P
 		}
 	}
 
-	url := twitch.BuildURL(twitch.HelixBaseURL+"/entitlements/drops", opts)
+	url := BuildURL(HelixBaseURL+"/entitlements/drops", opts)
 
-	result, err := twitch.ExecuteRequest[twitch.PaginationData[DropEntitlement]]("GET", url, 200)
+	result, err := ExecuteRequest[PaginationData[DropEntitlement]]("GET", url, 200)
 	if err != nil {
 		return nil, err
 	}
@@ -53,9 +53,9 @@ type UpdateDropEntitlementRequest struct {
 type UpdateDropEntitlementResponse struct{}
 
 func UpdateDropEntitlements(req UpdateDropEntitlementRequest) error {
-	url := twitch.BuildURL(twitch.HelixBaseURL+"/entitlements/drops", nil)
+	url := BuildURL(HelixBaseURL+"/entitlements/drops", nil)
 
-	_, err := twitch.ExecuteJSONRequest[UpdateDropEntitlementResponse, UpdateDropEntitlementRequest]("PATCH", url, req, 200)
+	_, err := ExecuteJSONRequest[UpdateDropEntitlementResponse, UpdateDropEntitlementRequest]("PATCH", url, req, 200)
 	if err != nil {
 		return err
 	}

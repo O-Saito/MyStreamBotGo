@@ -2,7 +2,6 @@ package twitch
 
 import (
 	"MyStreamBot/globals"
-	twitch "MyStreamBot/services/twitch"
 	"fmt"
 )
 
@@ -39,8 +38,8 @@ func StartCommercial(broadcasterID string, length int) (*StartCommercialResponse
 		Length:        length,
 	}
 
-	url := twitch.HelixBaseURL + "/channels/commercial"
-	result, err := twitch.ExecuteJSONRequest[StartCommercialResponseWrapper]("POST", url, reqBody, 200)
+	url := HelixBaseURL + "/channels/commercial"
+	result, err := ExecuteJSONRequest[StartCommercialResponseWrapper]("POST", url, reqBody, 200)
 	if err != nil {
 		return nil, err
 	}
@@ -62,8 +61,8 @@ func GetAdSchedule(broadcasterID string) (*AdScheduleData, error) {
 		broadcasterID = user.UserID
 	}
 
-	url := fmt.Sprintf("%s/channels/ads?broadcaster_id=%s", twitch.HelixBaseURL, broadcasterID)
-	result, err := twitch.ExecuteRequest[AdScheduleResponseWrapper]("GET", url, 200)
+	url := fmt.Sprintf("%s/channels/ads?broadcaster_id=%s", HelixBaseURL, broadcasterID)
+	result, err := ExecuteRequest[AdScheduleResponseWrapper]("GET", url, 200)
 	if err != nil {
 		return nil, err
 	}
@@ -91,8 +90,8 @@ func SnoozeNextAd(broadcasterID string) (*SnoozeAdResponse, error) {
 		broadcasterID = user.UserID
 	}
 
-	url := fmt.Sprintf("%s/channels/ads/schedule/snooze?broadcaster_id=%s", twitch.HelixBaseURL, broadcasterID)
-	result, err := twitch.ExecuteRequest[SnoozeAdResponseWrapper]("POST", url, 200)
+	url := fmt.Sprintf("%s/channels/ads/schedule/snooze?broadcaster_id=%s", HelixBaseURL, broadcasterID)
+	result, err := ExecuteRequest[SnoozeAdResponseWrapper]("POST", url, 200)
 	if err != nil {
 		return nil, err
 	}

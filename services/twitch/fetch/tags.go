@@ -3,7 +3,7 @@ package twitch
 import (
 	"MyStreamBot/globals"
 	"MyStreamBot/helpers"
-	twitch "MyStreamBot/services/twitch"
+	
 )
 
 type StreamTag struct {
@@ -13,7 +13,7 @@ type StreamTag struct {
 	LocalizationDescriptions map[string]string `json:"localization_descriptions"`
 }
 
-func GetAllStreamTags(tagIDs []string, req *twitch.PaginationRequest) (*twitch.PaginationData[StreamTag], error) {
+func GetAllStreamTags(tagIDs []string, req *PaginationRequest) (*PaginationData[StreamTag], error) {
 	opts := map[string]any{}
 
 	if req != nil {
@@ -29,16 +29,16 @@ func GetAllStreamTags(tagIDs []string, req *twitch.PaginationRequest) (*twitch.P
 		opts["tag_id"] = tagIDs
 	}
 
-	url := twitch.BuildURL(twitch.HelixBaseURL+"/tags/streams", opts)
+	url := BuildURL(HelixBaseURL+"/tags/streams", opts)
 
-	result, err := twitch.ExecuteRequest[twitch.PaginationData[StreamTag]]("GET", url, 200)
+	result, err := ExecuteRequest[PaginationData[StreamTag]]("GET", url, 200)
 	if err != nil {
 		helpers.Logf(helpers.DEBUG, "[TWITCH] GetAllStreamTags: no params")
 		return nil, err
 	}
 
-	result.GetNext = func() *twitch.PaginationData[StreamTag] {
-		n, _ := GetAllStreamTags(tagIDs, &twitch.PaginationRequest{
+	result.GetNext = func() *PaginationData[StreamTag] {
+		n, _ := GetAllStreamTags(tagIDs, &PaginationRequest{
 			Cursor: result.Pagination.Cursor,
 		})
 		return n
@@ -57,9 +57,9 @@ func GetStreamTags(broadcasterID string) ([]StreamTag, error) {
 		"broadcaster_id": broadcasterID,
 	}
 
-	url := twitch.BuildURL(twitch.HelixBaseURL+"/streams/tags", opts)
+	url := BuildURL(HelixBaseURL+"/streams/tags", opts)
 
-	result, err := twitch.ExecuteRequest[struct {
+	result, err := ExecuteRequest[struct {
 		Data []StreamTag `json:"data"`
 	}]("GET", url, 200)
 	if err != nil {

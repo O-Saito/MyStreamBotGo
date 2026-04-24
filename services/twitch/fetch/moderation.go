@@ -3,20 +3,20 @@ package twitch
 import (
 	"MyStreamBot/globals"
 	"MyStreamBot/helpers"
-	twitch "MyStreamBot/services/twitch"
+	
 	"time"
 )
 
-var urlAPIMod = "https://api.twitch.tv/helix/moderation"
-var urlAPIAutoMod = "https://api.twitch.tv/helix/automod"
-var urlAPIAutoModSettings = "https://api.twitch.tv/helix/automod/settings"
-var urlAPIBanned = "https://api.twitch.tv/helix/moderation/banned"
-var urlAPIBlockTerms = "https://api.twitch.tv/helix/moderation/blocked_terms"
-var urlAPIModerators = "https://api.twitch.tv/helix/moderation/moderators"
-var urlAPIVIPs = "https://api.twitch.tv/helix/moderation/vips"
-var urlAPIModeratedChannels = "https://api.twitch.tv/helix/moderation/channels"
-var urlAPIShieldMode = "https://api.twitch.tv/helix/moderation/shield_mode"
-var urlAPIUnbanRequests = "https://api.twitch.tv/helix/moderation/unban_requests"
+var urlAPIMod = "https://api.tv/helix/moderation"
+var urlAPIAutoMod = "https://api.tv/helix/automod"
+var urlAPIAutoModSettings = "https://api.tv/helix/automod/settings"
+var urlAPIBanned = "https://api.tv/helix/moderation/banned"
+var urlAPIBlockTerms = "https://api.tv/helix/moderation/blocked_terms"
+var urlAPIModerators = "https://api.tv/helix/moderation/moderators"
+var urlAPIVIPs = "https://api.tv/helix/moderation/vips"
+var urlAPIModeratedChannels = "https://api.tv/helix/moderation/channels"
+var urlAPIShieldMode = "https://api.tv/helix/moderation/shield_mode"
+var urlAPIUnbanRequests = "https://api.tv/helix/moderation/unban_requests"
 
 type AutoModStatus struct {
 	Permitted bool `json:"permitted"`
@@ -118,13 +118,13 @@ type GetShieldModeStatusResponse struct {
 }
 
 func CheckAutoModStatus(messages []map[string]any) ([]AutoModStatus, error) {
-	url := twitch.BuildURL(twitch.HelixBaseURL+"/automod/check", nil)
+	url := BuildURL(HelixBaseURL+"/automod/check", nil)
 
 	body := map[string]any{
 		"messages": messages,
 	}
 
-	result, err := twitch.ExecuteJSONRequest[GetAutoModStatusResponse, map[string]any]("POST", url, body, 200)
+	result, err := ExecuteJSONRequest[GetAutoModStatusResponse, map[string]any]("POST", url, body, 200)
 	if err != nil {
 		helpers.Logf(helpers.DEBUG, "[TWITCH] CheckAutoModStatus: messages count=%v", len(messages))
 		return nil, err
@@ -143,14 +143,14 @@ func UpdateAutomod(userId, msgId, action string) (string, error) {
 }
 
 func ManageHeldAutoModMessages(msgID, action string) error {
-	url := twitch.BuildURL(twitch.HelixBaseURL+"/automod/message", nil)
+	url := BuildURL(HelixBaseURL+"/automod/message", nil)
 
 	body := map[string]any{
 		"msg_id": msgID,
 		"action": action,
 	}
 
-	_, err := twitch.ExecuteJSONRequest[map[string]any, map[string]any]("POST", url, body, 204)
+	_, err := ExecuteJSONRequest[map[string]any, map[string]any]("POST", url, body, 204)
 	if err != nil {
 		helpers.Logf(helpers.DEBUG, "[TWITCH] ManageHeldAutoModMessages: msgID=%v, action=%v", msgID, action)
 		return err
@@ -166,9 +166,9 @@ func GetAutoModSettings() (*AutoModSettings, error) {
 		"broadcaster_id": user.UserID,
 		"moderator_id":   user.UserID,
 	}
-	url := twitch.BuildURL(twitch.HelixBaseURL+"/automod/settings", opts)
+	url := BuildURL(HelixBaseURL+"/automod/settings", opts)
 
-	result, err := twitch.ExecuteRequest[GetAutoModSettingsResponse]("GET", url, 200)
+	result, err := ExecuteRequest[GetAutoModSettingsResponse]("GET", url, 200)
 	if err != nil {
 		helpers.Logf(helpers.DEBUG, "[TWITCH] GetAutoModSettings: broadcasterID=%v", user.UserID)
 		return nil, err
@@ -214,9 +214,9 @@ func UpdateAutoModSettings(req UpdateAutoModSettingsRequest) error {
 		"broadcaster_id": user.UserID,
 		"moderator_id":   user.UserID,
 	}
-	url := twitch.BuildURL(twitch.HelixBaseURL+"/automod/settings", opts)
+	url := BuildURL(HelixBaseURL+"/automod/settings", opts)
 
-	_, err := twitch.ExecuteJSONRequest[map[string]any, UpdateAutoModSettingsRequest]("PATCH", url, req, 204)
+	_, err := ExecuteJSONRequest[map[string]any, UpdateAutoModSettingsRequest]("PATCH", url, req, 204)
 	if err != nil {
 		helpers.Logf(helpers.DEBUG, "[TWITCH] UpdateAutoModSettings: broadcasterID=%v", user.UserID)
 		return err
@@ -225,7 +225,7 @@ func UpdateAutoModSettings(req UpdateAutoModSettingsRequest) error {
 	return nil
 }
 
-func GetBannedUsers(userIDs []string, req *twitch.PaginationRequest) (*twitch.PaginationData[BannedUser], error) {
+func GetBannedUsers(userIDs []string, req *PaginationRequest) (*PaginationData[BannedUser], error) {
 	user := globals.GetState().GetTwitchUser()
 
 	opts := map[string]any{
@@ -244,9 +244,9 @@ func GetBannedUsers(userIDs []string, req *twitch.PaginationRequest) (*twitch.Pa
 		}
 	}
 
-	url := twitch.BuildURL(twitch.HelixBaseURL+"/moderation/banned", opts)
+	url := BuildURL(HelixBaseURL+"/moderation/banned", opts)
 
-	result, err := twitch.ExecuteRequest[twitch.PaginationData[BannedUser]]("GET", url, 200)
+	result, err := ExecuteRequest[PaginationData[BannedUser]]("GET", url, 200)
 	if err != nil {
 		helpers.Logf(helpers.DEBUG, "[TWITCH] GetBannedUsers: broadcasterID=%v", user.UserID)
 		return nil, err
@@ -256,8 +256,8 @@ func GetBannedUsers(userIDs []string, req *twitch.PaginationRequest) (*twitch.Pa
 	if req != nil {
 		quantity = req.Quantity
 	}
-	result.GetNext = func() *twitch.PaginationData[BannedUser] {
-		r, _ := GetBannedUsers(userIDs, &twitch.PaginationRequest{
+	result.GetNext = func() *PaginationData[BannedUser] {
+		r, _ := GetBannedUsers(userIDs, &PaginationRequest{
 			Cursor:   result.Pagination.Cursor,
 			Quantity: quantity,
 		})
@@ -278,9 +278,9 @@ func UnbanUser(broadcasterID, userID string) error {
 		"moderator_id":   user.UserID,
 		"user_id":        userID,
 	}
-	url := twitch.BuildURL(twitch.HelixBaseURL+"/moderation/banned", opts)
+	url := BuildURL(HelixBaseURL+"/moderation/banned", opts)
 
-	_, err := twitch.ExecuteRequest[map[string]any]("DELETE", url, 204)
+	_, err := ExecuteRequest[map[string]any]("DELETE", url, 204)
 	if err != nil {
 		helpers.Logf(helpers.DEBUG, "[TWITCH] UnbanUser: broadcasterID=%v, userID=%v", broadcasterID, userID)
 		return err
@@ -296,7 +296,7 @@ func BanUser(userId string, duration int32, reason string) (string, error) {
 		"broadcaster_id": user.UserID,
 		"moderator_id":   user.UserID,
 	}
-	url := twitch.BuildURL(twitch.HelixBaseURL+"/moderation/banned", opts)
+	url := BuildURL(HelixBaseURL+"/moderation/banned", opts)
 
 	body := map[string]any{
 		"user_id": userId,
@@ -306,7 +306,7 @@ func BanUser(userId string, duration int32, reason string) (string, error) {
 		body["duration"] = duration
 	}
 
-	_, err := twitch.ExecuteJSONRequest[map[string]any, map[string]any]("POST", url, body, 204)
+	_, err := ExecuteJSONRequest[map[string]any, map[string]any]("POST", url, body, 204)
 	if err != nil {
 		helpers.Logf(helpers.DEBUG, "[TWITCH] BanUser: userId=%v, duration=%v, reason=%v", userId, duration, reason)
 		return "", err
@@ -315,7 +315,7 @@ func BanUser(userId string, duration int32, reason string) (string, error) {
 	return "", nil
 }
 
-func GetBlockedTerms(req *twitch.PaginationRequest) (*twitch.PaginationData[BlockedTerm], error) {
+func GetBlockedTerms(req *PaginationRequest) (*PaginationData[BlockedTerm], error) {
 	user := globals.GetState().GetTwitchUser()
 
 	opts := map[string]any{
@@ -331,9 +331,9 @@ func GetBlockedTerms(req *twitch.PaginationRequest) (*twitch.PaginationData[Bloc
 		}
 	}
 
-	url := twitch.BuildURL(twitch.HelixBaseURL+"/moderation/blocked_terms", opts)
+	url := BuildURL(HelixBaseURL+"/moderation/blocked_terms", opts)
 
-	result, err := twitch.ExecuteRequest[twitch.PaginationData[BlockedTerm]]("GET", url, 200)
+	result, err := ExecuteRequest[PaginationData[BlockedTerm]]("GET", url, 200)
 	if err != nil {
 		helpers.Logf(helpers.DEBUG, "[TWITCH] GetBlockedTerms: broadcasterID=%v", user.UserID)
 		return nil, err
@@ -343,8 +343,8 @@ func GetBlockedTerms(req *twitch.PaginationRequest) (*twitch.PaginationData[Bloc
 	if req != nil {
 		quantity = req.Quantity
 	}
-	result.GetNext = func() *twitch.PaginationData[BlockedTerm] {
-		r, _ := GetBlockedTerms(&twitch.PaginationRequest{
+	result.GetNext = func() *PaginationData[BlockedTerm] {
+		r, _ := GetBlockedTerms(&PaginationRequest{
 			Cursor:   result.Pagination.Cursor,
 			Quantity: quantity,
 		})
@@ -361,7 +361,7 @@ func AddBlockedTerm(text string, duration int) (*BlockedTerm, error) {
 		"broadcaster_id": user.UserID,
 		"moderator_id":   user.UserID,
 	}
-	url := twitch.BuildURL(twitch.HelixBaseURL+"/moderation/blocked_terms", opts)
+	url := BuildURL(HelixBaseURL+"/moderation/blocked_terms", opts)
 
 	body := map[string]any{
 		"text": text,
@@ -374,7 +374,7 @@ func AddBlockedTerm(text string, duration int) (*BlockedTerm, error) {
 		Data []BlockedTerm `json:"data"`
 	}
 
-	result, err := twitch.ExecuteJSONRequest[AddBlockedTermResponse, map[string]any]("POST", url, body, 201)
+	result, err := ExecuteJSONRequest[AddBlockedTermResponse, map[string]any]("POST", url, body, 201)
 	if err != nil {
 		helpers.Logf(helpers.DEBUG, "[TWITCH] AddBlockedTerm: broadcasterID=%v, text=%v", user.UserID, text)
 		return nil, err
@@ -395,9 +395,9 @@ func RemoveBlockedTerm(termID string) error {
 		"moderator_id":   user.UserID,
 		"id":             termID,
 	}
-	url := twitch.BuildURL(twitch.HelixBaseURL+"/moderation/blocked_terms", opts)
+	url := BuildURL(HelixBaseURL+"/moderation/blocked_terms", opts)
 
-	_, err := twitch.ExecuteRequest[map[string]any]("DELETE", url, 204)
+	_, err := ExecuteRequest[map[string]any]("DELETE", url, 204)
 	if err != nil {
 		helpers.Logf(helpers.DEBUG, "[TWITCH] RemoveBlockedTerm: broadcasterID=%v, termID=%v", user.UserID, termID)
 		return err
@@ -410,7 +410,7 @@ func GetModeratedChannels(userID string) ([]string, error) {
 	opts := map[string]any{
 		"user_id": userID,
 	}
-	url := twitch.BuildURL(twitch.HelixBaseURL+"/moderation/channels", opts)
+	url := BuildURL(HelixBaseURL+"/moderation/channels", opts)
 
 	type ChannelResponse struct {
 		BroadcasterID string `json:"broadcaster_id"`
@@ -420,7 +420,7 @@ func GetModeratedChannels(userID string) ([]string, error) {
 		Data []ChannelResponse `json:"data"`
 	}
 
-	result, err := twitch.ExecuteRequest[GetModeratedChannelsResponse]("GET", url, 200)
+	result, err := ExecuteRequest[GetModeratedChannelsResponse]("GET", url, 200)
 	if err != nil {
 		helpers.Logf(helpers.DEBUG, "[TWITCH] GetModeratedChannels: userID=%v", userID)
 		return nil, err
@@ -434,7 +434,7 @@ func GetModeratedChannels(userID string) ([]string, error) {
 	return channels, nil
 }
 
-func GetModerators(userIDs []string, req *twitch.PaginationRequest) (*twitch.PaginationData[Moderator], error) {
+func GetModerators(userIDs []string, req *PaginationRequest) (*PaginationData[Moderator], error) {
 	user := globals.GetState().GetTwitchUser()
 
 	opts := map[string]any{
@@ -453,9 +453,9 @@ func GetModerators(userIDs []string, req *twitch.PaginationRequest) (*twitch.Pag
 		}
 	}
 
-	url := twitch.BuildURL(twitch.HelixBaseURL+"/moderation/moderators", opts)
+	url := BuildURL(HelixBaseURL+"/moderation/moderators", opts)
 
-	result, err := twitch.ExecuteRequest[twitch.PaginationData[Moderator]]("GET", url, 200)
+	result, err := ExecuteRequest[PaginationData[Moderator]]("GET", url, 200)
 	if err != nil {
 		helpers.Logf(helpers.DEBUG, "[TWITCH] GetModerators: broadcasterID=%v", user.UserID)
 		return nil, err
@@ -465,8 +465,8 @@ func GetModerators(userIDs []string, req *twitch.PaginationRequest) (*twitch.Pag
 	if req != nil {
 		quantity = req.Quantity
 	}
-	result.GetNext = func() *twitch.PaginationData[Moderator] {
-		r, _ := GetModerators(userIDs, &twitch.PaginationRequest{
+	result.GetNext = func() *PaginationData[Moderator] {
+		r, _ := GetModerators(userIDs, &PaginationRequest{
 			Cursor:   result.Pagination.Cursor,
 			Quantity: quantity,
 		})
@@ -486,9 +486,9 @@ func AddChannelModerator(broadcasterID, userID string) error {
 		"broadcaster_id": broadcasterID,
 		"user_id":        userID,
 	}
-	url := twitch.BuildURL(twitch.HelixBaseURL+"/moderation/moderators", opts)
+	url := BuildURL(HelixBaseURL+"/moderation/moderators", opts)
 
-	_, err := twitch.ExecuteRequest[map[string]any]("POST", url, 204)
+	_, err := ExecuteRequest[map[string]any]("POST", url, 204)
 	if err != nil {
 		helpers.Logf(helpers.DEBUG, "[TWITCH] AddChannelModerator: broadcasterID=%v, userID=%v", broadcasterID, userID)
 		return err
@@ -507,9 +507,9 @@ func RemoveChannelModerator(broadcasterID, userID string) error {
 		"broadcaster_id": broadcasterID,
 		"user_id":        userID,
 	}
-	url := twitch.BuildURL(twitch.HelixBaseURL+"/moderation/moderators", opts)
+	url := BuildURL(HelixBaseURL+"/moderation/moderators", opts)
 
-	_, err := twitch.ExecuteRequest[map[string]any]("DELETE", url, 204)
+	_, err := ExecuteRequest[map[string]any]("DELETE", url, 204)
 	if err != nil {
 		helpers.Logf(helpers.DEBUG, "[TWITCH] RemoveChannelModerator: broadcasterID=%v, userID=%v", broadcasterID, userID)
 		return err
@@ -518,7 +518,7 @@ func RemoveChannelModerator(broadcasterID, userID string) error {
 	return nil
 }
 
-func GetVIPs(userIDs []string, req *twitch.PaginationRequest) (*twitch.PaginationData[VIP], error) {
+func GetVIPs(userIDs []string, req *PaginationRequest) (*PaginationData[VIP], error) {
 	user := globals.GetState().GetTwitchUser()
 
 	opts := map[string]any{
@@ -537,9 +537,9 @@ func GetVIPs(userIDs []string, req *twitch.PaginationRequest) (*twitch.Paginatio
 		}
 	}
 
-	url := twitch.BuildURL(twitch.HelixBaseURL+"/moderation/vips", opts)
+	url := BuildURL(HelixBaseURL+"/moderation/vips", opts)
 
-	result, err := twitch.ExecuteRequest[twitch.PaginationData[VIP]]("GET", url, 200)
+	result, err := ExecuteRequest[PaginationData[VIP]]("GET", url, 200)
 	if err != nil {
 		helpers.Logf(helpers.DEBUG, "[TWITCH] GetVIPs: broadcasterID=%v", user.UserID)
 		return nil, err
@@ -549,8 +549,8 @@ func GetVIPs(userIDs []string, req *twitch.PaginationRequest) (*twitch.Paginatio
 	if req != nil {
 		quantity = req.Quantity
 	}
-	result.GetNext = func() *twitch.PaginationData[VIP] {
-		r, _ := GetVIPs(userIDs, &twitch.PaginationRequest{
+	result.GetNext = func() *PaginationData[VIP] {
+		r, _ := GetVIPs(userIDs, &PaginationRequest{
 			Cursor:   result.Pagination.Cursor,
 			Quantity: quantity,
 		})
@@ -570,9 +570,9 @@ func AddChannelVIP(broadcasterID, userID string) error {
 		"broadcaster_id": broadcasterID,
 		"user_id":        userID,
 	}
-	url := twitch.BuildURL(twitch.HelixBaseURL+"/moderation/vips", opts)
+	url := BuildURL(HelixBaseURL+"/moderation/vips", opts)
 
-	_, err := twitch.ExecuteRequest[map[string]any]("POST", url, 204)
+	_, err := ExecuteRequest[map[string]any]("POST", url, 204)
 	if err != nil {
 		helpers.Logf(helpers.DEBUG, "[TWITCH] AddChannelVIP: broadcasterID=%v, userID=%v", broadcasterID, userID)
 		return err
@@ -591,9 +591,9 @@ func RemoveChannelVIP(broadcasterID, userID string) error {
 		"broadcaster_id": broadcasterID,
 		"user_id":        userID,
 	}
-	url := twitch.BuildURL(twitch.HelixBaseURL+"/moderation/vips", opts)
+	url := BuildURL(HelixBaseURL+"/moderation/vips", opts)
 
-	_, err := twitch.ExecuteRequest[map[string]any]("DELETE", url, 204)
+	_, err := ExecuteRequest[map[string]any]("DELETE", url, 204)
 	if err != nil {
 		helpers.Logf(helpers.DEBUG, "[TWITCH] RemoveChannelVIP: broadcasterID=%v, userID=%v", broadcasterID, userID)
 		return err
@@ -609,9 +609,9 @@ func GetShieldModeStatus() (*ShieldModeStatus, error) {
 		"broadcaster_id": user.UserID,
 		"moderator_id":   user.UserID,
 	}
-	url := twitch.BuildURL(twitch.HelixBaseURL+"/moderation/shield_mode", opts)
+	url := BuildURL(HelixBaseURL+"/moderation/shield_mode", opts)
 
-	result, err := twitch.ExecuteRequest[GetShieldModeStatusResponse]("GET", url, 200)
+	result, err := ExecuteRequest[GetShieldModeStatusResponse]("GET", url, 200)
 	if err != nil {
 		helpers.Logf(helpers.DEBUG, "[TWITCH] GetShieldModeStatus: broadcasterID=%v", user.UserID)
 		return nil, err
@@ -631,13 +631,13 @@ func UpdateShieldModeStatus(isActive bool) error {
 		"broadcaster_id": user.UserID,
 		"moderator_id":   user.UserID,
 	}
-	url := twitch.BuildURL(twitch.HelixBaseURL+"/moderation/shield_mode", opts)
+	url := BuildURL(HelixBaseURL+"/moderation/shield_mode", opts)
 
 	body := map[string]any{
 		"is_active": isActive,
 	}
 
-	_, err := twitch.ExecuteJSONRequest[map[string]any, map[string]any]("PUT", url, body, 204)
+	_, err := ExecuteJSONRequest[map[string]any, map[string]any]("PUT", url, body, 204)
 	if err != nil {
 		helpers.Logf(helpers.DEBUG, "[TWITCH] UpdateShieldModeStatus: broadcasterID=%v, isActive=%v", user.UserID, isActive)
 		return err
@@ -653,14 +653,14 @@ func WarnChatUser(userID, reason string) error {
 		"broadcaster_id": user.UserID,
 		"moderator_id":   user.UserID,
 	}
-	url := twitch.BuildURL(twitch.HelixBaseURL+"/moderation/warns", opts)
+	url := BuildURL(HelixBaseURL+"/moderation/warns", opts)
 
 	body := map[string]any{
 		"user_id": userID,
 		"reason":  reason,
 	}
 
-	_, err := twitch.ExecuteJSONRequest[map[string]any, map[string]any]("POST", url, body, 201)
+	_, err := ExecuteJSONRequest[map[string]any, map[string]any]("POST", url, body, 201)
 	if err != nil {
 		helpers.Logf(helpers.DEBUG, "[TWITCH] WarnChatUser: broadcasterID=%v, userID=%v", user.UserID, userID)
 		return err
@@ -682,13 +682,13 @@ func AddSuspiciousStatusToChatUser(broadcasterID, moderatorID, userID string) er
 		"broadcaster_id": broadcasterID,
 		"moderator_id":   moderatorID,
 	}
-	url := twitch.BuildURL(twitch.HelixBaseURL+"/moderation/suspicious", opts)
+	url := BuildURL(HelixBaseURL+"/moderation/suspicious", opts)
 
 	body := map[string]any{
 		"user_id": userID,
 	}
 
-	_, err := twitch.ExecuteJSONRequest[map[string]any, map[string]any]("POST", url, body, 204)
+	_, err := ExecuteJSONRequest[map[string]any, map[string]any]("POST", url, body, 204)
 	if err != nil {
 		helpers.Logf(helpers.DEBUG, "[TWITCH] AddSuspiciousStatusToChatUser: broadcasterID=%v, userID=%v", broadcasterID, userID)
 		return err
@@ -711,9 +711,9 @@ func RemoveSuspiciousStatusFromChatUser(broadcasterID, moderatorID, userID strin
 		"moderator_id":   moderatorID,
 		"user_id":        userID,
 	}
-	url := twitch.BuildURL(twitch.HelixBaseURL+"/moderation/suspicious", opts)
+	url := BuildURL(HelixBaseURL+"/moderation/suspicious", opts)
 
-	_, err := twitch.ExecuteRequest[map[string]any]("DELETE", url, 204)
+	_, err := ExecuteRequest[map[string]any]("DELETE", url, 204)
 	if err != nil {
 		helpers.Logf(helpers.DEBUG, "[TWITCH] RemoveSuspiciousStatusFromChatUser: broadcasterID=%v, userID=%v", broadcasterID, userID)
 		return err
@@ -722,7 +722,7 @@ func RemoveSuspiciousStatusFromChatUser(broadcasterID, moderatorID, userID strin
 	return nil
 }
 
-func GetUnbanRequests(userID, status string, req *twitch.PaginationRequest) (*twitch.PaginationData[UnbanRequest], error) {
+func GetUnbanRequests(userID, status string, req *PaginationRequest) (*PaginationData[UnbanRequest], error) {
 	user := globals.GetState().GetTwitchUser()
 
 	opts := map[string]any{
@@ -740,9 +740,9 @@ func GetUnbanRequests(userID, status string, req *twitch.PaginationRequest) (*tw
 		}
 	}
 
-	url := twitch.BuildURL(twitch.HelixBaseURL+"/moderation/unban_requests", opts)
+	url := BuildURL(HelixBaseURL+"/moderation/unban_requests", opts)
 
-	result, err := twitch.ExecuteRequest[twitch.PaginationData[UnbanRequest]]("GET", url, 200)
+	result, err := ExecuteRequest[PaginationData[UnbanRequest]]("GET", url, 200)
 	if err != nil {
 		helpers.Logf(helpers.DEBUG, "[TWITCH] GetUnbanRequests: broadcasterID=%v", user.UserID)
 		return nil, err
@@ -752,8 +752,8 @@ func GetUnbanRequests(userID, status string, req *twitch.PaginationRequest) (*tw
 	if req != nil {
 		quantity = req.Quantity
 	}
-	result.GetNext = func() *twitch.PaginationData[UnbanRequest] {
-		r, _ := GetUnbanRequests(userID, status, &twitch.PaginationRequest{
+	result.GetNext = func() *PaginationData[UnbanRequest] {
+		r, _ := GetUnbanRequests(userID, status, &PaginationRequest{
 			Cursor:   result.Pagination.Cursor,
 			Quantity: quantity,
 		})
@@ -770,14 +770,14 @@ func ResolveUnbanRequest(requestID, action, resolutionText string) error {
 		"broadcaster_id": user.UserID,
 		"id":             requestID,
 	}
-	url := twitch.BuildURL(twitch.HelixBaseURL+"/moderation/unban_requests", opts)
+	url := BuildURL(HelixBaseURL+"/moderation/unban_requests", opts)
 
 	body := map[string]any{
 		"status":          action,
 		"resolution_text": resolutionText,
 	}
 
-	_, err := twitch.ExecuteJSONRequest[map[string]any, map[string]any]("PATCH", url, body, 204)
+	_, err := ExecuteJSONRequest[map[string]any, map[string]any]("PATCH", url, body, 204)
 	if err != nil {
 		helpers.Logf(helpers.DEBUG, "[TWITCH] ResolveUnbanRequest: broadcasterID=%v, requestID=%v, action=%v", user.UserID, requestID, action)
 		return err

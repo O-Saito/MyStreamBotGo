@@ -3,12 +3,12 @@ package twitch
 import (
 	"MyStreamBot/globals"
 	"MyStreamBot/helpers"
-	twitch "MyStreamBot/services/twitch"
+	
 	"fmt"
 	"net/http"
 )
 
-var urlAPIGuestStar = twitch.HelixBaseURL + "/guest_star"
+var urlAPIGuestStar = HelixBaseURL + "/guest_star"
 
 type GuestStarSettings struct {
 	BroadcasterID              string `json:"broadcaster_id"`
@@ -79,7 +79,7 @@ func GetChannelGuestStarSettings(broadcasterID string) (*GuestStarSettings, erro
 	}
 
 	url := fmt.Sprintf("%s/settings?broadcaster_id=%s", urlAPIGuestStar, broadcasterID)
-	result, err := twitch.ExecuteRequest[GetGuestStarSettingsResponse]("GET", url, http.StatusOK)
+	result, err := ExecuteRequest[GetGuestStarSettingsResponse]("GET", url, http.StatusOK)
 	if err != nil {
 		helpers.Logf(helpers.DEBUG, "[TWITCH] GetChannelGuestStarSettings: broadcasterID=%v", broadcasterID)
 		return nil, err
@@ -108,7 +108,7 @@ func UpdateChannelGuestStarSettings(broadcasterID string, req UpdateGuestStarSet
 	}
 
 	url := fmt.Sprintf("%s/settings?broadcaster_id=%s", urlAPIGuestStar, broadcasterID)
-	_, err := twitch.ExecuteJSONRequest[EmptyResponse, UpdateGuestStarSettingsRequest]("PATCH", url, req, http.StatusOK)
+	_, err := ExecuteJSONRequest[EmptyResponse, UpdateGuestStarSettingsRequest]("PATCH", url, req, http.StatusOK)
 	if err != nil {
 		helpers.Logf(helpers.DEBUG, "[TWITCH] UpdateChannelGuestStarSettings: broadcasterID=%v", broadcasterID)
 		return err
@@ -124,7 +124,7 @@ func GetGuestStarSession(broadcasterID string) (*GuestStarSession, error) {
 	}
 
 	url := fmt.Sprintf("%s/sessions?broadcaster_id=%s", urlAPIGuestStar, broadcasterID)
-	result, err := twitch.ExecuteRequest[GetGuestStarSessionResponse]("GET", url, http.StatusOK)
+	result, err := ExecuteRequest[GetGuestStarSessionResponse]("GET", url, http.StatusOK)
 	if err != nil {
 		helpers.Logf(helpers.DEBUG, "[TWITCH] GetGuestStarSession: broadcasterID=%v", broadcasterID)
 		return nil, err
@@ -144,7 +144,7 @@ func CreateGuestStarSession(broadcasterID string) (*GuestStarSession, error) {
 	}
 
 	url := fmt.Sprintf("%s/sessions?broadcaster_id=%s", urlAPIGuestStar, broadcasterID)
-	result, err := twitch.ExecuteRequest[GetGuestStarSessionResponse]("POST", url, http.StatusOK)
+	result, err := ExecuteRequest[GetGuestStarSessionResponse]("POST", url, http.StatusOK)
 	if err != nil {
 		helpers.Logf(helpers.DEBUG, "[TWITCH] CreateGuestStarSession: broadcasterID=%v", broadcasterID)
 		return nil, err
@@ -164,7 +164,7 @@ func EndGuestStarSession(broadcasterID string) error {
 	}
 
 	url := fmt.Sprintf("%s/sessions?broadcaster_id=%s", urlAPIGuestStar, broadcasterID)
-	_, err := twitch.ExecuteRequest[EmptyResponse]("DELETE", url, http.StatusNoContent)
+	_, err := ExecuteRequest[EmptyResponse]("DELETE", url, http.StatusNoContent)
 	if err != nil {
 		helpers.Logf(helpers.DEBUG, "[TWITCH] EndGuestStarSession: broadcasterID=%v", broadcasterID)
 		return err
@@ -180,7 +180,7 @@ func GetGuestStarInvites(broadcasterID string) ([]GuestStarInvite, error) {
 	}
 
 	url := fmt.Sprintf("%s/invites?broadcaster_id=%s", urlAPIGuestStar, broadcasterID)
-	result, err := twitch.ExecuteRequest[GetGuestStarInvitesResponse]("GET", url, http.StatusOK)
+	result, err := ExecuteRequest[GetGuestStarInvitesResponse]("GET", url, http.StatusOK)
 	if err != nil {
 		helpers.Logf(helpers.DEBUG, "[TWITCH] GetGuestStarInvites: broadcasterID=%v", broadcasterID)
 		return nil, err
@@ -205,7 +205,7 @@ func SendGuestStarInvite(broadcasterID, guestUserID string) error {
 		BroadcasterID: broadcasterID,
 		GuestUserID:   guestUserID,
 	}
-	_, err := twitch.ExecuteJSONRequest[EmptyResponse, SendInviteRequest]("POST", url, req, http.StatusCreated)
+	_, err := ExecuteJSONRequest[EmptyResponse, SendInviteRequest]("POST", url, req, http.StatusCreated)
 	if err != nil {
 		helpers.Logf(helpers.DEBUG, "[TWITCH] SendGuestStarInvite: broadcasterID=%v, guestUserID=%v", broadcasterID, guestUserID)
 		return err
@@ -221,7 +221,7 @@ func DeleteGuestStarInvite(broadcasterID, guestUserID string) error {
 	}
 
 	url := fmt.Sprintf("%s/invites?broadcaster_id=%s&guest_user_id=%s", urlAPIGuestStar, broadcasterID, guestUserID)
-	_, err := twitch.ExecuteRequest[EmptyResponse]("DELETE", url, http.StatusNoContent)
+	_, err := ExecuteRequest[EmptyResponse]("DELETE", url, http.StatusNoContent)
 	if err != nil {
 		helpers.Logf(helpers.DEBUG, "[TWITCH] DeleteGuestStarInvite: broadcasterID=%v, guestUserID=%v", broadcasterID, guestUserID)
 		return err
@@ -241,7 +241,7 @@ func AssignGuestStarSlot(broadcasterID, guestUserID string) error {
 		BroadcasterID: broadcasterID,
 		GuestUserID:   guestUserID,
 	}
-	_, err := twitch.ExecuteJSONRequest[EmptyResponse, SendInviteRequest]("POST", url, req, http.StatusCreated)
+	_, err := ExecuteJSONRequest[EmptyResponse, SendInviteRequest]("POST", url, req, http.StatusCreated)
 	if err != nil {
 		helpers.Logf(helpers.DEBUG, "[TWITCH] AssignGuestStarSlot: broadcasterID=%v, guestUserID=%v", broadcasterID, guestUserID)
 		return err
@@ -268,7 +268,7 @@ func UpdateGuestStarSlot(broadcasterID, slotID string, req GuestStarSlotSettings
 		SlotID:       slotID,
 		Settings:    req,
 	}
-	_, err := twitch.ExecuteJSONRequest[EmptyResponse, UpdateSlotRequest]("PATCH", url, updateReq, http.StatusNoContent)
+	_, err := ExecuteJSONRequest[EmptyResponse, UpdateSlotRequest]("PATCH", url, updateReq, http.StatusNoContent)
 	if err != nil {
 		helpers.Logf(helpers.DEBUG, "[TWITCH] UpdateGuestStarSlot: broadcasterID=%v, slotID=%v", broadcasterID, slotID)
 		return err
@@ -284,7 +284,7 @@ func DeleteGuestStarSlot(broadcasterID, slotID string) error {
 	}
 
 	url := fmt.Sprintf("%s/slots?broadcaster_id=%s&slot_id=%s", urlAPIGuestStar, broadcasterID, slotID)
-	_, err := twitch.ExecuteRequest[EmptyResponse]("DELETE", url, http.StatusNoContent)
+	_, err := ExecuteRequest[EmptyResponse]("DELETE", url, http.StatusNoContent)
 	if err != nil {
 		helpers.Logf(helpers.DEBUG, "[TWITCH] DeleteGuestStarSlot: broadcasterID=%v, slotID=%v", broadcasterID, slotID)
 		return err
@@ -309,7 +309,7 @@ func UpdateGuestStarSlotSettings(broadcasterID string, req GuestStarSlotSettings
 		BroadcasterID: broadcasterID,
 		Settings:   req,
 	}
-	_, err := twitch.ExecuteJSONRequest[EmptyResponse, UpdateSlotSettingsRequest]("PATCH", url, updateReq, http.StatusNoContent)
+	_, err := ExecuteJSONRequest[EmptyResponse, UpdateSlotSettingsRequest]("PATCH", url, updateReq, http.StatusNoContent)
 	if err != nil {
 		helpers.Logf(helpers.DEBUG, "[TWITCH] UpdateGuestStarSlotSettings: broadcasterID=%v", broadcasterID)
 		return err

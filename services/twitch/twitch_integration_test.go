@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"MyStreamBot/globals"
+	tf "MyStreamBot/services/twitch/fetch"
 )
 
 type mockRoundTripper struct {
@@ -36,7 +37,7 @@ func TestDoRequest_AddAuthHeaders(t *testing.T) {
 
 	req, _ := http.NewRequest("GET", "https://api.twitch.tv/helix/users", nil)
 
-	AddAuthHeaders(req)
+	tf.AddAuthHeaders(req)
 
 	if req.Header.Get("Authorization") != "Bearer test_token" {
 		t.Errorf("Authorization = %q, want %q", req.Header.Get("Authorization"), "Bearer test_token")
@@ -49,7 +50,7 @@ func TestDoRequest_AddAuthHeaders(t *testing.T) {
 func TestGetUserData_NotFound(t *testing.T) {
 	restore := setupMockTransport(&http.Response{
 		StatusCode: 200,
-		Body:     io.NopCloser(strings.NewReader(`{"data":[]}`)),
+		Body:       io.NopCloser(strings.NewReader(`{"data":[]}`)),
 	})
 	defer restore()
 
@@ -103,7 +104,7 @@ func TestGetUserData_Success(t *testing.T) {
 func TestGetUserDataById_Success(t *testing.T) {
 	restore := setupMockTransport(&http.Response{
 		StatusCode: 200,
-		Body: io.NopCloser(strings.NewReader(`{"data":[{"id":"67890","login":"userbyid"}]}`)),
+		Body:       io.NopCloser(strings.NewReader(`{"data":[{"id":"67890","login":"userbyid"}]}`)),
 	})
 	defer restore()
 
@@ -237,7 +238,7 @@ func TestValidateAccessToken_InvalidToken(t *testing.T) {
 
 	restore := setupMockTransport(&http.Response{
 		StatusCode: 401,
-		Body: io.NopCloser(strings.NewReader(`{"status":401,"message":"invalid token"}`)),
+		Body:       io.NopCloser(strings.NewReader(`{"status":401,"message":"invalid token"}`)),
 	})
 	defer restore()
 
@@ -293,7 +294,7 @@ func TestTwitchStreamData_Setup(t *testing.T) {
 	state.SetTwitchUser(globals.TwitchUser{
 		UserID:    "123",
 		UserLogin: "test",
-		Token:    "token",
+		Token:     "token",
 	})
 
 	cfg := globals.GetConfig()

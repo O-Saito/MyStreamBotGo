@@ -1,20 +1,20 @@
 package twitch
 
 import (
-	twitch "MyStreamBot/services/twitch"
+	
 	"fmt"
 	"time"
 )
 
 var (
-	urlAPIExtensions          = twitch.HelixBaseURL + "/extensions"
-	urlAPIExtensionConfig     = twitch.HelixBaseURL + "/extensions/config"
-	urlAPIExtensionPubSub   = twitch.HelixBaseURL + "/extensions/pubsub"
-	urlAPIExtensionLiveChannels = twitch.HelixBaseURL + "/extensions/live"
-	urlAPIExtensionSecrets   = twitch.HelixBaseURL + "/extensions/secrets"
-	urlAPIExtensionChat     = twitch.HelixBaseURL + "/extensions/chat"
-	urlAPIReleasedExtensions = twitch.HelixBaseURL + "/extensions/released"
-	urlAPIExtensionBitsProducts = twitch.HelixBaseURL + "/extensions/bits"
+	urlAPIExtensions          = HelixBaseURL + "/extensions"
+	urlAPIExtensionConfig     = HelixBaseURL + "/extensions/config"
+	urlAPIExtensionPubSub   = HelixBaseURL + "/extensions/pubsub"
+	urlAPIExtensionLiveChannels = HelixBaseURL + "/extensions/live"
+	urlAPIExtensionSecrets   = HelixBaseURL + "/extensions/secrets"
+	urlAPIExtensionChat     = HelixBaseURL + "/extensions/chat"
+	urlAPIReleasedExtensions = HelixBaseURL + "/extensions/released"
+	urlAPIExtensionBitsProducts = HelixBaseURL + "/extensions/bits"
 )
 
 type ExtensionConfigSegment struct {
@@ -137,7 +137,7 @@ type VoidResponse struct{}
 
 func GetExtensionConfigurationSegment(extensionID, segment string) (*ExtensionConfigSegment, error) {
 	url := fmt.Sprintf("%s?extension_id=%s&segment=%s", urlAPIExtensionConfig, extensionID, segment)
-	result, err := twitch.ExecuteRequest[ExtensionConfigResponse]("GET", url, 200)
+	result, err := ExecuteRequest[ExtensionConfigResponse]("GET", url, 200)
 	if err != nil {
 		return nil, err
 	}
@@ -161,7 +161,7 @@ func SetExtensionConfigurationSegment(extensionID, segment, content, version str
 		Content:     content,
 		Version:     version,
 	}
-	_, err := twitch.ExecuteJSONRequest[VoidResponse, SetExtensionConfigRequest]("PUT", urlAPIExtensionConfig, req, 204)
+	_, err := ExecuteJSONRequest[VoidResponse, SetExtensionConfigRequest]("PUT", urlAPIExtensionConfig, req, 204)
 	return err
 }
 
@@ -175,7 +175,7 @@ func SetExtensionRequiredConfiguration(extensionID, requiredConfiguration string
 		ExtensionID:           extensionID,
 		RequiredConfiguration: requiredConfiguration,
 	}
-	_, err := twitch.ExecuteJSONRequest[VoidResponse, SetRequiredConfigRequest]("PUT", urlAPIExtensions+"/required_configuration", req, 204)
+	_, err := ExecuteJSONRequest[VoidResponse, SetRequiredConfigRequest]("PUT", urlAPIExtensions+"/required_configuration", req, 204)
 	return err
 }
 
@@ -191,13 +191,13 @@ func SendExtensionPubSubMessage(extensionID, target string, message string) erro
 		Target:      target,
 		Message:     message,
 	}
-	_, err := twitch.ExecuteJSONRequest[VoidResponse, PubSubMessageRequest]("POST", urlAPIExtensionPubSub, req, 204)
+	_, err := ExecuteJSONRequest[VoidResponse, PubSubMessageRequest]("POST", urlAPIExtensionPubSub, req, 204)
 	return err
 }
 
 func GetExtensionLiveChannels(extensionID string) ([]ExtensionLiveChannel, error) {
 	url := fmt.Sprintf("%s?extension_id=%s", urlAPIExtensionLiveChannels, extensionID)
-	result, err := twitch.ExecuteRequest[ExtensionLiveChannelsResponse]("GET", url, 200)
+	result, err := ExecuteRequest[ExtensionLiveChannelsResponse]("GET", url, 200)
 	if err != nil {
 		return nil, err
 	}
@@ -206,7 +206,7 @@ func GetExtensionLiveChannels(extensionID string) ([]ExtensionLiveChannel, error
 
 func GetExtensionSecrets(extensionID string) ([]ExtensionSecret, error) {
 	url := fmt.Sprintf("%s?extension_id=%s", urlAPIExtensionSecrets, extensionID)
-	result, err := twitch.ExecuteRequest[ExtensionSecretsResponse]("GET", url, 200)
+	result, err := ExecuteRequest[ExtensionSecretsResponse]("GET", url, 200)
 	if err != nil {
 		return nil, err
 	}
@@ -223,7 +223,7 @@ func CreateExtensionSecret(extensionID string, extendsInSecs int) error {
 	if extendsInSecs > 0 {
 		req.ExpiresIn = extendsInSecs
 	}
-	_, err := twitch.ExecuteJSONRequest[VoidResponse, CreateSecretRequest]("POST", urlAPIExtensionSecrets, req, 201)
+	_, err := ExecuteJSONRequest[VoidResponse, CreateSecretRequest]("POST", urlAPIExtensionSecrets, req, 201)
 	return err
 }
 
@@ -239,7 +239,7 @@ func SendExtensionChatMessage(extensionID, broadcasterID, text string) error {
 		BroadcasterID: broadcasterID,
 		Text:          text,
 	}
-	_, err := twitch.ExecuteJSONRequest[VoidResponse, ChatMessageRequest]("POST", urlAPIExtensionChat, req, 204)
+	_, err := ExecuteJSONRequest[VoidResponse, ChatMessageRequest]("POST", urlAPIExtensionChat, req, 204)
 	return err
 }
 
@@ -248,7 +248,7 @@ func GetExtensions(extensionID string) ([]Extension, error) {
 	if extensionID != "" {
 		url = fmt.Sprintf("%s?extension_id=%s", url, extensionID)
 	}
-	result, err := twitch.ExecuteRequest[ExtensionsResponse]("GET", url, 200)
+	result, err := ExecuteRequest[ExtensionsResponse]("GET", url, 200)
 	if err != nil {
 		return nil, err
 	}
@@ -260,7 +260,7 @@ func GetReleasedExtensions(extensionType string) ([]Extension, error) {
 	if extensionType != "" {
 		url = fmt.Sprintf("%s?extension_type=%s", url, extensionType)
 	}
-	result, err := twitch.ExecuteRequest[ExtensionsResponse]("GET", url, 200)
+	result, err := ExecuteRequest[ExtensionsResponse]("GET", url, 200)
 	if err != nil {
 		return nil, err
 	}
@@ -269,7 +269,7 @@ func GetReleasedExtensions(extensionType string) ([]Extension, error) {
 
 func GetExtensionBitsProducts(extensionID string) ([]ExtensionBitsProduct, error) {
 	url := fmt.Sprintf("%s?extension_id=%s", urlAPIExtensionBitsProducts, extensionID)
-	result, err := twitch.ExecuteRequest[ExtensionBitsProductsResponse]("GET", url, 200)
+	result, err := ExecuteRequest[ExtensionBitsProductsResponse]("GET", url, 200)
 	if err != nil {
 		return nil, err
 	}
@@ -285,6 +285,6 @@ type UpdateExtensionBitsProductRequest struct {
 
 func UpdateExtensionBitsProduct(extensionID string, req UpdateExtensionBitsProductRequest) error {
 	url := fmt.Sprintf("%s?extension_id=%s", urlAPIExtensionBitsProducts, extensionID)
-	_, err := twitch.ExecuteJSONRequest[VoidResponse, UpdateExtensionBitsProductRequest]("PUT", url, req, 204)
+	_, err := ExecuteJSONRequest[VoidResponse, UpdateExtensionBitsProductRequest]("PUT", url, req, 204)
 	return err
 }

@@ -1,10 +1,10 @@
 package twitch
 
 import (
-	twitch "MyStreamBot/services/twitch"
+	
 )
 
-var urlAPIEventSub = twitch.HelixBaseURL + "/eventsub/subscriptions"
+var urlAPIEventSub = HelixBaseURL + "/eventsub/subscriptions"
 
 type EventSubData struct {
 	Subscriptions []EventSubSubscription `json:"data"`
@@ -31,11 +31,11 @@ type EventSubTransport struct {
 type GetEventSubscriptionsResponse struct {
 	Data       []EventSubSubscription `json:"data"`
 	Total      int                    `json:"total"`
-	Pagination twitch.Pagination      `json:"pagination"`
+	Pagination Pagination      `json:"pagination"`
 }
 
 func GetEventSubscriptions() (*EventSubData, error) {
-	resp, err := twitch.ExecuteRequest[GetEventSubscriptionsResponse]("GET", urlAPIEventSub, 200)
+	resp, err := ExecuteRequest[GetEventSubscriptionsResponse]("GET", urlAPIEventSub, 200)
 	if err != nil {
 		return nil, err
 	}
@@ -48,7 +48,7 @@ func GetEventSubscriptions() (*EventSubData, error) {
 
 func DeleteEventSubscriptions(id string) error {
 	url := urlAPIEventSub + "?id=" + id
-	_, err := twitch.ExecuteRequestNoParse("DELETE", url, 204)
+	_, err := ExecuteRequestNoParse("DELETE", url, 204)
 	if err != nil {
 		return err
 	}

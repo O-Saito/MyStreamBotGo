@@ -3,7 +3,7 @@ package twitch
 import (
 	"MyStreamBot/globals"
 	"MyStreamBot/helpers"
-	twitch "MyStreamBot/services/twitch"
+	
 )
 
 type Prediction struct {
@@ -54,7 +54,7 @@ type CreatePredictionOutcomeRequest struct {
 	Title string `json:"title"`
 }
 
-func GetPredictions(predictionIDs []string, req *twitch.PaginationRequest) (*twitch.PaginationData[Prediction], error) {
+func GetPredictions(predictionIDs []string, req *PaginationRequest) (*PaginationData[Prediction], error) {
 	user := globals.GetState().GetTwitchUser()
 
 	opts := map[string]any{
@@ -73,9 +73,9 @@ func GetPredictions(predictionIDs []string, req *twitch.PaginationRequest) (*twi
 		}
 	}
 
-	url := twitch.BuildURL(twitch.HelixBaseURL+"/predictions", opts)
+	url := BuildURL(HelixBaseURL+"/predictions", opts)
 
-	result, err := twitch.ExecuteRequest[twitch.PaginationData[Prediction]]("GET", url, 200)
+	result, err := ExecuteRequest[PaginationData[Prediction]]("GET", url, 200)
 	if err != nil {
 		helpers.Logf(helpers.DEBUG, "[TWITCH] GetPredictions: broadcasterID=%v", user.UserID)
 		return nil, err
@@ -85,8 +85,8 @@ func GetPredictions(predictionIDs []string, req *twitch.PaginationRequest) (*twi
 	if req != nil {
 		quantity = req.Quantity
 	}
-	result.GetNext = func() *twitch.PaginationData[Prediction] {
-		r, _ := GetPredictions(predictionIDs, &twitch.PaginationRequest{
+	result.GetNext = func() *PaginationData[Prediction] {
+		r, _ := GetPredictions(predictionIDs, &PaginationRequest{
 			Cursor:   result.Pagination.Cursor,
 			Quantity: quantity,
 		})
@@ -101,9 +101,9 @@ func CreatePrediction(req CreatePredictionRequest) (*Prediction, error) {
 
 	opts := map[string]any{}
 	req.BroadcasterID = user.UserID
-	url := twitch.BuildURL(twitch.HelixBaseURL+"/predictions", opts)
+	url := BuildURL(HelixBaseURL+"/predictions", opts)
 
-	result, err := twitch.ExecuteJSONRequest[GetPredictionsResponse, CreatePredictionRequest]("POST", url, req, 201)
+	result, err := ExecuteJSONRequest[GetPredictionsResponse, CreatePredictionRequest]("POST", url, req, 201)
 	if err != nil {
 		helpers.Logf(helpers.DEBUG, "[TWITCH] CreatePrediction: broadcasterID=%v, title=%v", user.UserID, req.Title)
 		return nil, err
@@ -130,9 +130,9 @@ func EndPrediction(predictionID, outcomeID, status string) (*Prediction, error) 
 		opts["status"] = status
 	}
 
-	url := twitch.BuildURL(twitch.HelixBaseURL+"/predictions", opts)
+	url := BuildURL(HelixBaseURL+"/predictions", opts)
 
-	result, err := twitch.ExecuteRequest[GetPredictionsResponse]("PATCH", url, 200)
+	result, err := ExecuteRequest[GetPredictionsResponse]("PATCH", url, 200)
 	if err != nil {
 		helpers.Logf(helpers.DEBUG, "[TWITCH] EndPrediction: broadcasterID=%v, predictionID=%v", user.UserID, predictionID)
 		return nil, err

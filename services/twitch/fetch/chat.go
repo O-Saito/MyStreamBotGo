@@ -3,19 +3,19 @@ package twitch
 import (
 	"MyStreamBot/globals"
 	"MyStreamBot/helpers"
-	twitch "MyStreamBot/services/twitch"
+	
 )
 
-var urlAPIChat = "https://api.twitch.tv/helix/chat"
-var urlAPIChatAnnouncements = "https://api.twitch.tv/helix/chat/announcements"
-var urlAPIChatShoutouts = "https://api.twitch.tv/helix/chat/shoutouts"
-var urlAPIChatSettings = "https://api.twitch.tv/helix/chat/settings"
-var urlAPIChatColor = "https://api.twitch.tv/helix/chat/color"
-var urlAPIChatters = "https://api.twitch.tv/helix/chat/chatters"
-var urlAPIEmotes = "https://api.twitch.tv/helix/chat/emotes"
-var urlAPIEmotesSets = "https://api.twitch.tv/helix/chat/emotes/set"
-var urlAPIChatBadges = "https://api.twitch.tv/helix/chat/badges"
-var urlAPISharedChat = "https://api.twitch.tv/helix/chat/shared_chat"
+var urlAPIChat = "https://api.tv/helix/chat"
+var urlAPIChatAnnouncements = "https://api.tv/helix/chat/announcements"
+var urlAPIChatShoutouts = "https://api.tv/helix/chat/shoutouts"
+var urlAPIChatSettings = "https://api.tv/helix/chat/settings"
+var urlAPIChatColor = "https://api.tv/helix/chat/color"
+var urlAPIChatters = "https://api.tv/helix/chat/chatters"
+var urlAPIEmotes = "https://api.tv/helix/chat/emotes"
+var urlAPIEmotesSets = "https://api.tv/helix/chat/emotes/set"
+var urlAPIChatBadges = "https://api.tv/helix/chat/badges"
+var urlAPISharedChat = "https://api.tv/helix/chat/shared_chat"
 
 type ChatSettings struct {
 	EmoteOnly                      bool    `json:"emote_only"`
@@ -79,7 +79,7 @@ type Chatter struct {
 
 type GetChattersResponse struct {
 	Data       []Chatter        `json:"data"`
-	Pagination twitch.Pagination `json:"pagination"`
+	Pagination Pagination `json:"pagination"`
 }
 
 type GetChannelEmotesResponse struct {
@@ -102,7 +102,7 @@ type GetChatSettingsResponse struct {
 	Data []ChatSettings `json:"data"`
 }
 
-func GetChatters(req *twitch.PaginationRequest) (*twitch.PaginationData[Chatter], error) {
+func GetChatters(req *PaginationRequest) (*PaginationData[Chatter], error) {
 	user := globals.GetState().GetTwitchUser()
 
 	opts := map[string]any{
@@ -119,9 +119,9 @@ func GetChatters(req *twitch.PaginationRequest) (*twitch.PaginationData[Chatter]
 		}
 	}
 
-	url := twitch.BuildURL(twitch.HelixBaseURL+"/chat/chatters", opts)
+	url := BuildURL(HelixBaseURL+"/chat/chatters", opts)
 
-	result, err := twitch.ExecuteRequest[twitch.PaginationData[Chatter]]("GET", url, 200)
+	result, err := ExecuteRequest[PaginationData[Chatter]]("GET", url, 200)
 	if err != nil {
 		helpers.Logf(helpers.DEBUG, "[TWITCH] GetChatters: broadcasterID=%v", user.UserID)
 		return nil, err
@@ -131,8 +131,8 @@ func GetChatters(req *twitch.PaginationRequest) (*twitch.PaginationData[Chatter]
 	if req != nil {
 		quantity = req.Quantity
 	}
-	result.GetNext = func() *twitch.PaginationData[Chatter] {
-		r, _ := GetChatters(&twitch.PaginationRequest{
+	result.GetNext = func() *PaginationData[Chatter] {
+		r, _ := GetChatters(&PaginationRequest{
 			Cursor:   result.Pagination.Cursor,
 			Quantity: quantity,
 		})
@@ -149,9 +149,9 @@ func GetChannelEmotes() ([]ChannelEmote, error) {
 		"broadcaster_id": user.UserID,
 	}
 
-	url := twitch.BuildURL(twitch.HelixBaseURL+"/chat/emotes", opts)
+	url := BuildURL(HelixBaseURL+"/chat/emotes", opts)
 
-	result, err := twitch.ExecuteRequest[GetChannelEmotesResponse]("GET", url, 200)
+	result, err := ExecuteRequest[GetChannelEmotesResponse]("GET", url, 200)
 	if err != nil {
 		helpers.Logf(helpers.DEBUG, "[TWITCH] GetChannelEmotes: broadcasterID=%v", user.UserID)
 		return nil, err
@@ -163,9 +163,9 @@ func GetChannelEmotes() ([]ChannelEmote, error) {
 func GetGlobalEmotes() ([]GlobalEmote, error) {
 	opts := map[string]any{}
 
-	url := twitch.BuildURL(urlAPIEmotes, opts)
+	url := BuildURL(urlAPIEmotes, opts)
 
-	result, err := twitch.ExecuteRequest[GetGlobalEmotesResponse]("GET", url, 200)
+	result, err := ExecuteRequest[GetGlobalEmotesResponse]("GET", url, 200)
 	if err != nil {
 		helpers.Logf(helpers.DEBUG, "[TWITCH] GetGlobalEmotes: no params")
 		return nil, err
@@ -180,9 +180,9 @@ func GetEmoteSets(emoteSetIDs []string) ([]EmoteSet, error) {
 		opts["emote_set_id"] = id
 	}
 
-	url := twitch.BuildURL(urlAPIEmotesSets, opts)
+	url := BuildURL(urlAPIEmotesSets, opts)
 
-	result, err := twitch.ExecuteRequest[GetEmoteSetsResponse]("GET", url, 200)
+	result, err := ExecuteRequest[GetEmoteSetsResponse]("GET", url, 200)
 	if err != nil {
 		helpers.Logf(helpers.DEBUG, "[TWITCH] GetEmoteSets: emoteSetIDs=%v", emoteSetIDs)
 		return nil, err
@@ -198,9 +198,9 @@ func GetChannelChatBadges() ([]ChatBadgeSet, error) {
 		"broadcaster_id": user.UserID,
 	}
 
-	url := twitch.BuildURL(urlAPIChatBadges, opts)
+	url := BuildURL(urlAPIChatBadges, opts)
 
-	result, err := twitch.ExecuteRequest[GetChatBadgesResponse]("GET", url, 200)
+	result, err := ExecuteRequest[GetChatBadgesResponse]("GET", url, 200)
 	if err != nil {
 		helpers.Logf(helpers.DEBUG, "[TWITCH] GetChannelChatBadges: broadcasterID=%v", user.UserID)
 		return nil, err
@@ -212,9 +212,9 @@ func GetChannelChatBadges() ([]ChatBadgeSet, error) {
 func GetGlobalChatBadges() ([]ChatBadgeSet, error) {
 	opts := map[string]any{}
 
-	url := twitch.BuildURL(urlAPIChatBadges+"/global", opts)
+	url := BuildURL(urlAPIChatBadges+"/global", opts)
 
-	result, err := twitch.ExecuteRequest[GetChatBadgesResponse]("GET", url, 200)
+	result, err := ExecuteRequest[GetChatBadgesResponse]("GET", url, 200)
 	if err != nil {
 		helpers.Logf(helpers.DEBUG, "[TWITCH] GetGlobalChatBadges: no params")
 		return nil, err
@@ -231,9 +231,9 @@ func GetChatSettings() (*ChatSettings, error) {
 		"moderator_id":   user.UserID,
 	}
 
-	url := twitch.BuildURL(urlAPIChatSettings, opts)
+	url := BuildURL(urlAPIChatSettings, opts)
 
-	result, err := twitch.ExecuteRequest[GetChatSettingsResponse]("GET", url, 200)
+	result, err := ExecuteRequest[GetChatSettingsResponse]("GET", url, 200)
 	if err != nil {
 		helpers.Logf(helpers.DEBUG, "[TWITCH] GetChatSettings: broadcasterID=%v", user.UserID)
 		return nil, err
@@ -264,9 +264,9 @@ func UpdateChatSettings(req UpdateChatSettingsRequest) error {
 		"moderator_id":   user.UserID,
 	}
 
-	url := twitch.BuildURL(urlAPIChatSettings, opts)
+	url := BuildURL(urlAPIChatSettings, opts)
 
-	_, err := twitch.ExecuteJSONRequest[struct{}, UpdateChatSettingsRequest]("PATCH", url, req, 200)
+	_, err := ExecuteJSONRequest[struct{}, UpdateChatSettingsRequest]("PATCH", url, req, 200)
 	if err != nil {
 		helpers.Logf(helpers.DEBUG, "[TWITCH] UpdateChatSettings: broadcasterID=%v", user.UserID)
 		return err
@@ -282,7 +282,7 @@ func SendChatAnnouncement(message, color string) error {
 		"broadcaster_id": user.UserID,
 		"moderator_id":   user.UserID,
 	}
-	url := twitch.BuildURL(twitch.HelixBaseURL+"/chat/announcements", opts)
+	url := BuildURL(HelixBaseURL+"/chat/announcements", opts)
 
 	body := map[string]any{
 		"message": message,
@@ -291,7 +291,7 @@ func SendChatAnnouncement(message, color string) error {
 		body["color"] = color
 	}
 
-	_, err := twitch.ExecuteJSONRequest[struct{}, map[string]any]("POST", url, body, 204)
+	_, err := ExecuteJSONRequest[struct{}, map[string]any]("POST", url, body, 204)
 	if err != nil {
 		helpers.Logf(helpers.DEBUG, "[TWITCH] SendChatAnnouncement: broadcasterID=%v, message=%v", user.UserID, message)
 		return err
@@ -309,9 +309,9 @@ func SendShoutout(toBroadcasterID string) error {
 		"moderator_id":       user.UserID,
 	}
 
-	url := twitch.BuildURL(urlAPIChatShoutouts, opts)
+	url := BuildURL(urlAPIChatShoutouts, opts)
 
-	_, err := twitch.ExecuteRequest[struct{}]("POST", url, 204)
+	_, err := ExecuteRequest[struct{}]("POST", url, 204)
 	if err != nil {
 		helpers.Logf(helpers.DEBUG, "[TWITCH] SendShoutout: fromBroadcasterID=%v, toBroadcasterID=%v", user.UserID, toBroadcasterID)
 		return err
@@ -333,10 +333,10 @@ func SendChatMessage(msg string) error {
 		"moderator_id":  user.UserID,
 	}
 
-	url := twitch.BuildURL(twitch.HelixBaseURL+"/chat", opts)
+	url := BuildURL(HelixBaseURL+"/chat", opts)
 
 	data := map[string]any{"message": msg}
-	_, err := twitch.ExecuteJSONRequest[struct{}, map[string]any]("POST", url, data, 200)
+	_, err := ExecuteJSONRequest[struct{}, map[string]any]("POST", url, data, 200)
 	if err != nil {
 		helpers.Logf(helpers.DEBUG, "[TWITCH] SendChatMessage: broadcasterID=%v", user.UserID)
 		return err
@@ -356,9 +356,9 @@ func UpdateUserChatColor(userID, color string) error {
 		"color":  color,
 	}
 
-	url := twitch.BuildURL(urlAPIChatColor, opts)
+	url := BuildURL(urlAPIChatColor, opts)
 
-	_, err := twitch.ExecuteRequest[struct{}]("PUT", url, 204)
+	_, err := ExecuteRequest[struct{}]("PUT", url, 204)
 	if err != nil {
 		helpers.Logf(helpers.DEBUG, "[TWITCH] UpdateUserChatColor: userID=%v, color=%v", userID, color)
 		return err
@@ -376,9 +376,9 @@ func DeleteMessage(msgID string) error {
 		"message_id":    msgID,
 	}
 
-	url := twitch.BuildURL(twitch.HelixBaseURL+"/moderation/chat", opts)
+	url := BuildURL(HelixBaseURL+"/moderation/chat", opts)
 
-	_, err := twitch.ExecuteRequest[struct{}]("DELETE", url, 204)
+	_, err := ExecuteRequest[struct{}]("DELETE", url, 204)
 	if err != nil {
 		helpers.Logf(helpers.DEBUG, "[TWITCH] DeleteMessage: msgID=%v", msgID)
 		return err
@@ -411,9 +411,9 @@ func GetSharedChatSession(userID string) (*SharedChatSession, error) {
 		"user_id":      userID,
 	}
 
-	url := twitch.BuildURL(urlAPISharedChat, opts)
+	url := BuildURL(urlAPISharedChat, opts)
 
-	resp, err := twitch.ExecuteRequest[GetSharedChatSessionResponse]("GET", url, 200)
+	resp, err := ExecuteRequest[GetSharedChatSessionResponse]("GET", url, 200)
 	if err != nil {
 		helpers.Logf(helpers.DEBUG, "[TWITCH] GetSharedChatSession: broadcasterID=%v, userID=%v", user.UserID, userID)
 		return nil, err
@@ -448,9 +448,9 @@ func GetUserEmotes(userID string) ([]UserEmote, error) {
 		"user_id": userID,
 	}
 
-	url := twitch.BuildURL(urlAPIEmotes, opts)
+	url := BuildURL(urlAPIEmotes, opts)
 
-	resp, err := twitch.ExecuteRequest[GetUserEmotesResponse]("GET", url, 200)
+	resp, err := ExecuteRequest[GetUserEmotesResponse]("GET", url, 200)
 	if err != nil {
 		helpers.Logf(helpers.DEBUG, "[TWITCH] GetUserEmotes: userID=%v", userID)
 		return nil, err
@@ -469,9 +469,9 @@ func GetUserChatColor(userID string) (map[string]string, error) {
 		"user_id": userID,
 	}
 
-	url := twitch.BuildURL(urlAPIChatColor, opts)
+	url := BuildURL(urlAPIChatColor, opts)
 
-	resp, err := twitch.ExecuteRequest[struct {
+	resp, err := ExecuteRequest[struct {
 		Data []struct {
 			UserID    string `json:"user_id"`
 			UserName  string `json:"user_name"`

@@ -4,14 +4,14 @@ package twitch
 
 import (
 	"MyStreamBot/helpers"
-	twitch "MyStreamBot/services/twitch"
+	
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 )
 
-var urlAPITeams = "https://api.twitch.tv/helix/teams"
+var urlAPITeams = "https://api.tv/helix/teams"
 
 type Team struct {
 	ID                 string `json:"id"`
@@ -44,7 +44,7 @@ func GetChannelTeams(broadcasterID string) ([]Team, error) {
 		return nil, err
 	}
 
-	resp, err := twitch.DoRequest(req)
+	resp, err := DoRequest(req)
 	if err != nil {
 		helpers.Logf(helpers.DEBUG, "[TWITCH] GetChannelTeams: broadcasterID=%v", broadcasterID)
 		return nil, err
@@ -82,7 +82,7 @@ func GetTeams(teamID string) ([]Team, error) {
 		return nil, err
 	}
 
-	resp, err := twitch.DoRequest(req)
+	resp, err := DoRequest(req)
 	if err != nil {
 		helpers.Logf(helpers.DEBUG, "[TWITCH] GetTeams: teamID=%v", teamID)
 		return nil, err

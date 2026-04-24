@@ -3,7 +3,7 @@ package twitch
 import (
 	"MyStreamBot/globals"
 	"MyStreamBot/helpers"
-	twitch "MyStreamBot/services/twitch"
+	
 )
 
 type Goal struct {
@@ -26,8 +26,8 @@ type GetCreatorGoalsResponse struct {
 func GetCreatorGoals() ([]Goal, error) {
 	user := globals.GetState().GetTwitchUser()
 
-	url := twitch.HelixBaseURL + "/goals?broadcaster_id=" + user.UserID
-	result, err := twitch.ExecuteRequest[GetCreatorGoalsResponse]("GET", url, 200)
+	url := HelixBaseURL + "/goals?broadcaster_id=" + user.UserID
+	result, err := ExecuteRequest[GetCreatorGoalsResponse]("GET", url, 200)
 	if err != nil {
 		helpers.Logf(helpers.DEBUG, "[TWITCH] GetCreatorGoals: broadcasterID=%v", user.UserID)
 		return nil, err

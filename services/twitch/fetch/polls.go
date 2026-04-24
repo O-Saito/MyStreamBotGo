@@ -3,7 +3,7 @@ package twitch
 import (
 	"MyStreamBot/globals"
 	"MyStreamBot/helpers"
-	twitch "MyStreamBot/services/twitch"
+	
 )
 
 type Poll struct {
@@ -55,9 +55,9 @@ func GetPolls(pollIDs []string) ([]Poll, error) {
 		opts["id"] = id
 	}
 
-	url := twitch.BuildURL(twitch.HelixBaseURL+"/polls", opts)
+	url := BuildURL(HelixBaseURL+"/polls", opts)
 
-	result, err := twitch.ExecuteRequest[GetPollsResponse]("GET", url, 200)
+	result, err := ExecuteRequest[GetPollsResponse]("GET", url, 200)
 	if err != nil {
 		helpers.Logf(helpers.DEBUG, "[TWITCH] GetPolls: broadcasterID=%v", user.UserID)
 		return nil, err
@@ -72,9 +72,9 @@ func CreatePoll(req CreatePollRequest) (*Poll, error) {
 	opts := map[string]any{
 		"broadcaster_id": user.UserID,
 	}
-	url := twitch.BuildURL(twitch.HelixBaseURL+"/polls", opts)
+	url := BuildURL(HelixBaseURL+"/polls", opts)
 
-	result, err := twitch.ExecuteJSONRequest[GetPollsResponse, CreatePollRequest]("POST", url, req, 201)
+	result, err := ExecuteJSONRequest[GetPollsResponse, CreatePollRequest]("POST", url, req, 201)
 	if err != nil {
 		helpers.Logf(helpers.DEBUG, "[TWITCH] CreatePoll: broadcasterID=%v, title=%v", user.UserID, req.Title)
 		return nil, err
@@ -95,9 +95,9 @@ func EndPoll(pollID string) (*Poll, error) {
 		"id":            pollID,
 		"status":        "ended",
 	}
-	url := twitch.BuildURL(twitch.HelixBaseURL+"/polls", opts)
+	url := BuildURL(HelixBaseURL+"/polls", opts)
 
-	result, err := twitch.ExecuteRequest[GetPollsResponse]("PATCH", url, 200)
+	result, err := ExecuteRequest[GetPollsResponse]("PATCH", url, 200)
 	if err != nil {
 		helpers.Logf(helpers.DEBUG, "[TWITCH] EndPoll: broadcasterID=%v, pollID=%v", user.UserID, pollID)
 		return nil, err

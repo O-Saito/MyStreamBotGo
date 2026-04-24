@@ -2,7 +2,7 @@ package twitch
 
 import (
 	"MyStreamBot/helpers"
-	twitch "MyStreamBot/services/twitch"
+	
 )
 
 type ContentClassificationLabel struct {
@@ -16,8 +16,8 @@ type GetContentClassificationLabelsResponse struct {
 }
 
 func GetContentClassificationLabels() ([]ContentClassificationLabel, error) {
-	url := twitch.HelixBaseURL + "/content_classification_labels"
-	result, err := twitch.ExecuteRequest[GetContentClassificationLabelsResponse]("GET", url, 200)
+	url := HelixBaseURL + "/content_classification_labels"
+	result, err := ExecuteRequest[GetContentClassificationLabelsResponse]("GET", url, 200)
 	if err != nil {
 		helpers.Logf(helpers.DEBUG, "[TWITCH] GetContentClassificationLabels: %v", err)
 		return nil, err

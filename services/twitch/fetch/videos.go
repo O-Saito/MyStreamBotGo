@@ -2,11 +2,11 @@ package twitch
 
 import (
 	"MyStreamBot/helpers"
-	twitch "MyStreamBot/services/twitch"
+	
 	"time"
 )
 
-var urlAPIVideos = "https://api.twitch.tv/helix/videos"
+var urlAPIVideos = "https://api.tv/helix/videos"
 
 type Video struct {
 	ID            string              `json:"id"`
@@ -44,10 +44,10 @@ type GetVideosRequest struct {
 
 type GetVideosResponse struct {
 	Data       []Video           `json:"data"`
-	Pagination twitch.Pagination `json:"pagination"`
+	Pagination Pagination `json:"pagination"`
 }
 
-func GetVideos(req GetVideosRequest) (*twitch.PaginationData[Video], error) {
+func GetVideos(req GetVideosRequest) (*PaginationData[Video], error) {
 	opts := map[string]any{}
 
 	if req.VideoIDs != nil {
@@ -69,15 +69,15 @@ func GetVideos(req GetVideosRequest) (*twitch.PaginationData[Video], error) {
 		opts["type"] = req.Type
 	}
 
-	url := twitch.BuildURL(twitch.HelixBaseURL+"/videos", opts)
+	url := BuildURL(HelixBaseURL+"/videos", opts)
 
-	result, err := twitch.ExecuteRequest[GetVideosResponse]("GET", url, 200)
+	result, err := ExecuteRequest[GetVideosResponse]("GET", url, 200)
 	if err != nil {
 		helpers.Logf(helpers.DEBUG, "[TWITCH] GetVideos: userID=%v, gameID=%v", req.UserID, req.GameID)
 		return nil, err
 	}
 
-	pagData := &twitch.PaginationData[Video]{
+	pagData := &PaginationData[Video]{
 		Data: result.Data,
 	}
 	pagData.Pagination.Cursor = result.Pagination.Cursor
@@ -91,9 +91,9 @@ func DeleteVideos(videoIDs []string) error {
 		opts["id"] = id
 	}
 
-	url := twitch.BuildURL(urlAPIVideos, opts)
+	url := BuildURL(urlAPIVideos, opts)
 
-	_, err := twitch.ExecuteRequest[struct{}]("DELETE", url, 204)
+	_, err := ExecuteRequest[struct{}]("DELETE", url, 204)
 	if err != nil {
 		helpers.Logf(helpers.DEBUG, "[TWITCH] DeleteVideos: videoIDs=%v", videoIDs)
 		return err

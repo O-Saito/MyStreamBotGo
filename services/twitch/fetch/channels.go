@@ -3,13 +3,13 @@ package twitch
 import (
 	"MyStreamBot/globals"
 	"MyStreamBot/helpers"
-	twitch "MyStreamBot/services/twitch"
+	
 )
 
 var (
-	urlAPIChannels         = twitch.HelixBaseURL + "/channels"
-	urlAPIChannelEditors   = twitch.HelixBaseURL + "/channels/editors"
-	urlAPIFollowedChannels = twitch.HelixBaseURL + "/channels/followed"
+	urlAPIChannels         = HelixBaseURL + "/channels"
+	urlAPIChannelEditors   = HelixBaseURL + "/channels/editors"
+	urlAPIFollowedChannels = HelixBaseURL + "/channels/followed"
 )
 
 type ChannelEditor struct {
@@ -53,12 +53,12 @@ type UpdateChannelRequest struct {
 type ModifyChannelResponse struct{}
 
 func GetChannelInformation(broadcasterIDs []string) ([]ChannelInfo, error) {
-	url := twitch.HelixBaseURL + "/channels"
+	url := HelixBaseURL + "/channels"
 	if len(broadcasterIDs) > 0 {
-		url = twitch.AddIDsParam(url, "broadcaster_id", broadcasterIDs)
+		url = AddIDsParam(url, "broadcaster_id", broadcasterIDs)
 	}
 
-	result, err := twitch.ExecuteRequest[struct {
+	result, err := ExecuteRequest[struct {
 		Data []ChannelInfo `json:"data"`
 	}]("GET", url, 200)
 	if err != nil {
@@ -75,9 +75,9 @@ func ModifyChannelInformation(req UpdateChannelRequest) error {
 	opts := map[string]any{
 		"broadcaster_id": user.UserID,
 	}
-	url := twitch.BuildURL(twitch.HelixBaseURL+"/channels", opts)
+	url := BuildURL(HelixBaseURL+"/channels", opts)
 
-	_, err := twitch.ExecuteJSONRequest[ModifyChannelResponse, UpdateChannelRequest]("PATCH", url, req, 204)
+	_, err := ExecuteJSONRequest[ModifyChannelResponse, UpdateChannelRequest]("PATCH", url, req, 204)
 	if err != nil {
 		helpers.Logf(helpers.DEBUG, "[TWITCH] ModifyChannelInformation: broadcasterID=%v", user.UserID)
 		return err
@@ -92,9 +92,9 @@ func GetChannelEditors() ([]ChannelEditor, error) {
 	opts := map[string]any{
 		"broadcaster_id": user.UserID,
 	}
-	url := twitch.BuildURL(twitch.HelixBaseURL+"/channels/editors", opts)
+	url := BuildURL(HelixBaseURL+"/channels/editors", opts)
 
-	result, err := twitch.ExecuteRequest[GetChannelEditorsResponse]("GET", url, 200)
+	result, err := ExecuteRequest[GetChannelEditorsResponse]("GET", url, 200)
 	if err != nil {
 		helpers.Logf(helpers.DEBUG, "[TWITCH] GetChannelEditors: broadcasterID=%v", user.UserID)
 		return nil, err
@@ -112,10 +112,10 @@ type FollowedChannel struct {
 
 type GetFollowedChannelsResponse struct {
 	Data       []FollowedChannel `json:"data"`
-	Pagination twitch.Pagination `json:"pagination"`
+	Pagination Pagination `json:"pagination"`
 }
 
-func GetFollowedChannels(broadcasterID string, req *twitch.PaginationRequest) (*twitch.PaginationData[FollowedChannel], error) {
+func GetFollowedChannels(broadcasterID string, req *PaginationRequest) (*PaginationData[FollowedChannel], error) {
 	user := globals.GetState().GetTwitchUser()
 
 	opts := map[string]any{
@@ -132,9 +132,9 @@ func GetFollowedChannels(broadcasterID string, req *twitch.PaginationRequest) (*
 		}
 	}
 
-	url := twitch.BuildURL(twitch.HelixBaseURL+"/channels/followed", opts)
+	url := BuildURL(HelixBaseURL+"/channels/followed", opts)
 
-	result, err := twitch.ExecuteRequest[twitch.PaginationData[FollowedChannel]]("GET", url, 200)
+	result, err := ExecuteRequest[PaginationData[FollowedChannel]]("GET", url, 200)
 	if err != nil {
 		helpers.Logf(helpers.DEBUG, "[TWITCH] GetFollowedChannels: broadcasterID=%v", broadcasterID)
 		return nil, err
@@ -144,8 +144,8 @@ func GetFollowedChannels(broadcasterID string, req *twitch.PaginationRequest) (*
 	if req != nil {
 		quantity = req.Quantity
 	}
-	result.GetNext = func() *twitch.PaginationData[FollowedChannel] {
-		r, _ := GetFollowedChannels(broadcasterID, &twitch.PaginationRequest{
+	result.GetNext = func() *PaginationData[FollowedChannel] {
+		r, _ := GetFollowedChannels(broadcasterID, &PaginationRequest{
 			Cursor:   result.Pagination.Cursor,
 			Quantity: quantity,
 		})
@@ -155,7 +155,7 @@ func GetFollowedChannels(broadcasterID string, req *twitch.PaginationRequest) (*
 	return result, nil
 }
 
-func GetChannelFollowers(userId string, req *twitch.PaginationRequest) (*twitch.PaginationData[twitch.TwitchViewerData], error) {
+func GetChannelFollowers(userId string, req *PaginationRequest) (*PaginationData[TwitchViewerData], error) {
 	user := globals.GetState().GetTwitchUser()
 
 	opts := map[string]any{
@@ -172,9 +172,9 @@ func GetChannelFollowers(userId string, req *twitch.PaginationRequest) (*twitch.
 		}
 	}
 
-	url := twitch.BuildURL(twitch.HelixBaseURL+"/channels/followers", opts)
+	url := BuildURL(HelixBaseURL+"/channels/followers", opts)
 
-	result, err := twitch.ExecuteRequest[twitch.PaginationData[twitch.TwitchViewerData]]("GET", url, 200)
+	result, err := ExecuteRequest[PaginationData[TwitchViewerData]]("GET", url, 200)
 	if err != nil {
 		helpers.Logf(helpers.DEBUG, "[TWITCH] GetChannelFollowers: userID=%v", userId)
 		return nil, err
@@ -184,8 +184,8 @@ func GetChannelFollowers(userId string, req *twitch.PaginationRequest) (*twitch.
 	if req != nil {
 		quantity = req.Quantity
 	}
-	result.GetNext = func() *twitch.PaginationData[twitch.TwitchViewerData] {
-		r, _ := GetChannelFollowers(userId, &twitch.PaginationRequest{
+	result.GetNext = func() *PaginationData[TwitchViewerData] {
+		r, _ := GetChannelFollowers(userId, &PaginationRequest{
 			Cursor:   result.Pagination.Cursor,
 			Quantity: quantity,
 		})

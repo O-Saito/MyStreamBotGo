@@ -3,7 +3,7 @@ package twitch
 import (
 	"MyStreamBot/globals"
 	"MyStreamBot/helpers"
-	twitch "MyStreamBot/services/twitch"
+	
 	"time"
 )
 
@@ -22,9 +22,9 @@ func StartRaid(toBroadcasterID string) (*RaidResponse, error) {
 		"from_broadcaster_id": user.UserID,
 		"to_broadcaster_id":   toBroadcasterID,
 	}
-	url := twitch.BuildURL(twitch.HelixBaseURL+"/raids", opts)
+	url := BuildURL(HelixBaseURL+"/raids", opts)
 
-	result, err := twitch.ExecuteRequest[StartRaidResponse]("POST", url, 200)
+	result, err := ExecuteRequest[StartRaidResponse]("POST", url, 200)
 	if err != nil {
 		helpers.Logf(helpers.DEBUG, "[TWITCH] StartRaid: toBroadcasterID=%v", toBroadcasterID)
 		return nil, err
@@ -43,9 +43,9 @@ func CancelRaid() error {
 	opts := map[string]any{
 		"broadcaster_id": user.UserID,
 	}
-	url := twitch.BuildURL(twitch.HelixBaseURL+"/raids", opts)
+	url := BuildURL(HelixBaseURL+"/raids", opts)
 
-	_, err := twitch.ExecuteRequest[struct{}]("DELETE", url, 204)
+	_, err := ExecuteRequest[struct{}]("DELETE", url, 204)
 	if err != nil {
 		helpers.Logf(helpers.DEBUG, "[TWITCH] CancelRaid:")
 		return err

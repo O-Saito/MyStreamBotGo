@@ -1,7 +1,7 @@
 package twitch
 
 import (
-	twitch "MyStreamBot/services/twitch"
+	
 )
 
 type Conduit struct {
@@ -28,7 +28,7 @@ type ConduitTransport struct {
 	WebSocketURL string `json:"websocket_url,omitempty"`
 }
 
-func GetConduits(req *twitch.PaginationRequest) ([]Conduit, error) {
+func GetConduits(req *PaginationRequest) ([]Conduit, error) {
 	opts := map[string]any{}
 
 	if req != nil {
@@ -40,9 +40,9 @@ func GetConduits(req *twitch.PaginationRequest) ([]Conduit, error) {
 		}
 	}
 
-	url := twitch.BuildURL(twitch.HelixBaseURL+"/conduits", opts)
+	url := BuildURL(HelixBaseURL+"/conduits", opts)
 
-	result, err := twitch.ExecuteRequest[twitch.PaginationData[Conduit]]("GET", url, 200)
+	result, err := ExecuteRequest[PaginationData[Conduit]]("GET", url, 200)
 	if err != nil {
 		return nil, err
 	}
@@ -55,13 +55,13 @@ type CreateConduitRequest struct {
 }
 
 func CreateConduits(shardCount int) (*Conduit, error) {
-	url := twitch.BuildURL(twitch.HelixBaseURL+"/conduits", nil)
+	url := BuildURL(HelixBaseURL+"/conduits", nil)
 
 	body := CreateConduitRequest{
 		ShardCount: shardCount,
 	}
 
-	result, err := twitch.ExecuteJSONRequest[twitch.PaginationData[Conduit], CreateConduitRequest]("POST", url, body, 201)
+	result, err := ExecuteJSONRequest[PaginationData[Conduit], CreateConduitRequest]("POST", url, body, 201)
 	if err != nil {
 		return nil, err
 	}
@@ -77,13 +77,13 @@ func UpdateConduits(conduitID string, shardCount int) error {
 	opts := map[string]any{
 		"conduit_id": conduitID,
 	}
-	url := twitch.BuildURL(twitch.HelixBaseURL+"/conduits", opts)
+	url := BuildURL(HelixBaseURL+"/conduits", opts)
 
 	body := map[string]any{
 		"shard_count": shardCount,
 	}
 
-	_, err := twitch.ExecuteJSONRequest[map[string]any, map[string]any]("PATCH", url, body, 204)
+	_, err := ExecuteJSONRequest[map[string]any, map[string]any]("PATCH", url, body, 204)
 	return err
 }
 
@@ -91,9 +91,9 @@ func DeleteConduit(conduitID string) error {
 	opts := map[string]any{
 		"conduit_id": conduitID,
 	}
-	url := twitch.BuildURL(twitch.HelixBaseURL+"/conduits", opts)
+	url := BuildURL(HelixBaseURL+"/conduits", opts)
 
-	_, err := twitch.ExecuteRequest[map[string]any]("DELETE", url, 204)
+	_, err := ExecuteRequest[map[string]any]("DELETE", url, 204)
 	return err
 }
 
@@ -105,9 +105,9 @@ func GetConduitShards(conduitID string) ([]ConduitShard, error) {
 	opts := map[string]any{
 		"conduit_id": conduitID,
 	}
-	url := twitch.BuildURL(twitch.HelixBaseURL+"/conduits/shards", opts)
+	url := BuildURL(HelixBaseURL+"/conduits/shards", opts)
 
-	result, err := twitch.ExecuteRequest[GetConduitShardsResponse]("GET", url, 200)
+	result, err := ExecuteRequest[GetConduitShardsResponse]("GET", url, 200)
 	if err != nil {
 		return nil, err
 	}
@@ -123,12 +123,12 @@ func UpdateConduitShards(conduitID string, shards []UpdateConduitShardRequest) e
 	opts := map[string]any{
 		"conduit_id": conduitID,
 	}
-	url := twitch.BuildURL(twitch.HelixBaseURL+"/conduits/shards", opts)
+	url := BuildURL(HelixBaseURL+"/conduits/shards", opts)
 
 	body := map[string]any{
 		"shards": shards,
 	}
 
-	_, err := twitch.ExecuteJSONRequest[map[string]any, map[string]any]("PATCH", url, body, 204)
+	_, err := ExecuteJSONRequest[map[string]any, map[string]any]("PATCH", url, body, 204)
 	return err
 }

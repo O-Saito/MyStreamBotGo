@@ -3,7 +3,7 @@ package twitch
 import (
 	"MyStreamBot/globals"
 	"MyStreamBot/helpers"
-	twitch "MyStreamBot/services/twitch"
+	
 	"time"
 )
 
@@ -41,9 +41,9 @@ func CreateClip(broadcasterID string, hasDelay bool) ([]Clip, error) {
 		"broadcaster_id": broadcasterID,
 		"has_delay":      hasDelay,
 	}
-	url := twitch.BuildURL(twitch.HelixBaseURL+"/clips", opts)
+	url := BuildURL(HelixBaseURL+"/clips", opts)
 
-	resp, err := twitch.ExecuteRequest[CreateClipResponse]("POST", url, 201)
+	resp, err := ExecuteRequest[CreateClipResponse]("POST", url, 201)
 	if err != nil {
 		helpers.Logf(helpers.DEBUG, "[TWITCH] CreateClip: broadcasterID=%v", broadcasterID)
 		return nil, err
@@ -62,9 +62,9 @@ func CreateClipFromVOD(broadcasterID, videoID string) ([]Clip, error) {
 		"broadcaster_id": broadcasterID,
 		"video_id":       videoID,
 	}
-	url := twitch.BuildURL(twitch.HelixBaseURL+"/clips", opts)
+	url := BuildURL(HelixBaseURL+"/clips", opts)
 
-	resp, err := twitch.ExecuteRequest[CreateClipResponse]("POST", url, 201)
+	resp, err := ExecuteRequest[CreateClipResponse]("POST", url, 201)
 	if err != nil {
 		helpers.Logf(helpers.DEBUG, "[TWITCH] CreateClipFromVOD: broadcasterID=%v, videoID=%v", broadcasterID, videoID)
 		return nil, err
@@ -73,7 +73,7 @@ func CreateClipFromVOD(broadcasterID, videoID string) ([]Clip, error) {
 	return resp.Data, nil
 }
 
-func GetClips(broadcasterID, gameID string, clipIDs []string, startedAt, endedAt *time.Time, req *twitch.PaginationRequest) ([]Clip, error) {
+func GetClips(broadcasterID, gameID string, clipIDs []string, startedAt, endedAt *time.Time, req *PaginationRequest) ([]Clip, error) {
 	opts := map[string]any{}
 
 	if broadcasterID != "" {
@@ -101,9 +101,9 @@ func GetClips(broadcasterID, gameID string, clipIDs []string, startedAt, endedAt
 		}
 	}
 
-	url := twitch.BuildURL(twitch.HelixBaseURL+"/clips", opts)
+	url := BuildURL(HelixBaseURL+"/clips", opts)
 
-	resp, err := twitch.ExecuteRequest[twitch.PaginationData[Clip]]("GET", url, 200)
+	resp, err := ExecuteRequest[PaginationData[Clip]]("GET", url, 200)
 	if err != nil {
 		helpers.Logf(helpers.DEBUG, "[TWITCH] GetClips: broadcasterID=%v", broadcasterID)
 		return nil, err
@@ -124,9 +124,9 @@ func GetClipsDownload(clipIDs []string) ([]ClipDownload, error) {
 		opts["id"] = id
 	}
 
-	url := twitch.BuildURL(twitch.HelixBaseURL+"/clips/download", opts)
+	url := BuildURL(HelixBaseURL+"/clips/download", opts)
 
-	resp, err := twitch.ExecuteRequest[struct {
+	resp, err := ExecuteRequest[struct {
 		Data []ClipDownload `json:"data"`
 	}]("GET", url, 200)
 	if err != nil {

@@ -3,7 +3,7 @@ package twitch
 import (
 	"MyStreamBot/globals"
 	"MyStreamBot/helpers"
-	twitch "MyStreamBot/services/twitch"
+	
 )
 
 type CustomReward struct {
@@ -90,7 +90,7 @@ type GetCustomRewardsResponse struct {
 
 type GetCustomRewardRedemptionsResponse struct {
 	Data       []CustomRewardRedemption `json:"data"`
-	Pagination twitch.Pagination      `json:"pagination"`
+	Pagination Pagination      `json:"pagination"`
 }
 
 func CreateCustomReward(req CreateCustomRewardRequest) (*CustomReward, error) {
@@ -99,9 +99,9 @@ func CreateCustomReward(req CreateCustomRewardRequest) (*CustomReward, error) {
 	opts := map[string]any{
 		"broadcaster_id": user.UserID,
 	}
-	url := twitch.BuildURL(twitch.HelixBaseURL+"/channel_points", opts)
+	url := BuildURL(HelixBaseURL+"/channel_points", opts)
 
-	result, err := twitch.ExecuteJSONRequest[GetCustomRewardsResponse, CreateCustomRewardRequest]("POST", url, req, 200)
+	result, err := ExecuteJSONRequest[GetCustomRewardsResponse, CreateCustomRewardRequest]("POST", url, req, 200)
 	if err != nil {
 		helpers.Logf(helpers.DEBUG, "[TWITCH] CreateCustomReward: title=%v", req.Title)
 		return nil, err
@@ -121,9 +121,9 @@ func DeleteCustomReward(rewardID string) error {
 		"broadcaster_id": user.UserID,
 		"id":            rewardID,
 	}
-	url := twitch.BuildURL(twitch.HelixBaseURL+"/channel_points", opts)
+	url := BuildURL(HelixBaseURL+"/channel_points", opts)
 
-	_, err := twitch.ExecuteRequest[struct{}]("DELETE", url, 204)
+	_, err := ExecuteRequest[struct{}]("DELETE", url, 204)
 	if err != nil {
 		helpers.Logf(helpers.DEBUG, "[TWITCH] DeleteCustomReward: rewardID=%v", rewardID)
 		return err
@@ -142,9 +142,9 @@ func GetCustomRewards(onlyManageable bool) ([]CustomReward, error) {
 		opts["manageable"] = "true"
 	}
 
-	url := twitch.BuildURL(twitch.HelixBaseURL+"/channel_points", opts)
+	url := BuildURL(HelixBaseURL+"/channel_points", opts)
 
-	result, err := twitch.ExecuteRequest[GetCustomRewardsResponse]("GET", url, 200)
+	result, err := ExecuteRequest[GetCustomRewardsResponse]("GET", url, 200)
 	if err != nil {
 		helpers.Logf(helpers.DEBUG, "[TWITCH] GetCustomRewards: broadcasterID=%v", user.UserID)
 		return nil, err
@@ -160,9 +160,9 @@ func UpdateCustomReward(rewardID string, req UpdateCustomRewardRequest) error {
 		"broadcaster_id": user.UserID,
 		"id":          rewardID,
 	}
-	url := twitch.BuildURL(twitch.HelixBaseURL+"/channel_points", opts)
+	url := BuildURL(HelixBaseURL+"/channel_points", opts)
 
-	_, err := twitch.ExecuteJSONRequest[struct{}, UpdateCustomRewardRequest]("PATCH", url, req, 200)
+	_, err := ExecuteJSONRequest[struct{}, UpdateCustomRewardRequest]("PATCH", url, req, 200)
 	if err != nil {
 		helpers.Logf(helpers.DEBUG, "[TWITCH] UpdateCustomReward: rewardID=%v", rewardID)
 		return err
@@ -171,7 +171,7 @@ func UpdateCustomReward(rewardID string, req UpdateCustomRewardRequest) error {
 	return nil
 }
 
-func GetCustomRewardRedemptions(rewardID, status string, req *twitch.PaginationRequest) (*twitch.PaginationData[CustomRewardRedemption], error) {
+func GetCustomRewardRedemptions(rewardID, status string, req *PaginationRequest) (*PaginationData[CustomRewardRedemption], error) {
 	user := globals.GetState().GetTwitchUser()
 
 	opts := map[string]any{
@@ -193,9 +193,9 @@ func GetCustomRewardRedemptions(rewardID, status string, req *twitch.PaginationR
 		}
 	}
 
-	url := twitch.BuildURL(twitch.HelixBaseURL+"/channel_points/redemptions", opts)
+	url := BuildURL(HelixBaseURL+"/channel_points/redemptions", opts)
 
-	result, err := twitch.ExecuteRequest[twitch.PaginationData[CustomRewardRedemption]]("GET", url, 200)
+	result, err := ExecuteRequest[PaginationData[CustomRewardRedemption]]("GET", url, 200)
 	if err != nil {
 		helpers.Logf(helpers.DEBUG, "[TWITCH] GetCustomRewardRedemptions: rewardID=%v, status=%v", rewardID, status)
 		return nil, err
@@ -205,8 +205,8 @@ func GetCustomRewardRedemptions(rewardID, status string, req *twitch.PaginationR
 	if req != nil {
 		quantity = req.Quantity
 	}
-	result.GetNext = func() *twitch.PaginationData[CustomRewardRedemption] {
-		r, _ := GetCustomRewardRedemptions(rewardID, status, &twitch.PaginationRequest{
+	result.GetNext = func() *PaginationData[CustomRewardRedemption] {
+		r, _ := GetCustomRewardRedemptions(rewardID, status, &PaginationRequest{
 			Cursor:   result.Pagination.Cursor,
 			Quantity: quantity,
 		})
@@ -224,10 +224,10 @@ func UpdateRedemptionStatus(rewardID, redemptionID, status string) error {
 		"reward_id":    rewardID,
 		"id":         redemptionID,
 	}
-	url := twitch.BuildURL(twitch.HelixBaseURL+"/channel_points/redemptions", opts)
+	url := BuildURL(HelixBaseURL+"/channel_points/redemptions", opts)
 
 	body := map[string]any{"status": status}
-	_, err := twitch.ExecuteJSONRequest[struct{}, map[string]any]("PATCH", url, body, 200)
+	_, err := ExecuteJSONRequest[struct{}, map[string]any]("PATCH", url, body, 200)
 	if err != nil {
 		helpers.Logf(helpers.DEBUG, "[TWITCH] UpdateRedemptionStatus: rewardID=%v, redemptionID=%v, status=%v", rewardID, redemptionID, status)
 		return err

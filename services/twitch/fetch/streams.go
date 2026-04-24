@@ -3,13 +3,13 @@ package twitch
 import (
 	"MyStreamBot/globals"
 	"MyStreamBot/helpers"
-	twitch "MyStreamBot/services/twitch"
+	
 	"time"
 )
 
-var urlAPIStreams = "https://api.twitch.tv/helix/streams"
-var urlAPIStreamKey = "https://api.twitch.tv/helix/streams/key"
-var urlAPIStreamMarkers = "https://api.twitch.tv/helix/streams/markers"
+var urlAPIStreams = "https://api.tv/helix/streams"
+var urlAPIStreamKey = "https://api.tv/helix/streams/key"
+var urlAPIStreamMarkers = "https://api.tv/helix/streams/markers"
 
 type Stream struct {
 	ID           string    `json:"id"`
@@ -55,9 +55,9 @@ func GetStreamKey() (string, error) {
 		"broadcaster_id": user.UserID,
 	}
 
-	url := twitch.BuildURL(urlAPIStreamKey, opts)
+	url := BuildURL(urlAPIStreamKey, opts)
 
-	result, err := twitch.ExecuteRequest[struct {
+	result, err := ExecuteRequest[struct {
 		Data []StreamKey `json:"data"`
 	}]("GET", url, 200)
 	if err != nil {
@@ -72,7 +72,7 @@ func GetStreamKey() (string, error) {
 	return result.Data[0].StreamKey, nil
 }
 
-func GetStreams(userIDs, userLogins, gameIDs, languages []string, req *twitch.PaginationRequest) (*twitch.PaginationData[Stream], error) {
+func GetStreams(userIDs, userLogins, gameIDs, languages []string, req *PaginationRequest) (*PaginationData[Stream], error) {
 	opts := map[string]any{}
 
 	if userIDs != nil {
@@ -97,9 +97,9 @@ func GetStreams(userIDs, userLogins, gameIDs, languages []string, req *twitch.Pa
 		}
 	}
 
-	url := twitch.BuildURL(twitch.HelixBaseURL+"/streams", opts)
+	url := BuildURL(HelixBaseURL+"/streams", opts)
 
-	result, err := twitch.ExecuteRequest[twitch.PaginationData[Stream]]("GET", url, 200)
+	result, err := ExecuteRequest[PaginationData[Stream]]("GET", url, 200)
 	if err != nil {
 		helpers.Logf(helpers.DEBUG, "[TWITCH] GetStreams: userIDs=%v", userIDs)
 		return nil, err
@@ -109,8 +109,8 @@ func GetStreams(userIDs, userLogins, gameIDs, languages []string, req *twitch.Pa
 	if req != nil {
 		quantity = req.Quantity
 	}
-	result.GetNext = func() *twitch.PaginationData[Stream] {
-		r, _ := GetStreams(userIDs, userLogins, gameIDs, languages, &twitch.PaginationRequest{
+	result.GetNext = func() *PaginationData[Stream] {
+		r, _ := GetStreams(userIDs, userLogins, gameIDs, languages, &PaginationRequest{
 			Cursor:   result.Pagination.Cursor,
 			Quantity: quantity,
 		})
@@ -120,7 +120,7 @@ func GetStreams(userIDs, userLogins, gameIDs, languages []string, req *twitch.Pa
 	return result, nil
 }
 
-func GetFollowedStreams(req *twitch.PaginationRequest) (*twitch.PaginationData[Stream], error) {
+func GetFollowedStreams(req *PaginationRequest) (*PaginationData[Stream], error) {
 	user := globals.GetState().GetTwitchUser()
 
 	opts := map[string]any{
@@ -136,9 +136,9 @@ func GetFollowedStreams(req *twitch.PaginationRequest) (*twitch.PaginationData[S
 		}
 	}
 
-	url := twitch.BuildURL(twitch.HelixBaseURL+"/streams/followed", opts)
+	url := BuildURL(HelixBaseURL+"/streams/followed", opts)
 
-	result, err := twitch.ExecuteRequest[twitch.PaginationData[Stream]]("GET", url, 200)
+	result, err := ExecuteRequest[PaginationData[Stream]]("GET", url, 200)
 	if err != nil {
 		helpers.Logf(helpers.DEBUG, "[TWITCH] GetFollowedStreams: userID=%v", user.UserID)
 		return nil, err
@@ -148,8 +148,8 @@ func GetFollowedStreams(req *twitch.PaginationRequest) (*twitch.PaginationData[S
 	if req != nil {
 		quantity = req.Quantity
 	}
-	result.GetNext = func() *twitch.PaginationData[Stream] {
-		r, _ := GetFollowedStreams(&twitch.PaginationRequest{
+	result.GetNext = func() *PaginationData[Stream] {
+		r, _ := GetFollowedStreams(&PaginationRequest{
 			Cursor:   result.Pagination.Cursor,
 			Quantity: quantity,
 		})
@@ -174,13 +174,13 @@ func CreateStreamMarker(description string) (*StreamMarker, error) {
 		opts["description"] = description
 	}
 
-	url := twitch.BuildURL(twitch.HelixBaseURL+"/streams/markers", opts)
+	url := BuildURL(HelixBaseURL+"/streams/markers", opts)
 
 	body := map[string]any{
 		"description": description,
 	}
 
-	result, err := twitch.ExecuteJSONRequest[CreateStreamMarkerResponse, map[string]any]("POST", url, body, 201)
+	result, err := ExecuteJSONRequest[CreateStreamMarkerResponse, map[string]any]("POST", url, body, 201)
 	if err != nil {
 		helpers.Logf(helpers.DEBUG, "[TWITCH] CreateStreamMarker: broadcasterID=%v", user.UserID)
 		return nil, err
@@ -193,7 +193,7 @@ func CreateStreamMarker(description string) (*StreamMarker, error) {
 	return &result.Data[0], nil
 }
 
-func GetStreamMarkers(videoID string, req *twitch.PaginationRequest) (*twitch.PaginationData[GetStreamMarkersResponse], error) {
+func GetStreamMarkers(videoID string, req *PaginationRequest) (*PaginationData[GetStreamMarkersResponse], error) {
 	user := globals.GetState().GetTwitchUser()
 
 	opts := map[string]any{
@@ -210,16 +210,16 @@ func GetStreamMarkers(videoID string, req *twitch.PaginationRequest) (*twitch.Pa
 		}
 	}
 
-	url := twitch.BuildURL(twitch.HelixBaseURL+"/streams/markers", opts)
+	url := BuildURL(HelixBaseURL+"/streams/markers", opts)
 
-	result, err := twitch.ExecuteRequest[twitch.PaginationData[GetStreamMarkersResponse]]("GET", url, 200)
+	result, err := ExecuteRequest[PaginationData[GetStreamMarkersResponse]]("GET", url, 200)
 	if err != nil {
 		helpers.Logf(helpers.DEBUG, "[TWITCH] GetStreamMarkers: broadcasterID=%v", user.UserID)
 		return nil, err
 	}
 
-	result.GetNext = func() *twitch.PaginationData[GetStreamMarkersResponse] {
-		n, _ := GetStreamMarkers(videoID, &twitch.PaginationRequest{
+	result.GetNext = func() *PaginationData[GetStreamMarkersResponse] {
+		n, _ := GetStreamMarkers(videoID, &PaginationRequest{
 			Cursor:   result.Pagination.Cursor,
 			Quantity: req.Quantity,
 		})

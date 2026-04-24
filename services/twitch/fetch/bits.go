@@ -2,7 +2,7 @@ package twitch
 
 import (
 	"MyStreamBot/helpers"
-	twitch "MyStreamBot/services/twitch"
+	
 	"time"
 )
 
@@ -16,7 +16,7 @@ type BitsLeaderboardEntry struct {
 
 type GetBitsLeaderboardResponse struct {
 	Data      []BitsLeaderboardEntry `json:"data"`
-	DateRange twitch.DateRange       `json:"date_range"`
+	DateRange DateRange       `json:"date_range"`
 	Total     int                    `json:"total"`
 }
 
@@ -30,9 +30,9 @@ func GetBitsLeaderboard(count int, startedAt *time.Time) (*GetBitsLeaderboardRes
 		opts["started_at"] = startedAt.Format(time.RFC3339)
 	}
 
-	url := twitch.BuildURL(twitch.HelixBaseURL+"/bits/leaderboard", opts)
+	url := BuildURL(HelixBaseURL+"/bits/leaderboard", opts)
 
-	result, err := twitch.ExecuteRequest[GetBitsLeaderboardResponse]("GET", url, 200)
+	result, err := ExecuteRequest[GetBitsLeaderboardResponse]("GET", url, 200)
 	if err != nil {
 		helpers.Logf(helpers.DEBUG, "[TWITCH] GetBitsLeaderboard: count=%v", count)
 		return nil, err
@@ -70,9 +70,9 @@ func GetCheermotes(broadcasterID string) (*GetCheermotesResponse, error) {
 		opts["broadcaster_id"] = broadcasterID
 	}
 
-	url := twitch.BuildURL(twitch.HelixBaseURL+"/bits/cheermotes", opts)
+	url := BuildURL(HelixBaseURL+"/bits/cheermotes", opts)
 
-	result, err := twitch.ExecuteRequest[GetCheermotesResponse]("GET", url, 200)
+	result, err := ExecuteRequest[GetCheermotesResponse]("GET", url, 200)
 	if err != nil {
 		helpers.Logf(helpers.DEBUG, "[TWITCH] GetCheermotes: broadcasterID=%v", broadcasterID)
 		return nil, err
@@ -99,7 +99,7 @@ type Product struct {
 	InDevelopment bool   `json:"in_development"`
 }
 
-func GetExtensionTransactions(extensionID string, req *twitch.PaginationRequest) ([]ExtensionTransaction, error) {
+func GetExtensionTransactions(extensionID string, req *PaginationRequest) ([]ExtensionTransaction, error) {
 	opts := map[string]any{
 		"extension_id": extensionID,
 	}
@@ -113,9 +113,9 @@ func GetExtensionTransactions(extensionID string, req *twitch.PaginationRequest)
 		}
 	}
 
-	url := twitch.BuildURL(twitch.HelixBaseURL+"/extensions/transactions", opts)
+	url := BuildURL(HelixBaseURL+"/extensions/transactions", opts)
 
-	result, err := twitch.ExecuteRequest[twitch.PaginationData[ExtensionTransaction]]("GET", url, 200)
+	result, err := ExecuteRequest[PaginationData[ExtensionTransaction]]("GET", url, 200)
 	if err != nil {
 		helpers.Logf(helpers.DEBUG, "[TWITCH] GetExtensionTransactions: extensionID=%v", extensionID)
 		return nil, err

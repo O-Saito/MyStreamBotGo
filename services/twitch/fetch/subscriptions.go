@@ -3,10 +3,10 @@ package twitch
 import (
 	"MyStreamBot/globals"
 	"MyStreamBot/helpers"
-	twitch "MyStreamBot/services/twitch"
+	
 )
 
-var urlAPISubscriptions = "https://api.twitch.tv/helix/subscriptions"
+var urlAPISubscriptions = "https://api.tv/helix/subscriptions"
 
 type Subscription struct {
 	BroadcasterID    string `json:"broadcaster_id"`
@@ -35,7 +35,7 @@ type UserSubscription struct {
 }
 
 type GetBroadcasterSubscriptionsResponse struct {
-	twitch.PaginationData[Subscription]
+	PaginationData[Subscription]
 	Points int `json:"points"`
 }
 
@@ -43,7 +43,7 @@ type CheckUserSubscriptionResponse struct {
 	Data []UserSubscription `json:"data"`
 }
 
-func GetBroadcasterSubscriptions(userIDs []string, req *twitch.PaginationRequest) (*twitch.PaginationData[Subscription], int, error) {
+func GetBroadcasterSubscriptions(userIDs []string, req *PaginationRequest) (*PaginationData[Subscription], int, error) {
 	user := globals.GetState().GetTwitchUser()
 
 	opts := map[string]any{
@@ -63,22 +63,22 @@ func GetBroadcasterSubscriptions(userIDs []string, req *twitch.PaginationRequest
 		}
 	}
 
-	url := twitch.BuildURL(twitch.HelixBaseURL+"/subscriptions", opts)
+	url := BuildURL(HelixBaseURL+"/subscriptions", opts)
 
-	result, err := twitch.ExecuteRequest[GetBroadcasterSubscriptionsResponse]("GET", url, 200)
+	result, err := ExecuteRequest[GetBroadcasterSubscriptionsResponse]("GET", url, 200)
 	if err != nil {
 		helpers.Logf(helpers.DEBUG, "[TWITCH] GetBroadcasterSubscriptions: broadcasterID=%v", user.UserID)
 		return nil, 0, err
 	}
 
-	pagData := &twitch.PaginationData[Subscription]{
+	pagData := &PaginationData[Subscription]{
 		Data:       result.Data,
 		Pagination: result.Pagination,
 		Total:      result.Total,
 	}
 
-	pagData.GetNext = func() *twitch.PaginationData[Subscription] {
-		n, _, _ := GetBroadcasterSubscriptions(userIDs, &twitch.PaginationRequest{
+	pagData.GetNext = func() *PaginationData[Subscription] {
+		n, _, _ := GetBroadcasterSubscriptions(userIDs, &PaginationRequest{
 			Cursor: result.Pagination.Cursor,
 		})
 		return n
@@ -93,9 +93,9 @@ func CheckUserSubscription(broadcasterID string) (*UserSubscription, error) {
 		"broadcaster_id": broadcasterID,
 		"user_id":        user.UserID,
 	}
-	url := twitch.BuildURL(urlAPISubscriptions+"/user", opts)
+	url := BuildURL(urlAPISubscriptions+"/user", opts)
 
-	result, err := twitch.ExecuteRequest[CheckUserSubscriptionResponse]("GET", url, 200)
+	result, err := ExecuteRequest[CheckUserSubscriptionResponse]("GET", url, 200)
 	if err != nil {
 		helpers.Logf(helpers.DEBUG, "[TWITCH] CheckUserSubscription: broadcasterID=%v, userID=%v", broadcasterID, user.UserID)
 		return nil, err

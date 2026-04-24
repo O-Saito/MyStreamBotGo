@@ -24,13 +24,23 @@ type Subscription struct {
 	SubscribedAt     string `json:"subscribed_at"`
 }
 
+type UserSubscription struct {
+	BroadcasterID   string  `json:"broadcaster_id"`
+	BroadcasterLogin string `json:"broadcaster_login"`
+	BroadcasterName  string  `json:"broadcaster_name"`
+	IsGift          bool    `json:"is_gift"`
+	GifterLogin     *string `json:"gifter_login,omitempty"`
+	GifterName      *string `json:"gifter_name,omitempty"`
+	Tier           string  `json:"tier"`
+}
+
 type GetBroadcasterSubscriptionsResponse struct {
 	twitch.PaginationData[Subscription]
 	Points int `json:"points"`
 }
 
 type CheckUserSubscriptionResponse struct {
-	Data []Subscription `json:"data"`
+	Data []UserSubscription `json:"data"`
 }
 
 func GetBroadcasterSubscriptions(userIDs []string, req *twitch.PaginationRequest) (*twitch.PaginationData[Subscription], int, error) {
@@ -77,13 +87,13 @@ func GetBroadcasterSubscriptions(userIDs []string, req *twitch.PaginationRequest
 	return pagData, result.Points, nil
 }
 
-func CheckUserSubscription(broadcasterID string) (*Subscription, error) {
+func CheckUserSubscription(broadcasterID string) (*UserSubscription, error) {
 	user := globals.GetState().GetTwitchUser()
 	opts := map[string]any{
 		"broadcaster_id": broadcasterID,
 		"user_id":        user.UserID,
 	}
-	url := twitch.BuildURL(urlAPISubscriptions, opts)
+	url := twitch.BuildURL(urlAPISubscriptions+"/user", opts)
 
 	result, err := twitch.ExecuteRequest[CheckUserSubscriptionResponse]("GET", url, 200)
 	if err != nil {

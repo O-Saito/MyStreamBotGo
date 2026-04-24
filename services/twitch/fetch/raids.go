@@ -4,45 +4,50 @@ import (
 	"MyStreamBot/globals"
 	"MyStreamBot/helpers"
 	twitch "MyStreamBot/services/twitch"
+	"time"
 )
 
-var urlAPIRaids = twitch.HelixBaseURL + "/raids"
-
-func StartRaid(fromBroadcasterID, toBroadcasterID string) error {
-	user := globals.GetState().GetTwitchUser()
-	if fromBroadcasterID == "" {
-		fromBroadcasterID = user.UserID
-	}
-
-	opts := map[string]any{
-		"from_broadcaster_id": fromBroadcasterID,
-		"to_broadcaster_id":   toBroadcasterID,
-	}
-	url := twitch.BuildURL(urlAPIRaids, opts)
-
-	_, err := twitch.ExecuteRequest[struct{}]("POST", url, 204)
-	if err != nil {
-		helpers.Logf(helpers.DEBUG, "[TWITCH] StartRaid: fromBroadcasterID=%v toBroadcasterID=%v", fromBroadcasterID, toBroadcasterID)
-		return err
-	}
-
-	return nil
+type RaidResponse struct {
+	CreatedAt time.Time `json:"created_at"`
+	IsMature  bool      `json:"is_mature"`
 }
 
-func CancelRaid(broadcasterID string) error {
+type StartRaidResponse struct {
+	Data []RaidResponse `json:"data"`
+}
+
+func StartRaid(toBroadcasterID string) (*RaidResponse, error) {
 	user := globals.GetState().GetTwitchUser()
-	if broadcasterID == "" {
-		broadcasterID = user.UserID
+	opts := map[string]any{
+		"from_broadcaster_id": user.UserID,
+		"to_broadcaster_id":   toBroadcasterID,
+	}
+	url := twitch.BuildURL(twitch.HelixBaseURL+"/raids", opts)
+
+	result, err := twitch.ExecuteRequest[StartRaidResponse]("POST", url, 200)
+	if err != nil {
+		helpers.Logf(helpers.DEBUG, "[TWITCH] StartRaid: toBroadcasterID=%v", toBroadcasterID)
+		return nil, err
 	}
 
-	opts := map[string]any{
-		"broadcaster_id": broadcasterID,
+	if len(result.Data) == 0 {
+		return nil, nil
 	}
-	url := twitch.BuildURL(urlAPIRaids, opts)
+
+	return &result.Data[0], nil
+}
+
+func CancelRaid() error {
+	user := globals.GetState().GetTwitchUser()
+
+	opts := map[string]any{
+		"broadcaster_id": user.UserID,
+	}
+	url := twitch.BuildURL(twitch.HelixBaseURL+"/raids", opts)
 
 	_, err := twitch.ExecuteRequest[struct{}]("DELETE", url, 204)
 	if err != nil {
-		helpers.Logf(helpers.DEBUG, "[TWITCH] CancelRaid: broadcasterID=%v", broadcasterID)
+		helpers.Logf(helpers.DEBUG, "[TWITCH] CancelRaid:")
 		return err
 	}
 

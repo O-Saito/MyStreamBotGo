@@ -23,25 +23,34 @@ type ScheduleSegment struct {
 }
 
 type ScheduleSettings struct {
-	IsVacationEnabled   bool      `json:"is_vacation_enabled"`
-	VacationStartTime   time.Time `json:"vacation_start_time"`
-	VacationEndTime     time.Time `json:"vacation_end_time"`
-	Timezone            string    `json:"timezone"`
+	IsVacationEnabled bool      `json:"is_vacation_enabled"`
+	VacationStartTime time.Time `json:"vacation_start_time"`
+	VacationEndTime   time.Time `json:"vacation_end_time"`
+	Timezone          string    `json:"timezone"`
 }
 
 type Schedule struct {
-	BroadcasterID           string          `json:"broadcaster_id"`
-	BroadcasterName         string          `json:"broadcaster_name"`
-	BroadcasterLogin        string          `json:"broadcaster_login"`
-	ScheduledBroadcasts    []ScheduleSegment `json:"scheduled_broadcasts"`
-	ScheduleSettings       ScheduleSettings `json:"schedule_settings"`
+	BroadcasterID       string            `json:"broadcaster_id"`
+	BroadcasterName     string            `json:"broadcaster_name"`
+	BroadcasterLogin    string            `json:"broadcaster_login"`
+	ScheduledBroadcasts []ScheduleSegment `json:"scheduled_broadcasts"`
+	ScheduleSettings    ScheduleSettings  `json:"schedule_settings"`
+}
+
+type ScheduleData struct {
+	Segments         []ScheduleSegment `json:"segments"`
+	BroadcasterID    string            `json:"broadcaster_id"`
+	BroadcasterName  string            `json:"broadcaster_name"`
+	BroadcasterLogin string            `json:"broadcaster_login"`
+	Vacation         *VacationInfo     `json:"vacation"`
 }
 
 type GetScheduleResponse struct {
-	Data Schedule `json:"data"`
+	Data       ScheduleData      `json:"data"`
+	Pagination twitch.Pagination `json:"pagination"`
 }
 
-func GetChannelStreamSchedule(broadcasterID, timezone string, startTime, endTime *time.Time) (*Schedule, error) {
+func GetChannelStreamSchedule(broadcasterID string, ids []string, timezone string, startTime, endTime *time.Time, req *twitch.PaginationRequest) (*twitch.PaginationData[ScheduleData], error) {
 	user := globals.GetState().GetTwitchUser()
 	if broadcasterID == "" {
 		broadcasterID = user.UserID
@@ -49,6 +58,9 @@ func GetChannelStreamSchedule(broadcasterID, timezone string, startTime, endTime
 
 	opts := map[string]any{
 		"broadcaster_id": broadcasterID,
+	}
+	if ids != nil {
+		opts["id"] = ids
 	}
 	if timezone != "" {
 		opts["timezone"] = timezone
@@ -60,15 +72,45 @@ func GetChannelStreamSchedule(broadcasterID, timezone string, startTime, endTime
 		opts["end_time"] = endTime.Format(time.RFC3339)
 	}
 
-	url := twitch.BuildURL(urlAPISchedule, opts)
+	if req != nil {
+		if req.Cursor != "" {
+			opts["after"] = req.Cursor
+		}
+		if req.Quantity > 0 {
+			opts["first"] = req.Quantity
+		}
+	}
 
-	result, err := twitch.ExecuteRequest[GetScheduleResponse]("GET", url, 200)
+	url := twitch.BuildURL(twitch.HelixBaseURL+"/schedule", opts)
+
+	result, err := twitch.ExecuteRequest[twitch.PaginationData[ScheduleData]]("GET", url, 200)
 	if err != nil {
 		helpers.Logf(helpers.DEBUG, "[TWITCH] GetChannelStreamSchedule: broadcasterID=%v", broadcasterID)
 		return nil, err
 	}
 
-	return &result.Data, nil
+	quantity := 0
+	if req != nil {
+		quantity = req.Quantity
+	}
+	result.GetNext = func() *twitch.PaginationData[ScheduleData] {
+		r, _ := GetChannelStreamSchedule(broadcasterID, ids, timezone, startTime, endTime, &twitch.PaginationRequest{
+			Cursor:   result.Pagination.Cursor,
+			Quantity: quantity,
+		})
+		return r
+	}
+
+	return result, nil
+}
+
+type UpdateScheduleSegmentRequest struct {
+	StartTime  *string `json:"start_time,omitempty"`
+	Duration   *string `json:"duration,omitempty"`
+	CategoryID *string `json:"category_id,omitempty"`
+	Title      *string `json:"title,omitempty"`
+	IsCanceled *bool   `json:"is_canceled,omitempty"`
+	Timezone   *string `json:"timezone,omitempty"`
 }
 
 func GetChanneliCalendar(broadcasterID string) (string, error) {
@@ -95,26 +137,37 @@ func GetChanneliCalendar(broadcasterID string) (string, error) {
 }
 
 type UpdateScheduleSettingsRequest struct {
-	Timezone    *string `json:"timezone,omitempty"`
-	IsVacation *bool   `json:"is_vacation_enabled,omitempty"`
+	Timezone          *string    `json:"timezone,omitempty"`
+	IsVacation        *bool      `json:"is_vacation_enabled,omitempty"`
 	VacationStartTime *time.Time `json:"vacation_start_time,omitempty"`
-	VacationEndTime *time.Time `json:"vacation_end_time,omitempty"`
+	VacationEndTime   *time.Time `json:"vacation_end_time,omitempty"`
 }
 
-func UpdateChannelStreamSchedule(broadcasterID string, req UpdateScheduleSettingsRequest) error {
+func UpdateChannelStreamSchedule(req UpdateScheduleSettingsRequest) error {
 	user := globals.GetState().GetTwitchUser()
-	if broadcasterID == "" {
-		broadcasterID = user.UserID
-	}
 
 	opts := map[string]any{
-		"broadcaster_id": broadcasterID,
+		"broadcaster_id": user.UserID,
 	}
+
+	if req.Timezone != nil {
+		opts["timezone"] = *req.Timezone
+	}
+	if req.IsVacation != nil {
+		opts["is_vacation_enabled"] = *req.IsVacation
+	}
+	if req.VacationStartTime != nil {
+		opts["vacation_start_time"] = req.VacationStartTime.Format(time.RFC3339)
+	}
+	if req.VacationEndTime != nil {
+		opts["vacation_end_time"] = req.VacationEndTime.Format(time.RFC3339)
+	}
+
 	url := twitch.BuildURL(urlAPISchedule, opts)
 
-	_, err := twitch.ExecuteJSONRequest[struct{}, UpdateScheduleSettingsRequest]("PATCH", url, req, 204)
+	_, err := twitch.ExecuteRequest[struct{}]("PATCH", url, 204)
 	if err != nil {
-		helpers.Logf(helpers.DEBUG, "[TWITCH] UpdateChannelStreamSchedule: broadcasterID=%v", broadcasterID)
+		helpers.Logf(helpers.DEBUG, "[TWITCH] UpdateChannelStreamSchedule: req=%v", req)
 		return err
 	}
 
@@ -122,31 +175,44 @@ func UpdateChannelStreamSchedule(broadcasterID string, req UpdateScheduleSetting
 }
 
 type CreateScheduleSegmentRequest struct {
-	StartTime   time.Time `json:"start_time"`
-	EndTime     time.Time `json:"end_time"`
-	Title       string    `json:"title"`
-	IsRecurring *bool     `json:"is_recurring,omitempty"`
-	CategoryID  *string   `json:"category_id,omitempty"`
+	StartTime   *string `json:"start_time,omitempty"`
+	Timezone    *string `json:"timezone,omitempty"`
+	IsRecurring *bool   `json:"is_recurring,omitempty"`
+	Duration    *string `json:"duration,omitempty"`
+	Title       *string `json:"title,omitempty"`
+	CategoryID  *string `json:"category_id,omitempty"`
 }
 
 type CreateScheduleSegmentResponse struct {
 	Data []ScheduleSegment `json:"data"`
 }
 
-func CreateChannelStreamScheduleSegment(broadcasterID string, req CreateScheduleSegmentRequest) (*ScheduleSegment, error) {
+type VacationInfo struct {
+	StartTime *time.Time `json:"start_time"`
+	EndTime   *time.Time `json:"end_time"`
+}
+
+type UpdateScheduleSegmentResponse struct {
+	Data struct {
+		Segments         []ScheduleSegment `json:"segments"`
+		BroadcasterID    string            `json:"broadcaster_id"`
+		BroadcasterName  string            `json:"broadcaster_name"`
+		BroadcasterLogin string            `json:"broadcaster_login"`
+		Vacation         *VacationInfo     `json:"vacation"`
+	} `json:"data"`
+}
+
+func CreateChannelStreamScheduleSegment(req CreateScheduleSegmentRequest) (*ScheduleSegment, error) {
 	user := globals.GetState().GetTwitchUser()
-	if broadcasterID == "" {
-		broadcasterID = user.UserID
-	}
 
 	opts := map[string]any{
-		"broadcaster_id": broadcasterID,
+		"broadcaster_id": user.UserID,
 	}
-	url := twitch.BuildURL(urlAPISchedule+"/segments", opts)
+	url := twitch.BuildURL(twitch.HelixBaseURL+"/schedule/segments", opts)
 
-	result, err := twitch.ExecuteJSONRequest[CreateScheduleSegmentResponse, CreateScheduleSegmentRequest]("POST", url, req, 201)
+	result, err := twitch.ExecuteJSONRequest[CreateScheduleSegmentResponse]("POST", url, req, 201)
 	if err != nil {
-		helpers.Logf(helpers.DEBUG, "[TWITCH] CreateChannelStreamScheduleSegment: broadcasterID=%v", broadcasterID)
+		helpers.Logf(helpers.DEBUG, "[TWITCH] CreateChannelStreamScheduleSegment: req:%v", req)
 		return nil, err
 	}
 
@@ -157,53 +223,40 @@ func CreateChannelStreamScheduleSegment(broadcasterID string, req CreateSchedule
 	return &result.Data[0], nil
 }
 
-type UpdateScheduleSegmentRequest struct {
-	StartTime *time.Time `json:"start_time,omitempty"`
-	EndTime   *time.Time `json:"end_time,omitempty"`
-	Title     *string    `json:"title,omitempty"`
-	CategoryID *string   `json:"category_id,omitempty"`
-}
-
-func UpdateChannelStreamScheduleSegment(broadcasterID, segmentID string, req UpdateScheduleSegmentRequest) (*ScheduleSegment, error) {
+func UpdateChannelStreamScheduleSegment(segmentID string, req UpdateScheduleSegmentRequest) (*ScheduleSegment, error) {
 	user := globals.GetState().GetTwitchUser()
-	if broadcasterID == "" {
-		broadcasterID = user.UserID
-	}
 
 	opts := map[string]any{
-		"broadcaster_id": broadcasterID,
-		"id":           segmentID,
-	}
-	url := twitch.BuildURL(urlAPISchedule+"/segments", opts)
-
-	result, err := twitch.ExecuteJSONRequest[CreateScheduleSegmentResponse, UpdateScheduleSegmentRequest]("PATCH", url, req, 200)
-	if err != nil {
-		helpers.Logf(helpers.DEBUG, "[TWITCH] UpdateChannelStreamScheduleSegment: broadcasterID=%v segmentID=%v", broadcasterID, segmentID)
-		return nil, err
-	}
-
-	if len(result.Data) == 0 {
-		return nil, nil
-	}
-
-	return &result.Data[0], nil
-}
-
-func DeleteChannelStreamScheduleSegment(broadcasterID, segmentID string) error {
-	user := globals.GetState().GetTwitchUser()
-	if broadcasterID == "" {
-		broadcasterID = user.UserID
-	}
-
-	opts := map[string]any{
-		"broadcaster_id": broadcasterID,
+		"broadcaster_id": user.UserID,
 		"id":             segmentID,
 	}
-	url := twitch.BuildURL(urlAPISchedule+"/segments", opts)
+	url := twitch.BuildURL(twitch.HelixBaseURL+"/schedule/segments", opts)
+
+	result, err := twitch.ExecuteJSONRequest[UpdateScheduleSegmentResponse]("PATCH", url, req, 200)
+	if err != nil {
+		helpers.Logf(helpers.DEBUG, "[TWITCH] UpdateChannelStreamScheduleSegment: segmentID=%v", segmentID)
+		return nil, err
+	}
+
+	if len(result.Data.Segments) == 0 {
+		return nil, nil
+	}
+
+	return &result.Data.Segments[0], nil
+}
+
+func DeleteChannelStreamScheduleSegment(segmentID string) error {
+	user := globals.GetState().GetTwitchUser()
+
+	opts := map[string]any{
+		"broadcaster_id": user.UserID,
+		"id":             segmentID,
+	}
+	url := twitch.BuildURL(twitch.HelixBaseURL+"/schedule/segments", opts)
 
 	_, err := twitch.ExecuteRequest[struct{}]("DELETE", url, 204)
 	if err != nil {
-		helpers.Logf(helpers.DEBUG, "[TWITCH] DeleteChannelStreamScheduleSegment: broadcasterID=%v segmentID=%v", broadcasterID, segmentID)
+		helpers.Logf(helpers.DEBUG, "[TWITCH] DeleteChannelStreamScheduleSegment: broadcasterID=%v segmentID=%v", user.UserID, segmentID)
 		return err
 	}
 

@@ -5,8 +5,6 @@ import (
 	twitch "MyStreamBot/services/twitch"
 )
 
-var urlAPISearch = "https://api.twitch.tv/helix/search"
-
 type SearchCategory struct {
 	ID        string `json:"id"`
 	Name      string `json:"name"`
@@ -14,13 +12,14 @@ type SearchCategory struct {
 }
 
 type SearchChannel struct {
-	ID                  string   `json:"id"`
-	BroadcasterLogin    string   `json:"broadcaster_login"`
-	BroadcasterName     string   `json:"broadcaster_name"`
 	BroadcasterLanguage string   `json:"broadcaster_language"`
+	BroadcasterLogin    string   `json:"broadcaster_login"`
+	DisplayName         string   `json:"display_name"`
 	GameID              string   `json:"game_id"`
 	GameName            string   `json:"game_name"`
+	ID                  string   `json:"id"`
 	Live                bool     `json:"is_live"`
+	TagIDs              []string `json:"tag_ids"`
 	Tags                []string `json:"tags"`
 	ThumbnailURL        string   `json:"thumbnail_url"`
 	Title               string   `json:"title"`
@@ -32,7 +31,9 @@ type GetSearchCategoriesResponse struct {
 }
 
 func SearchCategories(query string, req *twitch.PaginationRequest) (*twitch.PaginationData[SearchCategory], error) {
-	opts := map[string]any{}
+	opts := map[string]any{
+		"query": query,
+	}
 
 	if req != nil {
 		if req.Cursor != "" {
@@ -44,7 +45,6 @@ func SearchCategories(query string, req *twitch.PaginationRequest) (*twitch.Pagi
 	}
 
 	url := twitch.BuildURL(twitch.HelixBaseURL+"/search/categories", opts)
-	url += "&query=" + query
 
 	result, err := twitch.ExecuteRequest[twitch.PaginationData[SearchCategory]]("GET", url, 200)
 	if err != nil {
@@ -68,7 +68,10 @@ func SearchCategories(query string, req *twitch.PaginationRequest) (*twitch.Pagi
 }
 
 func SearchChannels(query string, liveOnly bool, req *twitch.PaginationRequest) (*twitch.PaginationData[SearchChannel], error) {
-	opts := map[string]any{}
+	opts := map[string]any{
+		"query":      query,
+		"live_only": liveOnly,
+	}
 
 	if req != nil {
 		if req.Cursor != "" {
@@ -80,10 +83,6 @@ func SearchChannels(query string, liveOnly bool, req *twitch.PaginationRequest) 
 	}
 
 	url := twitch.BuildURL(twitch.HelixBaseURL+"/search/channels", opts)
-	url += "&query=" + query
-	if liveOnly {
-		url += "&live_only=true"
-	}
 
 	result, err := twitch.ExecuteRequest[twitch.PaginationData[SearchChannel]]("GET", url, 200)
 	if err != nil {

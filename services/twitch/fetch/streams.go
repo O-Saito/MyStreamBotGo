@@ -72,17 +72,20 @@ func GetStreamKey() (string, error) {
 	return result.Data[0].StreamKey, nil
 }
 
-func GetStreams(userIDs []string, gameIDs []string, languages []string, req *twitch.PaginationRequest) (*twitch.PaginationData[Stream], error) {
+func GetStreams(userIDs, userLogins, gameIDs, languages []string, req *twitch.PaginationRequest) (*twitch.PaginationData[Stream], error) {
 	opts := map[string]any{}
 
-	for _, id := range userIDs {
-		opts["user_id"] = id
+	if userIDs != nil {
+		opts["user_id"] = userIDs
 	}
-	for _, id := range gameIDs {
-		opts["game_id"] = id
+	if userLogins != nil {
+		opts["user_login"] = userLogins
 	}
-	for _, lang := range languages {
-		opts["language"] = lang
+	if gameIDs != nil {
+		opts["game_id"] = gameIDs
+	}
+	if languages != nil {
+		opts["language"] = languages
 	}
 
 	if req != nil {
@@ -107,7 +110,7 @@ func GetStreams(userIDs []string, gameIDs []string, languages []string, req *twi
 		quantity = req.Quantity
 	}
 	result.GetNext = func() *twitch.PaginationData[Stream] {
-		r, _ := GetStreams(userIDs, gameIDs, languages, &twitch.PaginationRequest{
+		r, _ := GetStreams(userIDs, userLogins, gameIDs, languages, &twitch.PaginationRequest{
 			Cursor:   result.Pagination.Cursor,
 			Quantity: quantity,
 		})
@@ -117,14 +120,11 @@ func GetStreams(userIDs []string, gameIDs []string, languages []string, req *twi
 	return result, nil
 }
 
-func GetFollowedStreams(userID string, req *twitch.PaginationRequest) (*twitch.PaginationData[Stream], error) {
+func GetFollowedStreams(req *twitch.PaginationRequest) (*twitch.PaginationData[Stream], error) {
 	user := globals.GetState().GetTwitchUser()
-	if userID == "" {
-		userID = user.UserID
-	}
 
 	opts := map[string]any{
-		"user_id": userID,
+		"user_id": user.UserID,
 	}
 
 	if req != nil {
@@ -140,7 +140,7 @@ func GetFollowedStreams(userID string, req *twitch.PaginationRequest) (*twitch.P
 
 	result, err := twitch.ExecuteRequest[twitch.PaginationData[Stream]]("GET", url, 200)
 	if err != nil {
-		helpers.Logf(helpers.DEBUG, "[TWITCH] GetFollowedStreams: userID=%v", userID)
+		helpers.Logf(helpers.DEBUG, "[TWITCH] GetFollowedStreams: userID=%v", user.UserID)
 		return nil, err
 	}
 
@@ -149,7 +149,7 @@ func GetFollowedStreams(userID string, req *twitch.PaginationRequest) (*twitch.P
 		quantity = req.Quantity
 	}
 	result.GetNext = func() *twitch.PaginationData[Stream] {
-		r, _ := GetFollowedStreams(userID, &twitch.PaginationRequest{
+		r, _ := GetFollowedStreams(&twitch.PaginationRequest{
 			Cursor:   result.Pagination.Cursor,
 			Quantity: quantity,
 		})
@@ -159,26 +159,38 @@ func GetFollowedStreams(userID string, req *twitch.PaginationRequest) (*twitch.P
 	return result, nil
 }
 
-type CreateStreamMarkerRequest struct {
-	Description string `json:"description,omitempty"`
+type CreateStreamMarkerResponse struct {
+	Data []StreamMarker `json:"data"`
 }
 
-func CreateStreamMarker(req CreateStreamMarkerRequest) error {
+func CreateStreamMarker(description string) (*StreamMarker, error) {
 	user := globals.GetState().GetTwitchUser()
 
 	opts := map[string]any{
-		"broadcaster_id": user.UserID,
+		"user_id": user.UserID,
+	}
+
+	if description != "" {
+		opts["description"] = description
 	}
 
 	url := twitch.BuildURL(twitch.HelixBaseURL+"/streams/markers", opts)
 
-	_, err := twitch.ExecuteJSONRequest[struct{}, CreateStreamMarkerRequest]("POST", url, req, 201)
-	if err != nil {
-		helpers.Logf(helpers.DEBUG, "[TWITCH] CreateStreamMarker: broadcasterID=%v", user.UserID)
-		return err
+	body := map[string]any{
+		"description": description,
 	}
 
-	return nil
+	result, err := twitch.ExecuteJSONRequest[CreateStreamMarkerResponse, map[string]any]("POST", url, body, 201)
+	if err != nil {
+		helpers.Logf(helpers.DEBUG, "[TWITCH] CreateStreamMarker: broadcasterID=%v", user.UserID)
+		return nil, err
+	}
+
+	if len(result.Data) == 0 {
+		return nil, nil
+	}
+
+	return &result.Data[0], nil
 }
 
 func GetStreamMarkers(videoID string, req *twitch.PaginationRequest) (*twitch.PaginationData[GetStreamMarkersResponse], error) {

@@ -97,7 +97,12 @@ func ListenToChat(id string) {
 	page := ""
 	for {
 		helpers.Logf(helpers.DEBUG, "READING YT CHAT...")
-		data, _ := FetchLiveChatMessages(id, page)
+		data, err := FetchLiveChatMessages(id, page)
+
+		if err != nil {
+			helpers.Logf(helpers.ERROR, "[YT] ListenToChat failed to fetch chat messages %v", err)
+			continue
+		}
 
 		for _, msg := range data.Items {
 			messagedata := globals.MessageFromStream{

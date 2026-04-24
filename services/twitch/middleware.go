@@ -32,6 +32,11 @@ type PaginationRequest struct {
 	Quantity int
 }
 
+type DateRange struct {
+	StartedAt string `json:"started_at"`
+	EndedAt   string `json:"ended_at"`
+}
+
 func AddAuthHeaders(req *http.Request) {
 	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", globals.GetState().GetTwitchUser().Token))
 	req.Header.Set("Client-ID", globals.GetConfig().TwitchClientID)

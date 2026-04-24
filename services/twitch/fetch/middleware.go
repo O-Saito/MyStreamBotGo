@@ -99,7 +99,7 @@ func BuildURL(base string, opts map[string]any) string {
 				continue
 			}
 			for _, d := range strArr {
-				url.WriteString(fmt.Sprintf("%s%s=%s", ternary(hasParams, "&", "?"), k, d))
+				fmt.Fprintf(&url, "%s%s=%s", ternary(hasParams, "&", "?"), k, d)
 				hasParams = true
 			}
 			continue
@@ -110,13 +110,13 @@ func BuildURL(base string, opts map[string]any) string {
 				continue
 			}
 			for _, d := range intArr {
-				url.WriteString(fmt.Sprintf("%s%s=%s", ternary(hasParams, "&", "?"), k, d))
+				fmt.Fprintf(&url, "%s%s=%d", ternary(hasParams, "&", "?"), k, d)
 				hasParams = true
 			}
 			continue
 		}
 
-		url.WriteString(fmt.Sprintf("%s%s=%s", ternary(hasParams, "&", "?"), k, v))
+		fmt.Fprintf(&url, "%s%s=%s", ternary(hasParams, "&", "?"), k, v)
 		hasParams = true
 	}
 
@@ -160,7 +160,7 @@ func ExecuteRequest[T any](method, url string, expectedStatus int) (*T, error) {
 
 	resp, err := DoRequest(req)
 	if err != nil {
-		helpers.Logf(helpers.DEBUG, "[TWITCH] executeRequest: url=%v", url)
+		helpers.Logf(helpers.ERROR, "[TWITCH] ExecuteRequest: url=%v error=%v", url, err)
 		return nil, err
 	}
 	defer resp.Body.Close()
@@ -207,7 +207,7 @@ func ExecuteJSONRequest[Resp any, Req any](method, url string, body Req, expecte
 
 	resp, err := DoRequest(req)
 	if err != nil {
-		helpers.Logf(helpers.DEBUG, "[TWITCH] executeJSONRequest: url=%v", url)
+		helpers.Logf(helpers.ERROR, "[TWITCH] ExecuteJSONRequest: url=%v error=%v", url, err)
 		return nil, err
 	}
 	defer resp.Body.Close()
@@ -247,7 +247,7 @@ func ExecuteRequestNoParse(method, url string, expectedStatus int) ([]byte, erro
 
 	resp, err := DoRequest(req)
 	if err != nil {
-		helpers.Logf(helpers.DEBUG, "[TWITCH] executeRequestNoParse: url=%v", url)
+		helpers.Logf(helpers.ERROR, "[TWITCH] ExecuteRequestNoParse: url=%v error=%v", url, err)
 		return nil, err
 	}
 	defer resp.Body.Close()

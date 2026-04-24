@@ -4,15 +4,10 @@ import (
 	"MyStreamBot/globals"
 	"MyStreamBot/helpers"
 	twitch "MyStreamBot/services/twitch"
-	"bytes"
-	"encoding/json"
-	"fmt"
-	"io"
-	"net/http"
 	"time"
 )
 
-var urlAPISchedule = "https://api.twitch.tv/helix/schedule"
+var urlAPISchedule = twitch.HelixBaseURL + "/schedule"
 
 type ScheduleSegment struct {
 	ID            string    `json:"id"`
@@ -52,47 +47,24 @@ func GetChannelStreamSchedule(broadcasterID, timezone string, startTime, endTime
 		broadcasterID = user.UserID
 	}
 
-	url := fmt.Sprintf("%s?broadcaster_id=%s", urlAPISchedule, broadcasterID)
+	opts := map[string]any{
+		"broadcaster_id": broadcasterID,
+	}
 	if timezone != "" {
-		url += "&timezone=" + timezone
+		opts["timezone"] = timezone
 	}
 	if startTime != nil {
-		url += "&start_time=" + startTime.Format(time.RFC3339)
+		opts["start_time"] = startTime.Format(time.RFC3339)
 	}
 	if endTime != nil {
-		url += "&end_time=" + endTime.Format(time.RFC3339)
+		opts["end_time"] = endTime.Format(time.RFC3339)
 	}
 
-	req, err := http.NewRequest("GET", url, nil)
-	if err != nil {
-		helpers.Logf(helpers.ERROR, "[TWITCH] GetChannelStreamSchedule http.NewRequest failed: %v", err)
-		return nil, err
-	}
+	url := twitch.BuildURL(urlAPISchedule, opts)
 
-	resp, err := twitch.DoRequest(req)
+	result, err := twitch.ExecuteRequest[GetScheduleResponse]("GET", url, 200)
 	if err != nil {
 		helpers.Logf(helpers.DEBUG, "[TWITCH] GetChannelStreamSchedule: broadcasterID=%v", broadcasterID)
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != 200 {
-		body, err := io.ReadAll(resp.Body)
-		if err != nil {
-			helpers.Logf(helpers.ERROR, "[TWITCH] GetChannelStreamSchedule io.ReadAll failed: %v", err)
-			return nil, err
-		}
-		return nil, fmt.Errorf("GetChannelStreamSchedule: failed: %s", body)
-	}
-
-	var result GetScheduleResponse
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		helpers.Logf(helpers.ERROR, "[TWITCH] GetChannelStreamSchedule io.ReadAll failed: %v", err)
-		return nil, err
-	}
-	if err := json.Unmarshal(body, &result); err != nil {
-		helpers.Logf(helpers.ERROR, "[TWITCH] GetChannelStreamSchedule json.Unmarshal failed: %v", err)
 		return nil, err
 	}
 
@@ -105,36 +77,21 @@ func GetChanneliCalendar(broadcasterID string) (string, error) {
 		broadcasterID = user.UserID
 	}
 
-	url := fmt.Sprintf("%s/icalendar?broadcaster_id=%s", urlAPISchedule, broadcasterID)
-	req, err := http.NewRequest("GET", url, nil)
-	if err != nil {
-		helpers.Logf(helpers.ERROR, "[TWITCH] GetChanneliCalendar http.NewRequest failed: %v", err)
-		return "", err
+	opts := map[string]any{
+		"broadcaster_id": broadcasterID,
 	}
 
-	resp, err := twitch.DoRequest(req)
+	url := twitch.BuildURL(urlAPISchedule+"/icalendar", opts)
+
+	result, err := twitch.ExecuteRequest[struct {
+		Data string `json:"data"`
+	}]("GET", url, 200)
 	if err != nil {
 		helpers.Logf(helpers.DEBUG, "[TWITCH] GetChanneliCalendar: broadcasterID=%v", broadcasterID)
 		return "", err
 	}
-	defer resp.Body.Close()
 
-	if resp.StatusCode != 200 {
-		body, err := io.ReadAll(resp.Body)
-		if err != nil {
-			helpers.Logf(helpers.ERROR, "[TWITCH] GetChanneliCalendar io.ReadAll failed: %v", err)
-			return "", err
-		}
-		return "", fmt.Errorf("GetChanneliCalendar: failed: %s", body)
-	}
-
-	ical, err := io.ReadAll(resp.Body)
-	if err != nil {
-		helpers.Logf(helpers.ERROR, "[TWITCH] GetChanneliCalendar io.ReadAll failed: %v", err)
-		return "", err
-	}
-
-	return string(ical), nil
+	return result.Data, nil
 }
 
 type UpdateScheduleSettingsRequest struct {
@@ -150,34 +107,15 @@ func UpdateChannelStreamSchedule(broadcasterID string, req UpdateScheduleSetting
 		broadcasterID = user.UserID
 	}
 
-	data, err := json.Marshal(req)
-	if err != nil {
-		helpers.Logf(helpers.ERROR, "[TWITCH] UpdateChannelStreamSchedule json.Marshal failed: %v", err)
-		return err
+	opts := map[string]any{
+		"broadcaster_id": broadcasterID,
 	}
+	url := twitch.BuildURL(urlAPISchedule, opts)
 
-	url := fmt.Sprintf("%s?broadcaster_id=%s", urlAPISchedule, broadcasterID)
-	httpReq, err := http.NewRequest("PATCH", url, bytes.NewBuffer(data))
-	if err != nil {
-		helpers.Logf(helpers.ERROR, "[TWITCH] UpdateChannelStreamSchedule http.NewRequest failed: %v", err)
-		return err
-	}
-	httpReq.Header.Set("Content-Type", "application/json")
-
-	resp, err := twitch.DoRequest(httpReq)
+	_, err := twitch.ExecuteJSONRequest[struct{}, UpdateScheduleSettingsRequest]("PATCH", url, req, 204)
 	if err != nil {
 		helpers.Logf(helpers.DEBUG, "[TWITCH] UpdateChannelStreamSchedule: broadcasterID=%v", broadcasterID)
 		return err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != 200 && resp.StatusCode != 204 {
-		body, err := io.ReadAll(resp.Body)
-		if err != nil {
-			helpers.Logf(helpers.ERROR, "[TWITCH] UpdateChannelStreamSchedule io.ReadAll failed: %v", err)
-			return err
-		}
-		return fmt.Errorf("UpdateChannelStreamSchedule: failed: %s", body)
 	}
 
 	return nil
@@ -191,52 +129,24 @@ type CreateScheduleSegmentRequest struct {
 	CategoryID  *string   `json:"category_id,omitempty"`
 }
 
+type CreateScheduleSegmentResponse struct {
+	Data []ScheduleSegment `json:"data"`
+}
+
 func CreateChannelStreamScheduleSegment(broadcasterID string, req CreateScheduleSegmentRequest) (*ScheduleSegment, error) {
 	user := globals.GetState().GetTwitchUser()
 	if broadcasterID == "" {
 		broadcasterID = user.UserID
 	}
 
-	data, err := json.Marshal(req)
-	if err != nil {
-		helpers.Logf(helpers.ERROR, "[TWITCH] CreateChannelStreamScheduleSegment json.Marshal failed: %v", err)
-		return nil, err
+	opts := map[string]any{
+		"broadcaster_id": broadcasterID,
 	}
+	url := twitch.BuildURL(urlAPISchedule+"/segments", opts)
 
-	url := fmt.Sprintf("%s/segments?broadcaster_id=%s", urlAPISchedule, broadcasterID)
-	httpReq, err := http.NewRequest("POST", url, bytes.NewBuffer(data))
-	if err != nil {
-		helpers.Logf(helpers.ERROR, "[TWITCH] CreateChannelStreamScheduleSegment http.NewRequest failed: %v", err)
-		return nil, err
-	}
-	httpReq.Header.Set("Content-Type", "application/json")
-
-	resp, err := twitch.DoRequest(httpReq)
+	result, err := twitch.ExecuteJSONRequest[CreateScheduleSegmentResponse, CreateScheduleSegmentRequest]("POST", url, req, 201)
 	if err != nil {
 		helpers.Logf(helpers.DEBUG, "[TWITCH] CreateChannelStreamScheduleSegment: broadcasterID=%v", broadcasterID)
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != 200 && resp.StatusCode != 201 {
-		body, err := io.ReadAll(resp.Body)
-		if err != nil {
-			helpers.Logf(helpers.ERROR, "[TWITCH] CreateChannelStreamScheduleSegment io.ReadAll failed: %v", err)
-			return nil, err
-		}
-		return nil, fmt.Errorf("CreateChannelStreamScheduleSegment: failed: %s", body)
-	}
-
-	var result struct {
-		Data []ScheduleSegment `json:"data"`
-	}
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		helpers.Logf(helpers.ERROR, "[TWITCH] CreateChannelStreamScheduleSegment io.ReadAll failed: %v", err)
-		return nil, err
-	}
-	if err := json.Unmarshal(body, &result); err != nil {
-		helpers.Logf(helpers.ERROR, "[TWITCH] CreateChannelStreamScheduleSegment json.Unmarshal failed: %v", err)
 		return nil, err
 	}
 
@@ -260,46 +170,15 @@ func UpdateChannelStreamScheduleSegment(broadcasterID, segmentID string, req Upd
 		broadcasterID = user.UserID
 	}
 
-	data, err := json.Marshal(req)
-	if err != nil {
-		helpers.Logf(helpers.ERROR, "[TWITCH] UpdateChannelStreamScheduleSegment json.Marshal failed: %v", err)
-		return nil, err
+	opts := map[string]any{
+		"broadcaster_id": broadcasterID,
+		"id":           segmentID,
 	}
+	url := twitch.BuildURL(urlAPISchedule+"/segments", opts)
 
-	url := fmt.Sprintf("%s/segments?broadcaster_id=%s&id=%s", urlAPISchedule, broadcasterID, segmentID)
-	httpReq, err := http.NewRequest("PATCH", url, bytes.NewBuffer(data))
+	result, err := twitch.ExecuteJSONRequest[CreateScheduleSegmentResponse, UpdateScheduleSegmentRequest]("PATCH", url, req, 200)
 	if err != nil {
-		helpers.Logf(helpers.ERROR, "[TWITCH] UpdateChannelStreamScheduleSegment http.NewRequest failed: %v", err)
-		return nil, err
-	}
-	httpReq.Header.Set("Content-Type", "application/json")
-
-	resp, err := twitch.DoRequest(httpReq)
-	if err != nil {
-		helpers.Logf(helpers.DEBUG, "[TWITCH] UpdateChannelStreamScheduleSegment: broadcasterID=%v, segmentID=%v", broadcasterID, segmentID)
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != 200 {
-		body, err := io.ReadAll(resp.Body)
-		if err != nil {
-			helpers.Logf(helpers.ERROR, "[TWITCH] UpdateChannelStreamScheduleSegment io.ReadAll failed: %v", err)
-			return nil, err
-		}
-		return nil, fmt.Errorf("UpdateChannelStreamScheduleSegment: failed: %s", body)
-	}
-
-	var result struct {
-		Data []ScheduleSegment `json:"data"`
-	}
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		helpers.Logf(helpers.ERROR, "[TWITCH] UpdateChannelStreamScheduleSegment io.ReadAll failed: %v", err)
-		return nil, err
-	}
-	if err := json.Unmarshal(body, &result); err != nil {
-		helpers.Logf(helpers.ERROR, "[TWITCH] UpdateChannelStreamScheduleSegment json.Unmarshal failed: %v", err)
+		helpers.Logf(helpers.DEBUG, "[TWITCH] UpdateChannelStreamScheduleSegment: broadcasterID=%v segmentID=%v", broadcasterID, segmentID)
 		return nil, err
 	}
 
@@ -316,27 +195,16 @@ func DeleteChannelStreamScheduleSegment(broadcasterID, segmentID string) error {
 		broadcasterID = user.UserID
 	}
 
-	url := fmt.Sprintf("%s/segments?broadcaster_id=%s&id=%s", urlAPISchedule, broadcasterID, segmentID)
-	req, err := http.NewRequest("DELETE", url, nil)
-	if err != nil {
-		helpers.Logf(helpers.ERROR, "[TWITCH] DeleteChannelStreamScheduleSegment http.NewRequest failed: %v", err)
-		return err
+	opts := map[string]any{
+		"broadcaster_id": broadcasterID,
+		"id":             segmentID,
 	}
+	url := twitch.BuildURL(urlAPISchedule+"/segments", opts)
 
-	resp, err := twitch.DoRequest(req)
+	_, err := twitch.ExecuteRequest[struct{}]("DELETE", url, 204)
 	if err != nil {
-		helpers.Logf(helpers.DEBUG, "[TWITCH] DeleteChannelStreamScheduleSegment: broadcasterID=%v, segmentID=%v", broadcasterID, segmentID)
+		helpers.Logf(helpers.DEBUG, "[TWITCH] DeleteChannelStreamScheduleSegment: broadcasterID=%v segmentID=%v", broadcasterID, segmentID)
 		return err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != 200 && resp.StatusCode != 204 {
-		body, err := io.ReadAll(resp.Body)
-		if err != nil {
-			helpers.Logf(helpers.ERROR, "[TWITCH] DeleteChannelStreamScheduleSegment io.ReadAll failed: %v", err)
-			return err
-		}
-		return fmt.Errorf("DeleteChannelStreamScheduleSegment: failed: %s", body)
 	}
 
 	return nil

@@ -4,12 +4,9 @@ import (
 	"MyStreamBot/globals"
 	"MyStreamBot/helpers"
 	twitch "MyStreamBot/services/twitch"
-	"fmt"
-	"io"
-	"net/http"
 )
 
-var urlAPIRaids = "https://api.twitch.tv/helix/raids"
+var urlAPIRaids = twitch.HelixBaseURL + "/raids"
 
 func StartRaid(fromBroadcasterID, toBroadcasterID string) error {
 	user := globals.GetState().GetTwitchUser()
@@ -17,27 +14,16 @@ func StartRaid(fromBroadcasterID, toBroadcasterID string) error {
 		fromBroadcasterID = user.UserID
 	}
 
-	url := fmt.Sprintf("%s?from_broadcaster_id=%s&to_broadcaster_id=%s", urlAPIRaids, fromBroadcasterID, toBroadcasterID)
-	req, err := http.NewRequest("POST", url, nil)
-	if err != nil {
-		helpers.Logf(helpers.ERROR, "[TWITCH] StartRaid http.NewRequest failed: %v", err)
-		return err
+	opts := map[string]any{
+		"from_broadcaster_id": fromBroadcasterID,
+		"to_broadcaster_id":   toBroadcasterID,
 	}
+	url := twitch.BuildURL(urlAPIRaids, opts)
 
-	resp, err := twitch.DoRequest(req)
+	_, err := twitch.ExecuteRequest[struct{}]("POST", url, 204)
 	if err != nil {
-		helpers.Logf(helpers.DEBUG, "[TWITCH] StartRaid: fromBroadcasterID=%v, toBroadcasterID=%v", fromBroadcasterID, toBroadcasterID)
+		helpers.Logf(helpers.DEBUG, "[TWITCH] StartRaid: fromBroadcasterID=%v toBroadcasterID=%v", fromBroadcasterID, toBroadcasterID)
 		return err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != 200 && resp.StatusCode != 204 {
-		body, err := io.ReadAll(resp.Body)
-		if err != nil {
-			helpers.Logf(helpers.ERROR, "[TWITCH] StartRaid io.ReadAll failed: %v", err)
-			return err
-		}
-		return fmt.Errorf("StartRaid: failed: %s", body)
 	}
 
 	return nil
@@ -49,27 +35,15 @@ func CancelRaid(broadcasterID string) error {
 		broadcasterID = user.UserID
 	}
 
-	url := fmt.Sprintf("%s?broadcaster_id=%s", urlAPIRaids, broadcasterID)
-	req, err := http.NewRequest("DELETE", url, nil)
-	if err != nil {
-		helpers.Logf(helpers.ERROR, "[TWITCH] CancelRaid http.NewRequest failed: %v", err)
-		return err
+	opts := map[string]any{
+		"broadcaster_id": broadcasterID,
 	}
+	url := twitch.BuildURL(urlAPIRaids, opts)
 
-	resp, err := twitch.DoRequest(req)
+	_, err := twitch.ExecuteRequest[struct{}]("DELETE", url, 204)
 	if err != nil {
 		helpers.Logf(helpers.DEBUG, "[TWITCH] CancelRaid: broadcasterID=%v", broadcasterID)
 		return err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != 200 && resp.StatusCode != 204 {
-		body, err := io.ReadAll(resp.Body)
-		if err != nil {
-			helpers.Logf(helpers.ERROR, "[TWITCH] CancelRaid io.ReadAll failed: %v", err)
-			return err
-		}
-		return fmt.Errorf("CancelRaid: failed: %s", body)
 	}
 
 	return nil

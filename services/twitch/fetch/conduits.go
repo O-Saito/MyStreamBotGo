@@ -1,55 +1,48 @@
 package twitch
 
 import (
-	"fmt"
 	twitch "MyStreamBot/services/twitch"
 )
 
 type Conduit struct {
-	ID            string `json:"id"`
+	ID             string `json:"id"`
 	OrganizationID string `json:"organization_id"`
-	ShardCount    int    `json:"shard_count"`
-	HealthStatus  string `json:"health_status"`
+	ShardCount     int    `json:"shard_count"`
+	HealthStatus   string `json:"health_status"`
 }
 
 type ConduitShard struct {
-	ID              string `json:"id"`
-	ConduitID       string `json:"conduit_id"`
-	ShardIndex      int    `json:"shard_index"`
-	ShardStatus     string `json:"shard_status"`
-	TransportMethod string `json:"transport_method"`
+	ID              string          `json:"id"`
+	ConduitID       string          `json:"conduit_id"`
+	ShardIndex      int             `json:"shard_index"`
+	ShardStatus     string          `json:"shard_status"`
+	TransportMethod string          `json:"transport_method"`
 	Transport       ConduitTransport `json:"transport"`
 }
 
 type ConduitTransport struct {
-	Method        string            `json:"method"`
-	Callback      string            `json:"callback,omitempty"`
-	Secret        string            `json:"secret,omitempty"`
-	SessionID     string            `json:"session_id,omitempty"`
-	WebSocketURL  string            `json:"websocket_url,omitempty"`
+	Method       string `json:"method"`
+	Callback     string `json:"callback,omitempty"`
+	Secret       string `json:"secret,omitempty"`
+	SessionID    string `json:"session_id,omitempty"`
+	WebSocketURL string `json:"websocket_url,omitempty"`
 }
 
-type GetConduitsResponse struct {
-	Data       []Conduit `json:"data"`
-	Pagination Pagination `json:"pagination"`
-}
+func GetConduits(req *twitch.PaginationRequest) ([]Conduit, error) {
+	opts := map[string]any{}
 
-type GetConduitShardsResponse struct {
-	Data []ConduitShard `json:"data"`
-}
-
-func GetConduits(first int, after string) ([]Conduit, error) {
-	url := twitch.HelixBaseURL + "/conduits"
-	if first > 0 {
-		url += fmt.Sprintf("?first=%d", first)
-		if after != "" {
-			url += "&after=" + after
+	if req != nil {
+		if req.Cursor != "" {
+			opts["after"] = req.Cursor
 		}
-	} else if after != "" {
-		url += "?after=" + after
+		if req.Quantity > 0 {
+			opts["first"] = req.Quantity
+		}
 	}
 
-	result, err := twitch.ExecuteRequest[GetConduitsResponse]("GET", url, 200)
+	url := twitch.BuildURL(twitch.HelixBaseURL+"/conduits", opts)
+
+	result, err := twitch.ExecuteRequest[twitch.PaginationData[Conduit]]("GET", url, 200)
 	if err != nil {
 		return nil, err
 	}
@@ -62,12 +55,13 @@ type CreateConduitRequest struct {
 }
 
 func CreateConduits(shardCount int) (*Conduit, error) {
-	url := twitch.HelixBaseURL + "/conduits"
+	url := twitch.BuildURL(twitch.HelixBaseURL+"/conduits", nil)
+
 	body := CreateConduitRequest{
 		ShardCount: shardCount,
 	}
 
-	result, err := twitch.ExecuteJSONRequest[GetConduitsResponse, CreateConduitRequest]("POST", url, body, 201)
+	result, err := twitch.ExecuteJSONRequest[twitch.PaginationData[Conduit], CreateConduitRequest]("POST", url, body, 201)
 	if err != nil {
 		return nil, err
 	}
@@ -80,7 +74,11 @@ func CreateConduits(shardCount int) (*Conduit, error) {
 }
 
 func UpdateConduits(conduitID string, shardCount int) error {
-	url := fmt.Sprintf("%s/conduits?conduit_id=%s", twitch.HelixBaseURL, conduitID)
+	opts := map[string]any{
+		"conduit_id": conduitID,
+	}
+	url := twitch.BuildURL(twitch.HelixBaseURL+"/conduits", opts)
+
 	body := map[string]any{
 		"shard_count": shardCount,
 	}
@@ -90,14 +88,24 @@ func UpdateConduits(conduitID string, shardCount int) error {
 }
 
 func DeleteConduit(conduitID string) error {
-	url := fmt.Sprintf("%s/conduits?conduit_id=%s", twitch.HelixBaseURL, conduitID)
+	opts := map[string]any{
+		"conduit_id": conduitID,
+	}
+	url := twitch.BuildURL(twitch.HelixBaseURL+"/conduits", opts)
 
-	_, err := twitch.ExecuteRequestNoParse("DELETE", url, 204)
+	_, err := twitch.ExecuteRequest[map[string]any]("DELETE", url, 204)
 	return err
 }
 
+type GetConduitShardsResponse struct {
+	Data []ConduitShard `json:"data"`
+}
+
 func GetConduitShards(conduitID string) ([]ConduitShard, error) {
-	url := fmt.Sprintf("%s/conduits/shards?conduit_id=%s", twitch.HelixBaseURL, conduitID)
+	opts := map[string]any{
+		"conduit_id": conduitID,
+	}
+	url := twitch.BuildURL(twitch.HelixBaseURL+"/conduits/shards", opts)
 
 	result, err := twitch.ExecuteRequest[GetConduitShardsResponse]("GET", url, 200)
 	if err != nil {
@@ -112,7 +120,11 @@ type UpdateConduitShardRequest struct {
 }
 
 func UpdateConduitShards(conduitID string, shards []UpdateConduitShardRequest) error {
-	url := fmt.Sprintf("%s/conduits/shards?conduit_id=%s", twitch.HelixBaseURL, conduitID)
+	opts := map[string]any{
+		"conduit_id": conduitID,
+	}
+	url := twitch.BuildURL(twitch.HelixBaseURL+"/conduits/shards", opts)
+
 	body := map[string]any{
 		"shards": shards,
 	}

@@ -43,8 +43,8 @@ type GetVideosRequest struct {
 }
 
 type GetVideosResponse struct {
-	Data       []Video    `json:"data"`
-	Pagination Pagination `json:"pagination"`
+	Data       []Video           `json:"data"`
+	Pagination twitch.Pagination `json:"pagination"`
 }
 
 func GetVideos(req GetVideosRequest) (*twitch.PaginationData[Video], error) {

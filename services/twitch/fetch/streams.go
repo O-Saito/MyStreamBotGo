@@ -12,44 +12,39 @@ var urlAPIStreamKey = "https://api.twitch.tv/helix/streams/key"
 var urlAPIStreamMarkers = "https://api.twitch.tv/helix/streams/markers"
 
 type Stream struct {
-	ID            string    `json:"id"`
+	ID           string    `json:"id"`
 	UserID       string    `json:"user_id"`
-	UserLogin   string    `json:"user_login"`
-	UserName    string    `json:"user_name"`
-	GameID      string    `json:"game_id"`
-	GameName   string    `json:"game_name"`
-	Type        string    `json:"type"`
-	Title       string    `json:"title"`
-	Tags        []string  `json:"tags"`
-	ViewerCount int       `json:"viewer_count"`
-	StartedAt   time.Time  `json:"started_at"`
-	Language   string    `json:"language"`
-	ThumbnailURL string   `json:"thumbnail_url"`
-	TagIDs     []string   `json:"tag_ids"`
-	IsMature   bool      `json:"is_mature"`
+	UserLogin    string    `json:"user_login"`
+	UserName     string    `json:"user_name"`
+	GameID       string    `json:"game_id"`
+	GameName     string    `json:"game_name"`
+	Type         string    `json:"type"`
+	Title        string    `json:"title"`
+	Tags         []string  `json:"tags"`
+	ViewerCount  int       `json:"viewer_count"`
+	StartedAt    time.Time `json:"started_at"`
+	Language     string    `json:"language"`
+	ThumbnailURL string    `json:"thumbnail_url"`
+	TagIDs       []string  `json:"tag_ids"`
+	IsMature     bool      `json:"is_mature"`
 }
 
 type StreamMarker struct {
-	ID            string    `json:"id"`
+	ID              string    `json:"id"`
 	CreatedAt       time.Time `json:"created_at"`
-	Description   string    `json:"description"`
-	PositionSeconds int     `json:"position_seconds"`
+	Description     string    `json:"description"`
+	PositionSeconds int       `json:"position_seconds"`
 }
 
 type StreamKey struct {
 	StreamKey string `json:"stream_key"`
 }
 
-type GetStreamsResponse struct {
-	Data       []Stream    `json:"data"`
-	Pagination Pagination `json:"pagination"`
-}
-
 type GetStreamMarkersResponse struct {
 	Data []struct {
 		VideoID   string         `json:"video_id"`
 		CreatedAt time.Time      `json:"created_at"`
-		Markers  []StreamMarker `json:"markers"`
+		Markers   []StreamMarker `json:"markers"`
 	} `json:"data"`
 }
 
@@ -182,8 +177,8 @@ func GetStreamMarkers(videoID string, req *twitch.PaginationRequest) (*twitch.Pa
 	user := globals.GetState().GetTwitchUser()
 
 	opts := map[string]any{
-		"broadcaster_id": user.UserID,
-		"video_id":       videoID,
+		"user_id":  user.UserID,
+		"video_id": videoID,
 	}
 
 	if req != nil {
@@ -204,11 +199,11 @@ func GetStreamMarkers(videoID string, req *twitch.PaginationRequest) (*twitch.Pa
 	}
 
 	result.GetNext = func() *twitch.PaginationData[GetStreamMarkersResponse] {
-		GetStreamMarkers(videoID, &twitch.PaginationRequest{
+		n, _ := GetStreamMarkers(videoID, &twitch.PaginationRequest{
 			Cursor:   result.Pagination.Cursor,
 			Quantity: req.Quantity,
 		})
-		return result
+		return n
 	}
 
 	return result, nil

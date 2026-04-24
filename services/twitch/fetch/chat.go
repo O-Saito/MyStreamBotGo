@@ -4,11 +4,6 @@ import (
 	"MyStreamBot/globals"
 	"MyStreamBot/helpers"
 	twitch "MyStreamBot/services/twitch"
-	"bytes"
-	"encoding/json"
-	"fmt"
-	"io"
-	"net/http"
 )
 
 var urlAPIChat = "https://api.twitch.tv/helix/chat"
@@ -83,8 +78,8 @@ type Chatter struct {
 }
 
 type GetChattersResponse struct {
-	Data       []Chatter    `json:"data"`
-	Pagination Pagination `json:"pagination"`
+	Data       []Chatter        `json:"data"`
+	Pagination twitch.Pagination `json:"pagination"`
 }
 
 type GetChannelEmotesResponse struct {
@@ -132,12 +127,16 @@ func GetChatters(req *twitch.PaginationRequest) (*twitch.PaginationData[Chatter]
 		return nil, err
 	}
 
+	quantity := 0
+	if req != nil {
+		quantity = req.Quantity
+	}
 	result.GetNext = func() *twitch.PaginationData[Chatter] {
-		GetChatters(&twitch.PaginationRequest{
+		r, _ := GetChatters(&twitch.PaginationRequest{
 			Cursor:   result.Pagination.Cursor,
-			Quantity: req.Quantity,
+			Quantity: quantity,
 		})
-		return result
+		return r
 	}
 
 	return result, nil
@@ -279,42 +278,23 @@ func UpdateChatSettings(req UpdateChatSettingsRequest) error {
 func SendChatAnnouncement(message, color string) error {
 	user := globals.GetState().GetTwitchUser()
 
-	data := map[string]any{
-		"message":       message,
+	opts := map[string]any{
 		"broadcaster_id": user.UserID,
-		"moderator_id":  user.UserID,
+		"moderator_id":   user.UserID,
+	}
+	url := twitch.BuildURL(twitch.HelixBaseURL+"/chat/announcements", opts)
+
+	body := map[string]any{
+		"message": message,
 	}
 	if color != "" {
-		data["color"] = color
+		body["color"] = color
 	}
 
-	jsonData, err := json.Marshal(data)
-	if err != nil {
-		helpers.Logf(helpers.ERROR, "[TWITCH] SendChatAnnouncement json.Marshal failed: %v", err)
-		return err
-	}
-
-	req, err := http.NewRequest("POST", urlAPIChatAnnouncements, bytes.NewBuffer(jsonData))
-	if err != nil {
-		helpers.Logf(helpers.ERROR, "[TWITCH] SendChatAnnouncement http.NewRequest failed: %v", err)
-		return err
-	}
-	req.Header.Set("Content-Type", "application/json")
-
-	resp, err := twitch.DoRequest(req)
+	_, err := twitch.ExecuteJSONRequest[struct{}, map[string]any]("POST", url, body, 204)
 	if err != nil {
 		helpers.Logf(helpers.DEBUG, "[TWITCH] SendChatAnnouncement: broadcasterID=%v, message=%v", user.UserID, message)
 		return err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != 204 {
-		body, err := io.ReadAll(resp.Body)
-		if err != nil {
-			helpers.Logf(helpers.ERROR, "[TWITCH] SendChatAnnouncement io.ReadAll failed: %v", err)
-			return err
-		}
-		return fmt.Errorf("SendChatAnnouncement: failed: %s", body)
 	}
 
 	return nil

@@ -1,14 +1,8 @@
 package twitch
 
 import (
-	"fmt"
-	"net/http"
-	"strings"
-
 	twitch "MyStreamBot/services/twitch"
 )
-
-var urlAPIEntitlements = twitch.HelixBaseURL + "/entitlements"
 
 type DropEntitlement struct {
 	ID              string `json:"id"`
@@ -19,45 +13,36 @@ type DropEntitlement struct {
 	GrantedAt       string `json:"granted_at"`
 }
 
-type GetDropEntitlementsResponse struct {
-	Data       []DropEntitlement `json:"data"`
-	Pagination twitch.Pagination  `json:"pagination"`
-}
+func GetDropEntitlements(beneficiaryID, campaignID, gameID string, req *twitch.PaginationRequest) ([]DropEntitlement, error) {
+	opts := map[string]any{}
 
-func GetDropEntitlements(beneficiaryID, campaignID, gameID string, first int, after string) ([]DropEntitlement, error) {
-	url := urlAPIEntitlements + "/drops"
 	if beneficiaryID != "" {
-		url += "?beneficiary_id=" + beneficiaryID
+		opts["beneficiary_id"] = beneficiaryID
 	}
 	if campaignID != "" {
-		if len(url) > len(urlAPIEntitlements+"/drops") {
-			url += "&"
-		} else {
-			url += "?"
-		}
-		url += "campaign_id=" + campaignID
+		opts["campaign_id"] = campaignID
 	}
 	if gameID != "" {
-		if !strings.Contains(url, "?") {
-			url += "?"
-		} else {
-			url += "&"
-		}
-		url += "game_id=" + gameID
-	}
-	if first > 0 {
-		url += fmt.Sprintf("&first=%d", first)
-	}
-	if after != "" {
-		url += "&after=" + after
+		opts["game_id"] = gameID
 	}
 
-	resp, err := twitch.ExecuteRequest[GetDropEntitlementsResponse](http.MethodGet, url, http.StatusOK)
+	if req != nil {
+		if req.Cursor != "" {
+			opts["after"] = req.Cursor
+		}
+		if req.Quantity > 0 {
+			opts["first"] = req.Quantity
+		}
+	}
+
+	url := twitch.BuildURL(twitch.HelixBaseURL+"/entitlements/drops", opts)
+
+	result, err := twitch.ExecuteRequest[twitch.PaginationData[DropEntitlement]]("GET", url, 200)
 	if err != nil {
 		return nil, err
 	}
 
-	return resp.Data, nil
+	return result.Data, nil
 }
 
 type UpdateDropEntitlementRequest struct {
@@ -68,8 +53,9 @@ type UpdateDropEntitlementRequest struct {
 type UpdateDropEntitlementResponse struct{}
 
 func UpdateDropEntitlements(req UpdateDropEntitlementRequest) error {
-	url := urlAPIEntitlements + "/drops"
-	_, err := twitch.ExecuteJSONRequest[UpdateDropEntitlementResponse, UpdateDropEntitlementRequest](http.MethodPatch, url, req, http.StatusOK)
+	url := twitch.BuildURL(twitch.HelixBaseURL+"/entitlements/drops", nil)
+
+	_, err := twitch.ExecuteJSONRequest[UpdateDropEntitlementResponse, UpdateDropEntitlementRequest]("PATCH", url, req, 200)
 	if err != nil {
 		return err
 	}

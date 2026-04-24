@@ -1,118 +1,86 @@
 package twitch
 
 import (
-	"fmt"
 	twitch "MyStreamBot/services/twitch"
 	"time"
 )
 
 type ExtensionAnalyticsReport struct {
-	ExtensionID string    `json:"extension_id"`
-	URL         string    `json:"url"`
-	Type        string    `json:"type"`
-	DateRange   DateRange `json:"date_range"`
+	ExtensionID string           `json:"extension_id"`
+	URL         string           `json:"url"`
+	Type        string           `json:"type"`
+	DateRange   twitch.DateRange `json:"date_range"`
 }
 
 type GameAnalyticsReport struct {
-	GameID    string    `json:"game_id"`
-	URL       string    `json:"url"`
-	Type      string    `json:"type"`
-	DateRange DateRange `json:"date_range"`
+	GameID    string           `json:"game_id"`
+	URL       string           `json:"url"`
+	Type      string           `json:"type"`
+	DateRange twitch.DateRange `json:"date_range"`
 }
 
-type DateRange struct {
-	StartedAt string `json:"started_at"`
-	EndedAt   string `json:"ended_at"`
-}
+func GetExtensionAnalytics(extensionID, reportType string, startedAt, endedAt *time.Time, req *twitch.PaginationRequest) ([]ExtensionAnalyticsReport, error) {
+	opts := map[string]any{}
 
-type Pagination struct {
-	Cursor string `json:"cursor"`
-}
-
-type GetExtensionAnalyticsResponse struct {
-	Data       []ExtensionAnalyticsReport `json:"data"`
-	Pagination Pagination                 `json:"pagination"`
-}
-
-type GetGameAnalyticsResponse struct {
-	Data       []GameAnalyticsReport `json:"data"`
-	Pagination Pagination            `json:"pagination"`
-}
-
-func GetExtensionAnalytics(extensionID, reportType string, startedAt, endedAt *time.Time, first int, after string) (*GetExtensionAnalyticsResponse, error) {
-	url := twitch.HelixBaseURL + "/analytics/extensions"
-
-	query := ""
 	if extensionID != "" {
-		query = fmt.Sprintf("extension_id=%s", extensionID)
+		opts["extension_id"] = extensionID
 	}
 	if reportType != "" {
-		if query != "" {
-			query += "&"
-		}
-		query += fmt.Sprintf("type=%s", reportType)
+		opts["type"] = reportType
 	}
 	if startedAt != nil && endedAt != nil {
-		if query != "" {
-			query += "&"
-		}
-		query += fmt.Sprintf("started_at=%s&ended_at=%s", startedAt.Format(time.RFC3339), endedAt.Format(time.RFC3339))
-	}
-	if first > 0 {
-		if query != "" {
-			query += "&"
-		}
-		query += fmt.Sprintf("first=%d", first)
-	}
-	if after != "" {
-		if query != "" {
-			query += "&"
-		}
-		query += fmt.Sprintf("after=%s", after)
+		opts["started_at"] = startedAt.Format(time.RFC3339)
+		opts["ended_at"] = endedAt.Format(time.RFC3339)
 	}
 
-	if query != "" {
-		url = url + "?" + query
+	if req != nil {
+		if req.Cursor != "" {
+			opts["after"] = req.Cursor
+		}
+		if req.Quantity > 0 {
+			opts["first"] = req.Quantity
+		}
 	}
 
-	return twitch.ExecuteRequest[GetExtensionAnalyticsResponse]("GET", url, 200)
+	url := twitch.BuildURL(twitch.HelixBaseURL+"/analytics/extensions", opts)
+
+	result, err := twitch.ExecuteRequest[twitch.PaginationData[ExtensionAnalyticsReport]]("GET", url, 200)
+	if err != nil {
+		return nil, err
+	}
+
+	return result.Data, nil
 }
 
-func GetGameAnalytics(gameID, reportType string, startedAt, endedAt *time.Time, first int, after string) (*GetGameAnalyticsResponse, error) {
-	url := twitch.HelixBaseURL + "/analytics/games"
+func GetGameAnalytics(gameID, reportType string, startedAt, endedAt *time.Time, req *twitch.PaginationRequest) ([]GameAnalyticsReport, error) {
+	opts := map[string]any{}
 
-	query := ""
 	if gameID != "" {
-		query = fmt.Sprintf("game_id=%s", gameID)
+		opts["game_id"] = gameID
 	}
 	if reportType != "" {
-		if query != "" {
-			query += "&"
-		}
-		query += fmt.Sprintf("type=%s", reportType)
+		opts["type"] = reportType
 	}
 	if startedAt != nil && endedAt != nil {
-		if query != "" {
-			query += "&"
-		}
-		query += fmt.Sprintf("started_at=%s&ended_at=%s", startedAt.Format(time.RFC3339), endedAt.Format(time.RFC3339))
-	}
-	if first > 0 {
-		if query != "" {
-			query += "&"
-		}
-		query += fmt.Sprintf("first=%d", first)
-	}
-	if after != "" {
-		if query != "" {
-			query += "&"
-		}
-		query += fmt.Sprintf("after=%s", after)
+		opts["started_at"] = startedAt.Format(time.RFC3339)
+		opts["ended_at"] = endedAt.Format(time.RFC3339)
 	}
 
-	if query != "" {
-		url = url + "?" + query
+	if req != nil {
+		if req.Cursor != "" {
+			opts["after"] = req.Cursor
+		}
+		if req.Quantity > 0 {
+			opts["first"] = req.Quantity
+		}
 	}
 
-	return twitch.ExecuteRequest[GetGameAnalyticsResponse]("GET", url, 200)
+	url := twitch.BuildURL(twitch.HelixBaseURL+"/analytics/games", opts)
+
+	result, err := twitch.ExecuteRequest[twitch.PaginationData[GameAnalyticsReport]]("GET", url, 200)
+	if err != nil {
+		return nil, err
+	}
+
+	return result.Data, nil
 }

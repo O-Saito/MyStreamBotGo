@@ -3,6 +3,7 @@ package twitch
 import (
 	"MyStreamBot/globals"
 	"MyStreamBot/helpers"
+	tf "MyStreamBot/services/twitch/fetch"
 	"bytes"
 	"encoding/json"
 	"fmt"
@@ -61,7 +62,7 @@ type GameData struct {
 	BoxArt string `json:"box_art_url"`
 }
 
-var urlOAuthValidate = IDBaseURL + "/oauth2/validate"
+var urlOAuthValidate = tf.IDBaseURL + "/oauth2/validate"
 
 type TokenValidation struct {
 	ClientId  string   `json:"client_id"`
@@ -101,35 +102,21 @@ func ValidateAccessToken(accessToken string) (*TokenValidation, error) {
 }
 
 func GetStreamerData() (*TwitchUserData, error) {
-	req, err := http.NewRequest("GET", "https://api.twitch.tv/helix/users", nil)
+	opts := map[string]any{}
+
+	url := tf.BuildURL(tf.HelixBaseURL+"/users", opts)
+
+	result, err := tf.ExecuteRequest[UserResponse]("GET", url, 200)
 	if err != nil {
-		helpers.Logf(helpers.ERROR, "[TWITCH] GetStreamerData http.NewRequest failed: %v", err)
-		return nil, err
-	}
-	userResp, err := DoRequest(req)
-	if err != nil {
-		return nil, err
-	}
-	defer userResp.Body.Close()
-	dataUser, err := io.ReadAll(userResp.Body)
-	if err != nil {
-		helpers.Logf(helpers.ERROR, "[TWITCH] GetStreamerData io.ReadAll failed: %v", err)
+		helpers.Logf(helpers.DEBUG, "[TWITCH] GetStreamerData: no params")
 		return nil, err
 	}
 
-	var u struct {
-		Data []TwitchUserData `json:"data"`
-	}
-	if err := json.Unmarshal(dataUser, &u); err != nil {
-		helpers.Logf(helpers.ERROR, "[TWITCH] GetStreamerData json.Unmarshal failed: %v", err)
-		return nil, err
+	if len(result.Data) == 0 {
+		return nil, fmt.Errorf("GetStreamerData: no user returned, check token and scopes")
 	}
 
-	if len(u.Data) == 0 {
-		return nil, fmt.Errorf("GetUserDataByToken: no user returned, check token and scopes")
-	}
-
-	return &u.Data[0], nil
+	return &result.Data[0], nil
 }
 
 func GetUserData(login string) (*TwitchUserData, error) {
@@ -139,7 +126,7 @@ func GetUserData(login string) (*TwitchUserData, error) {
 		helpers.Logf(helpers.ERROR, "[TWITCH] GetUserData http.NewRequest failed: %v", err)
 		return nil, err
 	}
-	resp, err := DoRequest(req)
+	resp, err := tf.DoRequest(req)
 	if err != nil {
 		helpers.Logf(helpers.DEBUG, "[TWITCH] GetUserData: login=%v", login)
 		return nil, err
@@ -170,7 +157,7 @@ func GetUserDataById(id string) (*TwitchUserData, error) {
 		helpers.Logf(helpers.ERROR, "[TWITCH] GetUserDataById http.NewRequest failed: %v", err)
 		return nil, err
 	}
-	resp, err := DoRequest(req)
+	resp, err := tf.DoRequest(req)
 	if err != nil {
 		helpers.Logf(helpers.DEBUG, "[TWITCH] GetUserDataById: id=%v", id)
 		return nil, err
@@ -209,7 +196,7 @@ func GetFollowersData(broadcaster_id, userId string) ([]TwitchViewerData, error)
 		helpers.Logf(helpers.ERROR, "[TWITCH] GetFollowersData http.NewRequest failed: %v", err)
 		return []TwitchViewerData{}, err
 	}
-	resp, err := DoRequest(req)
+	resp, err := tf.DoRequest(req)
 	if err != nil {
 		helpers.Logf(helpers.DEBUG, "[TWITCH] GetFollowersData: broadcaster_id=%v, userId=%v", broadcaster_id, userId)
 		return []TwitchViewerData{}, err
@@ -239,7 +226,7 @@ func DeleteMessage(msgID string) error {
 		helpers.Logf(helpers.ERROR, "[TWITCH] DeleteMessage http.NewRequest failed: %v", err)
 		return err
 	}
-	resp, err := DoRequest(req)
+	resp, err := tf.DoRequest(req)
 	if err != nil {
 		helpers.Logf(helpers.DEBUG, "[TWITCH] DeleteMessage: msgID=%v", msgID)
 		return err
@@ -282,7 +269,7 @@ func BanUser(userId string, duration int32, reason string) (string, error) {
 		return "", err
 	}
 	req.Header.Set("Content-Type", "application/json")
-	resp, err := DoRequest(req)
+	resp, err := tf.DoRequest(req)
 	if err != nil {
 		helpers.Logf(helpers.DEBUG, "[TWITCH] BanUser: userId=%v, duration=%v, reason=%v", userId, duration, reason)
 		return "", err
@@ -312,7 +299,7 @@ func GetListOfGames(query string) ([]GameData, error) {
 		helpers.Logf(helpers.ERROR, "[TWITCH] GetListOfGames http.NewRequest failed: %v", err)
 		return nil, err
 	}
-	resp, err := DoRequest(req)
+	resp, err := tf.DoRequest(req)
 	if err != nil {
 		helpers.Logf(helpers.DEBUG, "[TWITCH] GetListOfGames: query=%v", query)
 		helpers.Logf(helpers.ERROR, "[TWITCH FETCH] Error fetching game list: %s", err.Error())
@@ -352,7 +339,7 @@ func GetChannelStreamData(id string) (*StreamData, error) {
 		helpers.Logf(helpers.ERROR, "[TWITCH] GetChannelStreamData http.NewRequest failed: %v", err)
 		return nil, err
 	}
-	resp, err := DoRequest(req)
+	resp, err := tf.DoRequest(req)
 	if err != nil {
 		helpers.Logf(helpers.DEBUG, "[TWITCH] GetChannelStreamData: id=%v", id)
 		helpers.Logf(helpers.ERROR, "[TWITCH] GetStreamData: %s", err.Error())
@@ -395,7 +382,7 @@ func UpdateChannelStreamData(sd *StreamData) error {
 		helpers.Logf(helpers.ERROR, "[TWITCH] UpdateChannelStreamData http.NewRequest failed: %v", err)
 		return err
 	}
-	resp, err := DoRequest(req)
+	resp, err := tf.DoRequest(req)
 	if err != nil {
 		helpers.Logf(helpers.DEBUG, "[TWITCH] UpdateChannelStreamData: sd=%v", sd)
 		return err
@@ -426,7 +413,7 @@ func GetBadges(broadcasterId ...string) (*map[string]any, error) {
 		helpers.Logf(helpers.ERROR, "[TWITCH] GetBadges http.NewRequest failed: %v", err)
 		return nil, err
 	}
-	resp, err := DoRequest(req)
+	resp, err := tf.DoRequest(req)
 	if err != nil {
 		helpers.Logf(helpers.DEBUG, "[TWITCH] GetBadges: broadcasterId=%v", broadcasterId)
 		helpers.Logf(helpers.ERROR, "[TWITCH FETCH] Error fetching badges list: %s", err.Error())
@@ -483,7 +470,7 @@ func GetEventSubscriptions() (*EventSubData, error) {
 		helpers.Logf(helpers.ERROR, "[TWITCH] GetEventSubscriptions http.NewRequest failed: %v", err)
 		return nil, err
 	}
-	resp, err := DoRequest(req)
+	resp, err := tf.DoRequest(req)
 	if err != nil {
 		helpers.Logf(helpers.DEBUG, "[TWITCH] GetEventSubscriptions: no params")
 		helpers.Logf(helpers.ERROR, "[TWITCH FETCH] Error fetching event subscriptions list: %s", err.Error())
@@ -521,7 +508,7 @@ func DeleteEventSubscriptions(id string) error {
 		helpers.Logf(helpers.ERROR, "[TWITCH] DeleteEventSubscriptions http.NewRequest failed: %v", err)
 		return err
 	}
-	resp, err := DoRequest(req)
+	resp, err := tf.DoRequest(req)
 	if err != nil {
 		helpers.Logf(helpers.DEBUG, "[TWITCH] DeleteEventSubscriptions: id=%v", id)
 		helpers.Logf(helpers.ERROR, "[TWITCH FETCH] Error deleting event subscription: %s", err.Error())
@@ -564,7 +551,7 @@ func GetUserChatColor(id string) (*struct {
 		helpers.Logf(helpers.ERROR, "[TWITCH] GetUserChatColor http.NewRequest failed: %v", err)
 		return nil, err
 	}
-	resp, err := DoRequest(req)
+	resp, err := tf.DoRequest(req)
 	if err != nil {
 		helpers.Logf(helpers.DEBUG, "[TWITCH] GetUserChatColor: id=%v", id)
 		helpers.Logf(helpers.ERROR, "[TWITCH FETCH] Error fetching user color: %s", err.Error())
@@ -613,7 +600,7 @@ func GetStreamData(id string) (*globals.TwitchStreamData, error) {
 		helpers.Logf(helpers.ERROR, "[TWITCH] GetStreamData http.NewRequest failed: %v", err)
 		return nil, err
 	}
-	resp, err := DoRequest(req)
+	resp, err := tf.DoRequest(req)
 	if err != nil {
 		helpers.Logf(helpers.DEBUG, "[TWITCH] GetStreamData: id=%v", id)
 		helpers.Logf(helpers.ERROR, "[TWITCH] GetStreamData: %s", err.Error())
@@ -657,7 +644,7 @@ func UpdateAutomod(userId, msgId, action string) (string, error) {
 		return "", err
 	}
 	req.Header.Set("Content-Type", "application/json")
-	resp, err := DoRequest(req)
+	resp, err := tf.DoRequest(req)
 	if err != nil {
 		helpers.Logf(helpers.DEBUG, "[TWITCH] UpdateAutomod: userId=%v, msgId=%v, action=%v", userId, msgId, action)
 		return "", err

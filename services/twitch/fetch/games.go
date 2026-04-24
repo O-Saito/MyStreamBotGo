@@ -40,12 +40,16 @@ func GetTopGames(req *twitch.PaginationRequest) (*twitch.PaginationData[Game], e
 		return nil, err
 	}
 
+	quantity := 0
+	if req != nil {
+		quantity = req.Quantity
+	}
 	result.GetNext = func() *twitch.PaginationData[Game] {
-		GetTopGames(&twitch.PaginationRequest{
+		r, _ := GetTopGames(&twitch.PaginationRequest{
 			Cursor:   result.Pagination.Cursor,
-			Quantity: req.Quantity,
+			Quantity: quantity,
 		})
-		return result
+		return r
 	}
 
 	return result, nil

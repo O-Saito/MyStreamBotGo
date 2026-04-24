@@ -140,12 +140,16 @@ func GetFollowedChannels(broadcasterID string, req *twitch.PaginationRequest) (*
 		return nil, err
 	}
 
+	quantity := 0
+	if req != nil {
+		quantity = req.Quantity
+	}
 	result.GetNext = func() *twitch.PaginationData[FollowedChannel] {
-		GetFollowedChannels(broadcasterID, &twitch.PaginationRequest{
+		r, _ := GetFollowedChannels(broadcasterID, &twitch.PaginationRequest{
 			Cursor:   result.Pagination.Cursor,
-			Quantity: req.Quantity,
+			Quantity: quantity,
 		})
-		return result
+		return r
 	}
 
 	return result, nil
@@ -176,12 +180,16 @@ func GetChannelFollowers(userId string, req *twitch.PaginationRequest) (*twitch.
 		return nil, err
 	}
 
+	quantity := 0
+	if req != nil {
+		quantity = req.Quantity
+	}
 	result.GetNext = func() *twitch.PaginationData[twitch.TwitchViewerData] {
-		GetChannelFollowers(userId, &twitch.PaginationRequest{
+		r, _ := GetChannelFollowers(userId, &twitch.PaginationRequest{
 			Cursor:   result.Pagination.Cursor,
-			Quantity: req.Quantity,
+			Quantity: quantity,
 		})
-		return result
+		return r
 	}
 
 	return result, nil

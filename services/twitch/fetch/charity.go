@@ -88,12 +88,16 @@ func GetCharityCampaignDonations(req *twitch.PaginationRequest) (*twitch.Paginat
 		return nil, err
 	}
 
+	quantity := 0
+	if req != nil {
+		quantity = req.Quantity
+	}
 	result.GetNext = func() *twitch.PaginationData[CharityDonation] {
-		GetCharityCampaignDonations(&twitch.PaginationRequest{
+		r, _ := GetCharityCampaignDonations(&twitch.PaginationRequest{
 			Cursor:   result.Pagination.Cursor,
-			Quantity: req.Quantity,
+			Quantity: quantity,
 		})
-		return result
+		return r
 	}
 
 	return result, nil

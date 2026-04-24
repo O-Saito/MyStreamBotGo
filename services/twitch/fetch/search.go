@@ -52,12 +52,16 @@ func SearchCategories(query string, req *twitch.PaginationRequest) (*twitch.Pagi
 		return nil, err
 	}
 
+	quantity := 0
+	if req != nil {
+		quantity = req.Quantity
+	}
 	result.GetNext = func() *twitch.PaginationData[SearchCategory] {
-		SearchCategories(query, &twitch.PaginationRequest{
+		r, _ := SearchCategories(query, &twitch.PaginationRequest{
 			Cursor:   result.Pagination.Cursor,
-			Quantity: req.Quantity,
+			Quantity: quantity,
 		})
-		return result
+		return r
 	}
 
 	return result, nil
@@ -87,12 +91,16 @@ func SearchChannels(query string, liveOnly bool, req *twitch.PaginationRequest) 
 		return nil, err
 	}
 
+	quantity := 0
+	if req != nil {
+		quantity = req.Quantity
+	}
 	result.GetNext = func() *twitch.PaginationData[SearchChannel] {
-		SearchChannels(query, liveOnly, &twitch.PaginationRequest{
+		r, _ := SearchChannels(query, liveOnly, &twitch.PaginationRequest{
 			Cursor:   result.Pagination.Cursor,
-			Quantity: req.Quantity,
+			Quantity: quantity,
 		})
-		return result
+		return r
 	}
 
 	return result, nil

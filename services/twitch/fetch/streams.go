@@ -102,12 +102,16 @@ func GetStreams(userIDs []string, gameIDs []string, languages []string, req *twi
 		return nil, err
 	}
 
+	quantity := 0
+	if req != nil {
+		quantity = req.Quantity
+	}
 	result.GetNext = func() *twitch.PaginationData[Stream] {
-		GetStreams(userIDs, gameIDs, languages, &twitch.PaginationRequest{
+		r, _ := GetStreams(userIDs, gameIDs, languages, &twitch.PaginationRequest{
 			Cursor:   result.Pagination.Cursor,
-			Quantity: req.Quantity,
+			Quantity: quantity,
 		})
-		return result
+		return r
 	}
 
 	return result, nil
@@ -140,12 +144,16 @@ func GetFollowedStreams(userID string, req *twitch.PaginationRequest) (*twitch.P
 		return nil, err
 	}
 
+	quantity := 0
+	if req != nil {
+		quantity = req.Quantity
+	}
 	result.GetNext = func() *twitch.PaginationData[Stream] {
-		GetFollowedStreams(userID, &twitch.PaginationRequest{
+		r, _ := GetFollowedStreams(userID, &twitch.PaginationRequest{
 			Cursor:   result.Pagination.Cursor,
-			Quantity: req.Quantity,
+			Quantity: quantity,
 		})
-		return result
+		return r
 	}
 
 	return result, nil

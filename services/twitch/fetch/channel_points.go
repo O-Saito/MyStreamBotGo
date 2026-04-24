@@ -201,12 +201,16 @@ func GetCustomRewardRedemptions(rewardID, status string, req *twitch.PaginationR
 		return nil, err
 	}
 
+	quantity := 0
+	if req != nil {
+		quantity = req.Quantity
+	}
 	result.GetNext = func() *twitch.PaginationData[CustomRewardRedemption] {
-		GetCustomRewardRedemptions(rewardID, status, &twitch.PaginationRequest{
+		r, _ := GetCustomRewardRedemptions(rewardID, status, &twitch.PaginationRequest{
 			Cursor:   result.Pagination.Cursor,
-			Quantity: req.Quantity,
+			Quantity: quantity,
 		})
-		return result
+		return r
 	}
 
 	return result, nil

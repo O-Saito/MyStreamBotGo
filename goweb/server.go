@@ -130,6 +130,7 @@ func StartHTTPServer() {
 			}
 
 			if data.Filter != "" {
+				data.SocketTag = mytag
 				globals.LuaRequest <- data
 				continue
 			}

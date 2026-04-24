@@ -2,7 +2,6 @@ package twitch
 
 import (
 	"MyStreamBot/helpers"
-	
 )
 
 var urlAPIUsers = HelixBaseURL + "/users"
@@ -108,12 +107,12 @@ func GetUser(id, login []string) (*User, error) {
 
 	result, err := ExecuteRequest[GetUsersResponse]("GET", url, 200)
 	if err != nil {
-		helpers.Logf(helpers.DEBUG, "[TWITCH] GetUser: id=%v", id)
+		helpers.Logf(helpers.ERROR, "[TWITCH] GetUser: id=%v login=%v url=%v error=%v", id, login, url, err)
 		return nil, err
 	}
 
 	if len(result.Data) == 0 {
-		helpers.Logf(helpers.DEBUG, "[TWITCH] GetUser: id=%v", id)
+		helpers.Logf(helpers.DEBUG, "[TWITCH] GetUser: id=%v login=%v url=%v error=not found", id, login, url)
 		return nil, nil
 	}
 
@@ -146,7 +145,7 @@ func GetAuthorizationByUser(userIDs []string) (*UserAuthorization, error) {
 
 	result, err := ExecuteRequest[GetUserAuthorizationResponse]("GET", url, 200)
 	if err != nil {
-		helpers.Logf(helpers.DEBUG, "[TWITCH] GetAuthorizationByUser: userID=%v", userIDs)
+		helpers.Logf(helpers.ERROR, "[TWITCH] GetAuthorizationByUser: userID=%v error=%v", userIDs, err)
 		return nil, err
 	}
 
@@ -175,7 +174,7 @@ func GetUserBlockList(targetUserID string, req *PaginationRequest) (*PaginationD
 
 	result, err := ExecuteRequest[PaginationData[UserBlock]]("GET", url, 200)
 	if err != nil {
-		helpers.Logf(helpers.DEBUG, "[TWITCH] GetUserBlockList: targetUserID=%v", targetUserID)
+		helpers.Logf(helpers.ERROR, "[TWITCH] GetUserBlockList: targetUserID=%v error=%v", targetUserID, err)
 		return nil, err
 	}
 
@@ -208,7 +207,7 @@ func BlockUser(targetUserID string, sourceContext string, reason string) error {
 
 	_, err := ExecuteRequest[struct{}]("PUT", url, 204)
 	if err != nil {
-		helpers.Logf(helpers.DEBUG, "[TWITCH] BlockUser: targetUserID=%v sourceContext=%v reason=%v", targetUserID, sourceContext, reason)
+		helpers.Logf(helpers.ERROR, "[TWITCH] BlockUser: targetUserID=%v sourceContext=%v reason=%v error=%v", targetUserID, sourceContext, reason, err)
 		return err
 	}
 
@@ -223,7 +222,7 @@ func UnblockUser(targetUserID string) error {
 
 	_, err := ExecuteRequest[struct{}]("DELETE", url, 204)
 	if err != nil {
-		helpers.Logf(helpers.DEBUG, "[TWITCH] UnblockUser: targetUserID=%v", targetUserID)
+		helpers.Logf(helpers.ERROR, "[TWITCH] UnblockUser: targetUserID=%v error=%v", targetUserID, err)
 		return err
 	}
 
@@ -235,7 +234,7 @@ func GetUserExtensions() ([]UserExtension, error) {
 
 	result, err := ExecuteRequest[GetUserExtensionsResponse]("GET", url, 200)
 	if err != nil {
-		helpers.Logf(helpers.DEBUG, "[TWITCH] GetUserExtensions: no params")
+		helpers.Logf(helpers.ERROR, "[TWITCH] GetUserExtensions: error=%v", err)
 		return nil, err
 	}
 
@@ -248,7 +247,7 @@ func GetUserActiveExtensions() (*UserExtensionData, error) {
 
 	result, err := ExecuteRequest[UserActiveExtensionsResponse]("GET", url, 200)
 	if err != nil {
-		helpers.Logf(helpers.DEBUG, "[TWITCH] GetUserActiveExtensions: no params")
+		helpers.Logf(helpers.ERROR, "[TWITCH] GetUserActiveExtensions: error=%v", err)
 		return nil, err
 	}
 
@@ -261,7 +260,7 @@ func UpdateUserExtensions(req UserActiveExtensionsResponse) (*UserActiveExtensio
 
 	result, err := ExecuteJSONRequest[UserActiveExtensionsResponse]("PUT", url, req, 200)
 	if err != nil {
-		helpers.Logf(helpers.DEBUG, "[TWITCH] UpdateUserExtensions: request sent")
+		helpers.Logf(helpers.ERROR, "[TWITCH] UpdateUserExtensions: error=%v", err)
 		return nil, err
 	}
 

@@ -123,7 +123,7 @@ func GetChatters(req *PaginationRequest) (*PaginationData[Chatter], error) {
 
 	result, err := ExecuteRequest[PaginationData[Chatter]]("GET", url, 200)
 	if err != nil {
-		helpers.Logf(helpers.DEBUG, "[TWITCH] GetChatters: broadcasterID=%v", user.UserID)
+		helpers.Logf(helpers.ERROR, "[TWITCH] GetChatters: broadcasterID=%v error=%v", user.UserID, err)
 		return nil, err
 	}
 
@@ -153,7 +153,7 @@ func GetChannelEmotes() ([]ChannelEmote, error) {
 
 	result, err := ExecuteRequest[GetChannelEmotesResponse]("GET", url, 200)
 	if err != nil {
-		helpers.Logf(helpers.DEBUG, "[TWITCH] GetChannelEmotes: broadcasterID=%v", user.UserID)
+		helpers.Logf(helpers.ERROR, "[TWITCH] GetChannelEmotes: broadcasterID=%v error=%v", user.UserID, err)
 		return nil, err
 	}
 
@@ -167,7 +167,7 @@ func GetGlobalEmotes() ([]GlobalEmote, error) {
 
 	result, err := ExecuteRequest[GetGlobalEmotesResponse]("GET", url, 200)
 	if err != nil {
-		helpers.Logf(helpers.DEBUG, "[TWITCH] GetGlobalEmotes: no params")
+		helpers.Logf(helpers.ERROR, "[TWITCH] GetGlobalEmotes: error=%v", err)
 		return nil, err
 	}
 
@@ -184,7 +184,7 @@ func GetEmoteSets(emoteSetIDs []string) ([]EmoteSet, error) {
 
 	result, err := ExecuteRequest[GetEmoteSetsResponse]("GET", url, 200)
 	if err != nil {
-		helpers.Logf(helpers.DEBUG, "[TWITCH] GetEmoteSets: emoteSetIDs=%v", emoteSetIDs)
+		helpers.Logf(helpers.ERROR, "[TWITCH] GetEmoteSets: emoteSetIDs=%v error=%v", emoteSetIDs, err)
 		return nil, err
 	}
 
@@ -202,7 +202,7 @@ func GetChannelChatBadges() ([]ChatBadgeSet, error) {
 
 	result, err := ExecuteRequest[GetChatBadgesResponse]("GET", url, 200)
 	if err != nil {
-		helpers.Logf(helpers.DEBUG, "[TWITCH] GetChannelChatBadges: broadcasterID=%v", user.UserID)
+		helpers.Logf(helpers.ERROR, "[TWITCH] GetChannelChatBadges: broadcasterID=%v error=%v", user.UserID, err)
 		return nil, err
 	}
 
@@ -216,7 +216,7 @@ func GetGlobalChatBadges() ([]ChatBadgeSet, error) {
 
 	result, err := ExecuteRequest[GetChatBadgesResponse]("GET", url, 200)
 	if err != nil {
-		helpers.Logf(helpers.DEBUG, "[TWITCH] GetGlobalChatBadges: no params")
+		helpers.Logf(helpers.ERROR, "[TWITCH] GetGlobalChatBadges: error=%v", err)
 		return nil, err
 	}
 
@@ -235,7 +235,7 @@ func GetChatSettings() (*ChatSettings, error) {
 
 	result, err := ExecuteRequest[GetChatSettingsResponse]("GET", url, 200)
 	if err != nil {
-		helpers.Logf(helpers.DEBUG, "[TWITCH] GetChatSettings: broadcasterID=%v", user.UserID)
+		helpers.Logf(helpers.ERROR, "[TWITCH] GetChatSettings: broadcasterID=%v error=%v", user.UserID, err)
 		return nil, err
 	}
 
@@ -268,7 +268,7 @@ func UpdateChatSettings(req UpdateChatSettingsRequest) error {
 
 	_, err := ExecuteJSONRequest[struct{}, UpdateChatSettingsRequest]("PATCH", url, req, 200)
 	if err != nil {
-		helpers.Logf(helpers.DEBUG, "[TWITCH] UpdateChatSettings: broadcasterID=%v", user.UserID)
+		helpers.Logf(helpers.ERROR, "[TWITCH] UpdateChatSettings: broadcasterID=%v error=%v", user.UserID, err)
 		return err
 	}
 
@@ -293,7 +293,7 @@ func SendChatAnnouncement(message, color string) error {
 
 	_, err := ExecuteJSONRequest[struct{}, map[string]any]("POST", url, body, 204)
 	if err != nil {
-		helpers.Logf(helpers.DEBUG, "[TWITCH] SendChatAnnouncement: broadcasterID=%v, message=%v", user.UserID, message)
+		helpers.Logf(helpers.ERROR, "[TWITCH] SendChatAnnouncement: broadcasterID=%v, message=%v error=%v", user.UserID, message, err)
 		return err
 	}
 
@@ -313,7 +313,7 @@ func SendShoutout(toBroadcasterID string) error {
 
 	_, err := ExecuteRequest[struct{}]("POST", url, 204)
 	if err != nil {
-		helpers.Logf(helpers.DEBUG, "[TWITCH] SendShoutout: fromBroadcasterID=%v, toBroadcasterID=%v", user.UserID, toBroadcasterID)
+		helpers.Logf(helpers.ERROR, "[TWITCH] SendShoutout: fromBroadcasterID=%v, toBroadcasterID=%v error=%v", user.UserID, toBroadcasterID, err)
 		return err
 	}
 
@@ -338,7 +338,7 @@ func SendChatMessage(msg string) error {
 	data := map[string]any{"message": msg}
 	_, err := ExecuteJSONRequest[struct{}, map[string]any]("POST", url, data, 200)
 	if err != nil {
-		helpers.Logf(helpers.DEBUG, "[TWITCH] SendChatMessage: broadcasterID=%v", user.UserID)
+		helpers.Logf(helpers.ERROR, "[TWITCH] SendChatMessage: broadcasterID=%v error=%v", user.UserID, err)
 		return err
 	}
 
@@ -360,7 +360,7 @@ func UpdateUserChatColor(userID, color string) error {
 
 	_, err := ExecuteRequest[struct{}]("PUT", url, 204)
 	if err != nil {
-		helpers.Logf(helpers.DEBUG, "[TWITCH] UpdateUserChatColor: userID=%v, color=%v", userID, color)
+		helpers.Logf(helpers.ERROR, "[TWITCH] UpdateUserChatColor: userID=%v, color=%v error=%v", userID, color, err)
 		return err
 	}
 

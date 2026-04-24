@@ -61,7 +61,7 @@ func GetStreamKey() (string, error) {
 		Data []StreamKey `json:"data"`
 	}]("GET", url, 200)
 	if err != nil {
-		helpers.Logf(helpers.DEBUG, "[TWITCH] GetStreamKey: broadcasterID=%v", user.UserID)
+		helpers.Logf(helpers.ERROR, "[TWITCH] GetStreamKey: broadcasterID=%v error=%v", user.UserID, err)
 		return "", err
 	}
 
@@ -101,7 +101,7 @@ func GetStreams(userIDs, userLogins, gameIDs, languages []string, req *Paginatio
 
 	result, err := ExecuteRequest[PaginationData[Stream]]("GET", url, 200)
 	if err != nil {
-		helpers.Logf(helpers.DEBUG, "[TWITCH] GetStreams: userIDs=%v", userIDs)
+		helpers.Logf(helpers.ERROR, "[TWITCH] GetStreams: userIDs=%v error=%v", userIDs, err)
 		return nil, err
 	}
 
@@ -140,7 +140,7 @@ func GetFollowedStreams(req *PaginationRequest) (*PaginationData[Stream], error)
 
 	result, err := ExecuteRequest[PaginationData[Stream]]("GET", url, 200)
 	if err != nil {
-		helpers.Logf(helpers.DEBUG, "[TWITCH] GetFollowedStreams: userID=%v", user.UserID)
+		helpers.Logf(helpers.ERROR, "[TWITCH] GetFollowedStreams: userID=%v error=%v", user.UserID, err)
 		return nil, err
 	}
 
@@ -182,7 +182,7 @@ func CreateStreamMarker(description string) (*StreamMarker, error) {
 
 	result, err := ExecuteJSONRequest[CreateStreamMarkerResponse, map[string]any]("POST", url, body, 201)
 	if err != nil {
-		helpers.Logf(helpers.DEBUG, "[TWITCH] CreateStreamMarker: broadcasterID=%v", user.UserID)
+		helpers.Logf(helpers.ERROR, "[TWITCH] CreateStreamMarker: broadcasterID=%v error=%v", user.UserID, err)
 		return nil, err
 	}
 
@@ -214,7 +214,7 @@ func GetStreamMarkers(videoID string, req *PaginationRequest) (*PaginationData[G
 
 	result, err := ExecuteRequest[PaginationData[GetStreamMarkersResponse]]("GET", url, 200)
 	if err != nil {
-		helpers.Logf(helpers.DEBUG, "[TWITCH] GetStreamMarkers: broadcasterID=%v", user.UserID)
+		helpers.Logf(helpers.ERROR, "[TWITCH] GetStreamMarkers: broadcasterID=%v error=%v", user.UserID, err)
 		return nil, err
 	}
 

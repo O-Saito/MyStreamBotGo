@@ -62,7 +62,7 @@ func GetChannelInformation(broadcasterIDs []string) ([]ChannelInfo, error) {
 		Data []ChannelInfo `json:"data"`
 	}]("GET", url, 200)
 	if err != nil {
-		helpers.Logf(helpers.DEBUG, "[TWITCH] GetChannelInformation: broadcasterIDs=%v", broadcasterIDs)
+		helpers.Logf(helpers.ERROR, "[TWITCH] GetChannelInformation: broadcasterIDs=%v error=%v", broadcasterIDs, err)
 		return nil, err
 	}
 
@@ -79,7 +79,7 @@ func ModifyChannelInformation(req UpdateChannelRequest) error {
 
 	_, err := ExecuteJSONRequest[ModifyChannelResponse, UpdateChannelRequest]("PATCH", url, req, 204)
 	if err != nil {
-		helpers.Logf(helpers.DEBUG, "[TWITCH] ModifyChannelInformation: broadcasterID=%v", user.UserID)
+		helpers.Logf(helpers.ERROR, "[TWITCH] ModifyChannelInformation: broadcasterID=%v error=%v", user.UserID, err)
 		return err
 	}
 
@@ -96,7 +96,7 @@ func GetChannelEditors() ([]ChannelEditor, error) {
 
 	result, err := ExecuteRequest[GetChannelEditorsResponse]("GET", url, 200)
 	if err != nil {
-		helpers.Logf(helpers.DEBUG, "[TWITCH] GetChannelEditors: broadcasterID=%v", user.UserID)
+		helpers.Logf(helpers.ERROR, "[TWITCH] GetChannelEditors: broadcasterID=%v error=%v", user.UserID, err)
 		return nil, err
 	}
 
@@ -136,7 +136,7 @@ func GetFollowedChannels(broadcasterID string, req *PaginationRequest) (*Paginat
 
 	result, err := ExecuteRequest[PaginationData[FollowedChannel]]("GET", url, 200)
 	if err != nil {
-		helpers.Logf(helpers.DEBUG, "[TWITCH] GetFollowedChannels: broadcasterID=%v", broadcasterID)
+		helpers.Logf(helpers.ERROR, "[TWITCH] GetFollowedChannels: broadcasterID=%v error=%v", broadcasterID, err)
 		return nil, err
 	}
 
@@ -176,7 +176,7 @@ func GetChannelFollowers(userId string, req *PaginationRequest) (*PaginationData
 
 	result, err := ExecuteRequest[PaginationData[TwitchViewerData]]("GET", url, 200)
 	if err != nil {
-		helpers.Logf(helpers.DEBUG, "[TWITCH] GetChannelFollowers: userID=%v", userId)
+		helpers.Logf(helpers.ERROR, "[TWITCH] GetChannelFollowers: userID=%v error=%v", userId, err)
 		return nil, err
 	}
 

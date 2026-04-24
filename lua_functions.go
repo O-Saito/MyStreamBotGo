@@ -11,6 +11,8 @@ import (
 	"encoding/json"
 	"strings"
 
+	tf "MyStreamBot/services/twitch/fetch"
+
 	lua "github.com/yuin/gopher-lua"
 )
 
@@ -87,15 +89,29 @@ var TwitchFunctionList = []services.LuaFunction{
 		}
 	}},
 	{Name: "get_cache_user_chat_color", Fn: twitch.GetCacheUserChatColor},
-	{Name: "get_user_data", Fn: twitch.GetUserData},
-	{Name: "get_user_data_by_id", Fn: twitch.GetUserDataById},
-	{Name: "get_followers_data", Fn: twitch.GetFollowersData},
-	{Name: "get_follower_data", Fn: func(userId string) ([]twitch.TwitchViewerData, error) {
-		return twitch.GetFollowersData("", userId)
+	{Name: "get_user_data", Fn: func(username string) *tf.User {
+		d, _ := tf.GetUser(nil, []string{username})
+		return d
+	}},
+	{Name: "get_user_data_by_id", Fn: func(userid string) *tf.User {
+		d, _ := tf.GetUser([]string{userid}, nil)
+		return d
+	}},
+	{Name: "get_followers_data", Fn: func() []tf.TwitchViewerData {
+		data, _ := tf.GetChannelFollowers("", nil)
+		return data.Data
+	}},
+	{Name: "get_follower_data", Fn: func(userId string) ([]tf.TwitchViewerData, error) {
+		data, err := tf.GetChannelFollowers(userId, nil)
+		return data.Data, err
 	}},
 	{Name: "get_channel_stream_data", Fn: twitch.GetChannelStreamData},
 	{Name: "ban_user", Fn: twitch.BanUser},
 	{Name: "delete_message", Fn: twitch.DeleteMessage},
+	{Name: "get_channel_followers", Fn: func(userId string) []tf.TwitchViewerData {
+		data, _ := tf.GetChannelFollowers(userId, nil)
+		return data.Data
+	}},
 }
 
 func RegisterLuaFunctions(L *lua.LState) {

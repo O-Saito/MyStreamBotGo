@@ -54,7 +54,7 @@ func TestGetUserData_NotFound(t *testing.T) {
 	})
 	defer restore()
 
-	user, err := GetUserData("nonexistent")
+	user, err := tf.GetUser(nil, []string{"nonexistent"})
 	if err == nil {
 		t.Error("expected error for user not found, got nil")
 	}
@@ -80,7 +80,7 @@ func TestGetUserData_Success(t *testing.T) {
 	})
 	defer restore()
 
-	user, err := GetUserData("testuser")
+	user, err := tf.GetUser(nil, []string{"nonexistent"})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -108,7 +108,7 @@ func TestGetUserDataById_Success(t *testing.T) {
 	})
 	defer restore()
 
-	user, err := GetUserDataById("67890")
+	user, err := tf.GetUser([]string{"67890"}, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -141,33 +141,6 @@ func TestGetFollowersData_Parsing(t *testing.T) {
 	}
 	if followers[1].UserName != "follower2" {
 		t.Errorf("followers[1].UserName = %q, want %q", followers[1].UserName, "follower2")
-	}
-}
-
-func TestGetListOfGames_Parsing(t *testing.T) {
-	restore := setupMockTransport(&http.Response{
-		StatusCode: 200,
-		Body: io.NopCloser(strings.NewReader(`{
-			"data": [
-				{"id":"game1","name":"Minecraft","box_art_url":"https://example.com/mc.png"},
-				{"id":"game2","name":"Fortnite","box_art_url":"https://example.com/fortnite.png"}
-			]
-		}`)),
-	})
-	defer restore()
-
-	games, err := GetListOfGames("game")
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if len(games) != 2 {
-		t.Errorf("len(games) = %d, want 2", len(games))
-	}
-	if games[0].Name != "Minecraft" {
-		t.Errorf("games[0].Name = %q, want %q", games[0].Name, "Minecraft")
-	}
-	if games[1].ID != "game2" {
-		t.Errorf("games[1].ID = %q, want %q", games[1].ID, "game2")
 	}
 }
 

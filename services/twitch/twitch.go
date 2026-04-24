@@ -3,6 +3,7 @@ package twitch
 import (
 	"MyStreamBot/globals"
 	"MyStreamBot/helpers"
+	tf "MyStreamBot/services/twitch/fetch"
 	"bufio"
 	"context"
 	"fmt"
@@ -74,7 +75,7 @@ func GetCacheUserChatColor(user string) string {
 	}
 
 	if userColorMap[user] == nil {
-		d, err := GetUserData(user)
+		d, err := tf.GetUser(nil, []string{user})
 		if err == nil {
 			c, err := GetUserChatColor(d.ID)
 			if err == nil {
@@ -258,7 +259,7 @@ var ircHandlers = map[string]func(parts []string, afterMetadataIndex int, metada
 				id, ok := roomId.(string)
 				if ok {
 					if streamerInfoMap[id] == nil {
-						streamerInfoMap[id], _ = GetUserDataById(id)
+						streamerInfoMap[id], _ = tf.GetUser([]string{id}, nil)
 					}
 
 					state.SetData("twitch-streamer-info", streamerInfoMap)

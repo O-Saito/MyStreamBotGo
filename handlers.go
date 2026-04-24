@@ -215,23 +215,6 @@ func RegisterSocketHandlers() {
 		}
 	}
 
-	goweb.SocketHandlers["query-stream-game"] = func(c *websocket.Conn, m map[string]any, md *goweb.SocketRequestMetadata) {
-		q, ok := m["q"].(string)
-		if !ok {
-			helpers.Logf(helpers.ERROR, "[Socket Handler] query-stream-game: invalid q type")
-			return
-		}
-		games, _ := twitch.GetListOfGames(q)
-		globals.WsBroadcast <- globals.SocketMessage{
-			SocketTag:         md.Tag,
-			ResponseMessageID: md.ID,
-			Type:              "result-query-stream-games",
-			Data: map[string]any{
-				"list": games,
-			},
-		}
-	}
-
 	goweb.SocketHandlers["get-streamer-data"] = func(c *websocket.Conn, m map[string]any, md *goweb.SocketRequestMetadata) {
 		twitchData, _ := twitch.GetStreamData(globals.GetState().GetTwitchUser().UserID)
 

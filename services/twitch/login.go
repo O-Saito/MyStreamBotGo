@@ -12,6 +12,8 @@ import (
 	"slices"
 	"strings"
 	"time"
+
+	tf "MyStreamBot/services/twitch/fetch"
 )
 
 const (
@@ -72,7 +74,7 @@ func HandleLogin() {
 		}
 
 		if reconnect {
-			d, err := RefreshToken(currentAccess.RefreshToken)
+			d, err := tf.RefreshToken(currentAccess.RefreshToken)
 			if err != nil {
 				helpers.Logf(helpers.ERROR, "[TWITCH HANDLELOGIN] Failed to fetch token: %s", err.Error())
 			}
@@ -147,55 +149,6 @@ func HandleLogin() {
 
 		fmt.Fprintf(w, "Login completed! You may close this page.")
 	})
-}
-
-func RefreshToken(refreshToken string) (*struct {
-	AccessToken  string `json:"access_token"`
-	Expires      int    `json:"expires_in"`
-	RefreshToken string `json:"refresh_token"`
-}, error) {
-	data := url.Values{}
-	data.Set("client_id", globals.GetConfig().TwitchClientID)
-	data.Set("client_secret", globals.GetConfig().TwitchClientSecret)
-	data.Set("grant_type", "refresh_token")
-	data.Set("refresh_token", refreshToken)
-
-	resp, err := http.PostForm("https://id.twitch.tv/oauth2/token", data)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		helpers.Logf(helpers.ERROR, "[TWITCH] login io.ReadAll failed: %v", err)
-		return nil, err
-	}
-
-	var tokenResp struct {
-		AccessToken  string `json:"access_token"`
-		Expires      int    `json:"expires_in"`
-		RefreshToken string `json:"refresh_token"`
-	}
-
-	if err := json.Unmarshal(body, &tokenResp); err != nil {
-		helpers.Logf(helpers.ERROR, "[TWITCH] login json.Unmarshal failed: %v", err)
-		return nil, err
-	}
-
-	if tokenResp.AccessToken == "" {
-		return nil, fmt.Errorf("[TWITCH] empty access token")
-	}
-
-	sqlErr := globals.GetGlobalDB().SaveToken("twitch", tokenResp.AccessToken, tokenResp.RefreshToken, time.Now().Add(time.Duration(tokenResp.Expires)*time.Second))
-	if sqlErr != nil {
-		helpers.Logf(helpers.ERROR, "[TWITCH] Failed to save token: %s", sqlErr.Error())
-	}
-
-	user := globals.GetState().GetTwitchUser()
-	user.Token = tokenResp.AccessToken
-	globals.GetState().SetTwitchUser(user)
-
-	return &tokenResp, nil
 }
 
 func initTwitchUser(token string) error {

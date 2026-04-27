@@ -84,7 +84,7 @@ func RegisterSocketHandlers() {
 			SocketTag:         md.Tag,
 			ResponseMessageID: md.ID,
 			Type:              "result-connect-chat-youtube",
-			Data:              connectedChat,
+			Data:              connectedChatTyped,
 		}
 	}
 
@@ -123,12 +123,7 @@ func RegisterSocketHandlers() {
 
 		globals.GetState().SetData("youtube-preview-lives", previewsTyped)
 
-		globals.WsBroadcast <- globals.SocketMessage{
-			SocketTag:         md.Tag,
-			ResponseMessageID: md.ID,
-			Type:              "result-get-next-streams-youtube",
-			Data:              previews,
-		}
+		md.Respond("result-get-next-streams-youtube", previewsTyped)
 	}
 
 	goweb.SocketHandlers["connect-to-preview-youtube"] = func(c *websocket.Conn, data map[string]any, md *goweb.SocketRequestMetadata) {
@@ -181,12 +176,7 @@ func RegisterSocketHandlers() {
 			globals.GetState().SetData("youtube-lives", connectedChatTyped)
 		}
 
-		globals.WsBroadcast <- globals.SocketMessage{
-			SocketTag:         md.Tag,
-			ResponseMessageID: md.ID,
-			Type:              "result-connect-chat-youtube",
-			Data:              connectedChatTyped,
-		}
+		md.Respond("result-connect-chat-youtube", connectedChatTyped)
 	}
 
 	goweb.SocketHandlers["send-chat-message"] = func(c *websocket.Conn, data map[string]any, md *goweb.SocketRequestMetadata) {
@@ -233,15 +223,10 @@ func RegisterSocketHandlers() {
 			}
 		}
 
-		globals.WsBroadcast <- globals.SocketMessage{
-			SocketTag:         md.Tag,
-			ResponseMessageID: md.ID,
-			Type:              "result-get-streamer-data",
-			Data: map[string]any{
-				"twitch":  twitchData,
-				"youtube": ytData,
-			},
-		}
+		md.Respond("result-get-stream-data", map[string]any{
+			"twitch":  twitchData,
+			"youtube": ytData,
+		})
 	}
 
 	goweb.SocketHandlers["get-dy-statistics"] = func(c *websocket.Conn, m map[string]any, md *goweb.SocketRequestMetadata) {
@@ -253,6 +238,11 @@ func RegisterSocketHandlers() {
 			Type:              "result-get-dy-statistics",
 			Data:              events,
 		}
+	}
+
+	goweb.SocketHandlers["get-state"] = func(c *websocket.Conn, m map[string]any, srm *goweb.SocketRequestMetadata) {
+		data := globals.GetState()
+		srm.Respond("result-get-state", data)
 	}
 
 }

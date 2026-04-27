@@ -77,9 +77,9 @@ func GetCacheUserChatColor(user string) string {
 	if userColorMap[user] == nil {
 		d, err := tf.GetUser(nil, []string{user})
 		if err == nil {
-			c, err := GetUserChatColor(d.ID)
-			if err == nil {
-				color = c.Color
+			c, err := tf.GetUserChatColor(d.ID)
+			if err == nil && c[d.ID] != "" {
+				color = c[d.ID]
 			}
 		}
 

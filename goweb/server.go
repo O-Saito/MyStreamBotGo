@@ -6,6 +6,7 @@ import (
 	"MyStreamBot/mlua"
 	"MyStreamBot/services/kick"
 	"MyStreamBot/services/twitch"
+	tf "MyStreamBot/services/twitch/fetch"
 	"encoding/json"
 	"fmt"
 	"net"
@@ -171,7 +172,7 @@ func StartHTTPServer() {
 			Message string `json:"message"`
 		}
 		json.NewDecoder(r.Body).Decode(&req)
-		twitch.DeleteMessage(req.Message)
+		tf.DeleteMessage(req.Message)
 		//if IrcHandler != nil {
 		//	IrcHandler.SendMessage("/delete " + req.Message)
 		//}
@@ -189,7 +190,7 @@ func StartHTTPServer() {
 			Reason   string `json:"reason"`
 		}
 		json.NewDecoder(r.Body).Decode(&req)
-		d, err := twitch.BanUser(req.UserId, req.Duration, req.Reason)
+		d, err := tf.BanUser(req.UserId, req.Duration, req.Reason)
 		//if IrcHandler != nil {
 		//	IrcHandler.SendMessage("/ban " + req.User)
 		//}
@@ -220,9 +221,6 @@ func StartHTTPServer() {
 			return
 		}
 		d, err := twitch.UpdateAutomod(req.UserId, req.MsgId, req.Action)
-		//if IrcHandler != nil {
-		//	IrcHandler.SendMessage("/ban " + req.User)
-		//}
 		if err != nil {
 			w.WriteHeader(200)
 			w.Write([]byte(fmt.Sprintf("Error %v", err)))

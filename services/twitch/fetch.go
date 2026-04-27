@@ -156,80 +156,6 @@ func GetFollowersData(broadcaster_id, userId string) ([]TwitchViewerData, error)
 	return u.Data, nil
 }
 
-func DeleteMessage(msgID string) error {
-	user := globals.GetState().TwitchUser
-	urlAPI := fmt.Sprintf("https://api.twitch.tv/helix/moderation/chat?broadcaster_id=%s&moderator_id=%s&message_id=%s", user.UserID, user.UserID, msgID)
-	req, err := http.NewRequest("DELETE", urlAPI, nil)
-	if err != nil {
-		helpers.Logf(helpers.ERROR, "[TWITCH] DeleteMessage http.NewRequest failed: %v", err)
-		return err
-	}
-	resp, err := tf.DoRequest(req)
-	if err != nil {
-		helpers.Logf(helpers.DEBUG, "[TWITCH] DeleteMessage: msgID=%v", msgID)
-		return err
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != 204 {
-		body, err := io.ReadAll(resp.Body)
-		if err != nil {
-			helpers.Logf(helpers.ERROR, "[TWITCH] DeleteMessage io.ReadAll failed: %v", err)
-			return err
-		}
-		helpers.Logf(helpers.DEBUG, "[TWITCH] DeleteMessage: msgID=%v", msgID)
-		return fmt.Errorf("DeleteMessage(%s): failed to delete message: %s", msgID, body)
-	}
-	return nil
-}
-
-func BanUser(userId string, duration int32, reason string) (string, error) {
-	user := globals.GetState().TwitchUser
-	d := map[string]map[string]any{
-		"data": {
-			"user_id": userId,
-			"reason":  reason,
-		},
-	}
-
-	if duration > 0 {
-		d["data"]["duration"] = duration
-	}
-
-	data, err := json.Marshal(d)
-	if err != nil {
-		helpers.Logf(helpers.ERROR, "[TWITCH] BanUser json.Marshal failed: %v", err)
-		return "", err
-	}
-	urlAPI := fmt.Sprintf("https://api.twitch.tv/helix/moderation/bans?broadcaster_id=%s&moderator_id=%s", user.UserID, user.UserID)
-	req, err := http.NewRequest("POST", urlAPI, bytes.NewBuffer(data))
-	if err != nil {
-		helpers.Logf(helpers.ERROR, "[TWITCH] BanUser http.NewRequest failed: %v", err)
-		return "", err
-	}
-	req.Header.Set("Content-Type", "application/json")
-	resp, err := tf.DoRequest(req)
-	if err != nil {
-		helpers.Logf(helpers.DEBUG, "[TWITCH] BanUser: userId=%v, duration=%v, reason=%v", userId, duration, reason)
-		return "", err
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != 204 {
-		body, err := io.ReadAll(resp.Body)
-		if err != nil {
-			helpers.Logf(helpers.ERROR, "[TWITCH] BanUser io.ReadAll failed: %v", err)
-			return "", err
-		}
-		helpers.Logf(helpers.DEBUG, "[TWITCH] BanUser: userId=%v, duration=%v, reason=%v", userId, duration, reason)
-		return "", fmt.Errorf("BanUser(%s, %d, %s): failed to ban user: %s", userId, duration, reason, body)
-	}
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		helpers.Logf(helpers.ERROR, "[TWITCH] BanUser io.ReadAll failed: %v", err)
-		return "", err
-	}
-	return string(body), nil
-}
-
 func GetChannelStreamData(id string) (*StreamData, error) {
 	urlAPI := fmt.Sprintf("%s?broadcaster_id=%s", urlAPIChannel, id)
 	req, err := http.NewRequest("GET", urlAPI, nil)
@@ -262,40 +188,6 @@ func GetChannelStreamData(id string) (*StreamData, error) {
 		return nil, nil
 	}
 	return &u.Data[0], nil
-}
-
-func UpdateChannelStreamData(sd *StreamData) error {
-	if sd == nil {
-		return fmt.Errorf("UpdateChannelStreamData: nil stream data")
-	}
-	user := globals.GetState().GetTwitchUser()
-	jsonData, err := json.Marshal(sd)
-	if err != nil {
-		helpers.Logf(helpers.ERROR, "[TWITCH] UpdateChannelStreamData json.Marshal failed: %v", err)
-		return err
-	}
-	urlAPI := fmt.Sprintf("%s?broadcaster_id=%s", urlAPIChannel, user.UserID)
-	req, err := http.NewRequest("PATCH", urlAPI, bytes.NewBuffer(jsonData))
-	if err != nil {
-		helpers.Logf(helpers.ERROR, "[TWITCH] UpdateChannelStreamData http.NewRequest failed: %v", err)
-		return err
-	}
-	resp, err := tf.DoRequest(req)
-	if err != nil {
-		helpers.Logf(helpers.DEBUG, "[TWITCH] UpdateChannelStreamData: sd=%v", sd)
-		return err
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != 204 {
-		body, err := io.ReadAll(resp.Body)
-		if err != nil {
-			helpers.Logf(helpers.ERROR, "[TWITCH] UpdateChannelStreamData io.ReadAll failed: %v", err)
-			return err
-		}
-		helpers.Logf(helpers.DEBUG, "[TWITCH] UpdateChannelStreamData: sd=%v", sd)
-		return fmt.Errorf("UpdateChannelStreamData(%+v): failed to update: %s", sd, body)
-	}
-	return nil
 }
 
 func GetBadges(broadcasterId ...string) (*map[string]any, error) {
@@ -360,59 +252,6 @@ func GetBadges(broadcasterId ...string) (*map[string]any, error) {
 	}
 
 	return &d, nil
-}
-
-func GetUserChatColor(id string) (*struct {
-	UserId    string `json:"user_id"`
-	UserName  string `json:"user_name"`
-	UserLogin string `json:"user_login"`
-	Color     string `json:"color"`
-}, error) {
-	req, err := http.NewRequest("GET", fmt.Sprintf("https://api.twitch.tv/helix/chat/color?user_id=%s", id), nil)
-	if err != nil {
-		helpers.Logf(helpers.ERROR, "[TWITCH] GetUserChatColor http.NewRequest failed: %v", err)
-		return nil, err
-	}
-	resp, err := tf.DoRequest(req)
-	if err != nil {
-		helpers.Logf(helpers.DEBUG, "[TWITCH] GetUserChatColor: id=%v", id)
-		helpers.Logf(helpers.ERROR, "[TWITCH FETCH] Error fetching user color: %s", err.Error())
-		return nil, err
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != 200 {
-		body, err := io.ReadAll(resp.Body)
-		if err != nil {
-			helpers.Logf(helpers.ERROR, "[TWITCH] GetUserChatColor io.ReadAll failed: %v", err)
-			return nil, err
-		}
-		helpers.Logf(helpers.DEBUG, "[TWITCH] GetUserChatColor: id=%v", id)
-		helpers.Logf(helpers.ERROR, "[TWITCH FETCH] Error fetching user color: (%d) %s", resp.StatusCode, body)
-		return nil, fmt.Errorf("GetUserChatColor(%s): failed to fetch user color: %s", id, body)
-	}
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		helpers.Logf(helpers.ERROR, "[TWITCH] GetUserChatColor io.ReadAll failed: %v", err)
-		return nil, err
-	}
-	var d struct {
-		Data []struct {
-			UserId    string `json:"user_id"`
-			UserName  string `json:"user_name"`
-			UserLogin string `json:"user_login"`
-			Color     string `json:"color"`
-		} `json:"data"`
-	}
-	if err := json.Unmarshal(body, &d); err != nil {
-		helpers.Logf(helpers.ERROR, "[TWITCH] GetUserChatColor json.Unmarshal failed: %v", err)
-		return nil, err
-	}
-
-	if len(d.Data) == 0 {
-		return nil, fmt.Errorf("GetUserChatColor(%s): no items found", id)
-	}
-
-	return &d.Data[0], nil
 }
 
 func GetStreamData(id string) (*globals.TwitchStreamData, error) {

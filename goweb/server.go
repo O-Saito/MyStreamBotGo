@@ -27,6 +27,16 @@ var upgrader = websocket.Upgrader{
 	},
 }
 
+func (srm *SocketRequestMetadata) Respond(t string, data any) {
+
+	globals.WsBroadcast <- globals.SocketMessage{
+		SocketTag:         srm.Tag,
+		ResponseMessageID: srm.ID,
+		Type:              t,
+		Data:              data,
+	}
+}
+
 var mu sync.RWMutex
 var lastTagIndex = 0
 var wsClients = make(map[*websocket.Conn]int)
@@ -45,6 +55,7 @@ var SocketHandlers = map[string]func(*websocket.Conn, map[string]any, *SocketReq
 				"twitch_connected_chat":  twitch.Channels,
 				"kick_connected_chat":    kick.Channels,
 				"youtube_connected_chat": globals.GetState().GetData("youtube-lives"),
+				"youtube_live_previews":  globals.GetState().GetData("youtube-preview-lives"),
 				"custom_events_modules":  mlua.ListDynamicEvents(),
 				"twitch_eventsubs":       globals.GetState().GetData("TwitchSubEventsConnectedEvents"),
 				"interface_config":       globals.GetState().GetData("htmlinterface"),

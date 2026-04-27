@@ -1,24 +1,23 @@
 package twitch
 
-import (
-	
-)
-
 var urlAPIEventSub = HelixBaseURL + "/eventsub/subscriptions"
-
-type EventSubData struct {
-	Subscriptions []EventSubSubscription `json:"data"`
-	Total         int                    `json:"total"`
-}
 
 type EventSubSubscription struct {
 	ID        string            `json:"id"`
 	Status    string            `json:"status"`
 	Type      string            `json:"type"`
 	Version   string            `json:"version"`
-	Condition map[string]any    `json:"condition"`
 	Transport EventSubTransport `json:"transport"`
 	CreatedAt string            `json:"created_at"`
+	Condition EventSubCondition `json:"condition"`
+	Cost      int32             `json:"cost"`
+}
+
+type EventSubCondition struct {
+	UserId              string `json:"user_id"`
+	BroadcasterUserId   string `json:"broadcaster_user_id"`
+	ModeratorUserId     string `json:"moderator_user_id"`
+	ToBroadcasterUserId string `json:"to_broadcaster_user_id"`
 }
 
 type EventSubTransport struct {
@@ -28,22 +27,19 @@ type EventSubTransport struct {
 	Secret    string `json:"secret,omitempty"`
 }
 
-type GetEventSubscriptionsResponse struct {
-	Data       []EventSubSubscription `json:"data"`
-	Total      int                    `json:"total"`
-	Pagination Pagination      `json:"pagination"`
+type EventSubData struct {
+	PaginationData[EventSubSubscription]
+	TotalCost    int `json:"total_cost"`
+	MaxTotalCost int `json:"max_total_cost"`
 }
 
 func GetEventSubscriptions() (*EventSubData, error) {
-	resp, err := ExecuteRequest[GetEventSubscriptionsResponse]("GET", urlAPIEventSub, 200)
+	resp, err := ExecuteRequest[EventSubData]("GET", urlAPIEventSub, 200)
 	if err != nil {
 		return nil, err
 	}
 
-	return &EventSubData{
-		Subscriptions: resp.Data,
-		Total:         resp.Total,
-	}, nil
+	return resp, nil
 }
 
 func DeleteEventSubscriptions(id string) error {

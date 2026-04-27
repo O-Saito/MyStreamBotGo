@@ -31,22 +31,6 @@ type EventSubTransport struct {
 	DisconnectedAt string `json:"disconnected_at"`
 }
 
-type EventSubData struct {
-	Data []struct {
-		Id        string            `json:"id"`
-		Status    string            `json:"status"`
-		Type      string            `json:"type"`
-		Version   string            `json:"version"`
-		Condition EventSubCondition `json:"condition"`
-		CreatedAt string            `json:"created_at"`
-		Transport EventSubTransport `json:"transport"`
-		Cost      int32             `json:"cost"`
-	} `json:"data"`
-	TotalCost    int32          `json:"total_cost"`
-	MaxTotalCost int32          `json:"max_total_cost"`
-	Pagination   map[string]any `json:"pagination"`
-}
-
 type EventSub struct {
 	Type      string            `json:"type"`
 	Version   float64           `json:"version"`
@@ -389,12 +373,12 @@ func subscribeToEvents() {
 		events, _ = e.([]string)
 	}
 
-	oldSubs, _ := GetEventSubscriptions()
+	oldSubs, _ := tf.GetEventSubscriptions()
 
 	if oldSubs != nil && oldSubs.Data != nil {
 		for _, sub := range oldSubs.Data {
-			if sub.Transport.Method == "websocket" && sub.Condition.BroadcasterUserId == data.Condition.BroadcasterUserId && sub.Transport.SessionId != data.Transport.SessionId {
-				DeleteEventSubscriptions(sub.Id)
+			if sub.Transport.Method == "websocket" && sub.Condition.BroadcasterUserId == data.Condition.BroadcasterUserId && sub.Transport.SessionID != data.Transport.SessionId {
+				tf.DeleteEventSubscriptions(sub.ID)
 			}
 		}
 	}

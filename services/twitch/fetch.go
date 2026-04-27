@@ -519,7 +519,7 @@ func GetStreamData(id string) (*globals.TwitchStreamData, error) {
 		return nil, err
 	}
 	if len(u.Data) == 0 {
-		helpers.Logf(helpers.ERROR, "[TWITCH] No stream data on GetStreamData")
+		helpers.Logf(helpers.ERROR, "[TWITCH] No stream data on GetStreamData: id=%s", id)
 		return nil, nil
 	}
 	return &u.Data[0], nil

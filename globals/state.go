@@ -25,19 +25,19 @@ type TwitchStreamData struct {
 }
 
 type TwitchUser struct {
-	Token                  string
-	UserID                 string            `json:"userId"`
-	UserLogin              string            `json:"userLogin"`
-	Connected              bool              `json:"connected"`
-	DisplayName            string            `json:"display_name"`
-	Type                   string            `json:"type"`
-	BroadcasterType        string            `json:"broadcaster_type"`
-	Description            string            `json:"description"`
-	ProfileImageURL        string            `json:"profile_image_url"`
-	ProfileOfflineImageURL string            `json:"offline_image_url"`
-	ViewCount              int               `json:"view_count"`
-	Email                  string            `json:"email"`
-	StreamDetails          *TwitchStreamData `json:"stream_details"`
+	Token                  string `json:"-"`
+	UserID                 string `json:"userId"`
+	UserLogin              string `json:"userLogin"`
+	Connected              bool   `json:"connected"`
+	DisplayName            string `json:"display_name"`
+	Type                   string `json:"type"`
+	BroadcasterType        string `json:"broadcaster_type"`
+	Description            string `json:"description"`
+	ProfileImageURL        string `json:"profile_image_url"`
+	ProfileOfflineImageURL string `json:"offline_image_url"`
+	//ViewCount              int               `json:"view_count"`
+	Email         string            `json:"email"`
+	StreamDetails *TwitchStreamData `json:"stream_details"`
 }
 
 type YouTubeChannel struct {
@@ -49,10 +49,10 @@ type YouTubeChannel struct {
 }
 
 type YouTubeUser struct {
-	Token          string
-	RefreshToken   string
+	Token          string `json:"-"`
+	RefreshToken   string `json:"-"`
 	TokenExpiresIn int
-	Channels       []YouTubeChannel
+	Channels       []YouTubeChannel `json:"channels"`
 }
 
 type State struct {

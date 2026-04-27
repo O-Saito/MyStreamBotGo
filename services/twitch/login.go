@@ -170,9 +170,9 @@ func initTwitchUser(token string) error {
 		Description:            d.Description,
 		ProfileImageURL:        d.ProfileImageURL,
 		ProfileOfflineImageURL: d.ProfileOfflineImageURL,
-		ViewCount:              d.ViewCount,
-		Email:                  d.Email,
-		Connected:              true,
+		//ViewCount:              d.ViewCount,
+		Email:     d.Email,
+		Connected: true,
 	}
 	globals.GetState().SetTwitchUser(user)
 	helpers.Printf(helpers.Reset, "[TWITCH LOGIN] UserID: %s, UserLogin: %s", user.UserID, user.UserLogin)

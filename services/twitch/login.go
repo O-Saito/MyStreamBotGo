@@ -176,15 +176,16 @@ func initTwitchUser(token string) error {
 	}
 	globals.GetState().SetTwitchUser(user)
 	helpers.Printf(helpers.Reset, "[TWITCH LOGIN] UserID: %s, UserLogin: %s", user.UserID, user.UserLogin)
-	streamData, _ := GetChannelStreamData(user.UserID)
+	streamData, _ := tf.GetChannelInformation([]string{user.UserID})
 	if streamData != nil {
+		sd := streamData[0]
 		user.StreamDetails = &globals.TwitchStreamData{
-			GameId:      streamData.GameID,
-			GameName:    streamData.GameName,
-			Title:       streamData.Title,
-			Tags:        streamData.Tags,
+			GameId:      sd.GameID,
+			GameName:    sd.GameName,
+			Title:       sd.Title,
+			Tags:        sd.Tags,
 			ViewerCount: 0,
-			Language:    streamData.BroadcasterLanguage,
+			Language:    sd.BroadcasterLanguage,
 		}
 	}
 	globals.GetState().SetTwitchUser(user)

@@ -24,6 +24,20 @@ type StartCommercialResponseWrapper struct {
 	Data []StartCommercialResponse `json:"data"`
 }
 
+type SnoozeAdResponse struct {
+	SnoozeCount     int    `json:"snooze_count"`
+	SnoozeRefreshAt string `json:"snooze_refresh_at"`
+	NextAdAt        string `json:"next_ad_at"`
+}
+
+type SnoozeAdResponseWrapper struct {
+	Data []SnoozeAdResponse `json:"data"`
+}
+
+type AdScheduleResponseWrapper struct {
+	Data []AdScheduleData `json:"data"`
+}
+
 func StartCommercial(broadcasterID string, length int) (*StartCommercialResponse, error) {
 	user := globals.GetState().GetTwitchUser()
 	if broadcasterID == "" {
@@ -51,10 +65,6 @@ func StartCommercial(broadcasterID string, length int) (*StartCommercialResponse
 	return &result.Data[0], nil
 }
 
-type AdScheduleResponseWrapper struct {
-	Data []AdScheduleData `json:"data"`
-}
-
 func GetAdSchedule(broadcasterID string) (*AdScheduleData, error) {
 	user := globals.GetState().GetTwitchUser()
 	if broadcasterID == "" {
@@ -72,16 +82,6 @@ func GetAdSchedule(broadcasterID string) (*AdScheduleData, error) {
 	}
 
 	return &result.Data[0], nil
-}
-
-type SnoozeAdResponse struct {
-	SnoozeCount     int    `json:"snooze_count"`
-	SnoozeRefreshAt string `json:"snooze_refresh_at"`
-	NextAdAt        string `json:"next_ad_at"`
-}
-
-type SnoozeAdResponseWrapper struct {
-	Data []SnoozeAdResponse `json:"data"`
 }
 
 func SnoozeNextAd(broadcasterID string) (*SnoozeAdResponse, error) {

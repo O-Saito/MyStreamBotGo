@@ -55,12 +55,15 @@ function on_start()
     ev.set_interval(1)
     ev.set_paused(false)
     reset_data()
+    --local data = kick.get_channel(0, 'scavote')
+    g.print("[VOTE] get_channel_stream_data:", twitch.get_channel_stream_data(twitch.get_state().UserID))
+    g.print("[VOTE] get_channel_information:", twitch.get_channel_information(twitch.get_state().UserID))
     ev.socket_send("config", {
         votacao_em_andamento = ev.data.votacao_em_andamento,
         votos = ev.data.votos,
         tempo = defaultTempo,
         ended = false
-    })
+    }) 
 end
 
 function on_tick(data)

@@ -1,21 +1,20 @@
 package twitch
 
 import (
-	
 	"time"
 )
 
 type ExtensionAnalyticsReport struct {
-	ExtensionID string           `json:"extension_id"`
-	URL         string           `json:"url"`
-	Type        string           `json:"type"`
+	ExtensionID string    `json:"extension_id"`
+	URL         string    `json:"url"`
+	Type        string    `json:"type"`
 	DateRange   DateRange `json:"date_range"`
 }
 
 type GameAnalyticsReport struct {
-	GameID    string           `json:"game_id"`
-	URL       string           `json:"url"`
-	Type      string           `json:"type"`
+	GameID    string    `json:"game_id"`
+	URL       string    `json:"url"`
+	Type      string    `json:"type"`
 	DateRange DateRange `json:"date_range"`
 }
 

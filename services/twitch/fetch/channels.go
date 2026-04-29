@@ -3,7 +3,6 @@ package twitch
 import (
 	"MyStreamBot/globals"
 	"MyStreamBot/helpers"
-	
 )
 
 var (
@@ -19,14 +18,15 @@ type ChannelEditor struct {
 }
 
 type ChannelInfo struct {
-	BroadcasterID                 string   `json:"broadcaster_id"`
-	BroadcasterLogin              string   `json:"broadcaster_login"`
-	BroadcasterName              string   `json:"broadcaster_name"`
-	BroadcasterLanguage           string   `json:"broadcaster_language"`
+	BroadcasterID               string   `json:"broadcaster_id"`
+	BroadcasterLogin            string   `json:"broadcaster_login"`
+	BroadcasterName             string   `json:"broadcaster_name"`
+	BroadcasterLanguage         string   `json:"broadcaster_language"`
 	GameID                      string   `json:"game_id"`
 	GameName                    string   `json:"game_name"`
 	Title                       string   `json:"title"`
 	Delay                       int      `json:"delay"`
+	IsBrandedContent            bool     `json:"is_branded_content"`
 	Tags                        []string `json:"tags"`
 	ContentClassificationLabels []string `json:"content_classification_labels"`
 }
@@ -42,12 +42,12 @@ type UpdateChannelLabel struct {
 
 type UpdateChannelRequest struct {
 	BroadcasterLanguage         string               `json:"broadcaster_language,omitempty"`
-	GameID                *string              `json:"game_id,omitempty"`
-	Title                *string              `json:"title,omitempty"`
-	Delay                *int                 `json:"delay,omitempty"`
-	Tags                 []string             `json:"tags,omitempty"`
+	GameID                      *string              `json:"game_id,omitempty"`
+	Title                       *string              `json:"title,omitempty"`
+	Delay                       *int                 `json:"delay,omitempty"`
+	Tags                        []string             `json:"tags,omitempty"`
 	ContentClassificationLabels []UpdateChannelLabel `json:"content_classification_labels,omitempty"`
-	IsBrandedContent    bool                 `json:"is_branded_content,omitempty"`
+	IsBrandedContent            bool                 `json:"is_branded_content,omitempty"`
 }
 
 type ModifyChannelResponse struct{}
@@ -106,20 +106,20 @@ func GetChannelEditors() ([]ChannelEditor, error) {
 type FollowedChannel struct {
 	BroadcasterID    string `json:"broadcaster_id"`
 	BroadcasterLogin string `json:"broadcaster_login"`
-	BroadcasterName string `json:"broadcaster_name"`
-	FollowedAt    string `json:"followed_at"`
+	BroadcasterName  string `json:"broadcaster_name"`
+	FollowedAt       string `json:"followed_at"`
 }
 
 type GetFollowedChannelsResponse struct {
 	Data       []FollowedChannel `json:"data"`
-	Pagination Pagination `json:"pagination"`
+	Pagination Pagination        `json:"pagination"`
 }
 
 func GetFollowedChannels(broadcasterID string, req *PaginationRequest) (*PaginationData[FollowedChannel], error) {
 	user := globals.GetState().GetTwitchUser()
 
 	opts := map[string]any{
-		"user_id":       user.UserID,
+		"user_id":        user.UserID,
 		"broadcaster_id": broadcasterID,
 	}
 
@@ -159,7 +159,7 @@ func GetChannelFollowers(userId string, req *PaginationRequest) (*PaginationData
 	user := globals.GetState().GetTwitchUser()
 
 	opts := map[string]any{
-		"user_id":       userId,
+		"user_id":        userId,
 		"broadcaster_id": user.UserID,
 	}
 

@@ -156,40 +156,6 @@ func GetFollowersData(broadcaster_id, userId string) ([]TwitchViewerData, error)
 	return u.Data, nil
 }
 
-func GetChannelStreamData(id string) (*StreamData, error) {
-	urlAPI := fmt.Sprintf("%s?broadcaster_id=%s", urlAPIChannel, id)
-	req, err := http.NewRequest("GET", urlAPI, nil)
-	if err != nil {
-		helpers.Logf(helpers.ERROR, "[TWITCH] GetChannelStreamData http.NewRequest failed: %v", err)
-		return nil, err
-	}
-	resp, err := tf.DoRequest(req)
-	if err != nil {
-		helpers.Logf(helpers.DEBUG, "[TWITCH] GetChannelStreamData: id=%v", id)
-		helpers.Logf(helpers.ERROR, "[TWITCH] GetStreamData: %s", err.Error())
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	var u struct {
-		Data []StreamData `json:"data"`
-	}
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		helpers.Logf(helpers.ERROR, "[TWITCH] GetChannelStreamData io.ReadAll failed: %v", err)
-		return nil, err
-	}
-	if err := json.Unmarshal(body, &u); err != nil {
-		helpers.Logf(helpers.ERROR, "[TWITCH] GetChannelStreamData json.Unmarshal failed: %v", err)
-		return nil, err
-	}
-	if len(u.Data) == 0 {
-		helpers.Logf(helpers.ERROR, "[TWITCH] No stream data on GetStreamData")
-		return nil, nil
-	}
-	return &u.Data[0], nil
-}
-
 func GetBadges(broadcasterId ...string) (*map[string]any, error) {
 	urlAPI := urlAPIBadges
 	if len(broadcasterId) > 0 {

@@ -485,11 +485,7 @@
         document.addEventListener('touchmove', handleDragMove, { passive: false });
         document.addEventListener('touchend', handleDragEnd);
 
-        ['twitch', 'kick', 'youtube'].forEach(id => setupDragHandlers(document.getElementById(id), id));
-        setupDragHandlers(document.getElementById('chat-section'), 'chat-section');
-        setupDragHandlers(document.getElementById('events-panel'), 'events-panel');
-        setupDragHandlers(document.getElementById('dyevents-panel'), 'dyevents-panel');
-        setupDragHandlers(document.getElementById('system'), 'system');
+        ['twitch', 'kick', 'youtube', 'chat-section', 'events-panel', 'dyevents-panel', 'system'].forEach(id => setupDragHandlers(document.getElementById(id), id));
 
         chatDiv.addEventListener('scroll', () => {
             const atBottom = chatDiv.scrollHeight - chatDiv.scrollTop <= chatDiv.clientHeight + 20;
@@ -524,17 +520,11 @@
         window.streams = streams;
 
         w.on('init', (data) => {
-            if (data.twitch_connected_chat?.length > 0) {
-                data.twitch_connected_chat.forEach(c => w.exec('twitch-chat-connection', { id: c, name: c }));
-            }
-            if (data.kick_connected_chat?.length > 0) {
-                data.kick_connected_chat.forEach(c => w.exec('kick-chat-connection', { id: c.ID, name: c.Slug }));
-            }
+            if (data.twitch_connected_chat?.length > 0) { data.twitch_connected_chat.forEach(c => w.exec('twitch-chat-connection', { id: c, name: c })); }
+            if (data.kick_connected_chat?.length > 0) { data.kick_connected_chat.forEach(c => w.exec('kick-chat-connection', { id: c.ID, name: c.Slug })); }
 
             if (data.twitch) { streams.twitch.data = data.twitch; }
-
             if (data.youtube) { streams.youtube.data = data.youtube; }
-
             if (data.youtube_live_previews) { addYoutubeStreamPreviewData(data.youtube_live_previews); }
 
             updateTwitchConnectionDetails();
@@ -554,15 +544,9 @@
             if (data.interface_config) {
                 try {
                     const config = JSON.parse(data.interface_config);
-                    if (config.ignoreKick) {
-                        kickDiv.style.display = 'none';
-                    }
-                    if (config.ignoreYoutube) {
-                        youtubeDiv.style.display = 'none';
-                    }
-                    if (config.ignoreTwitch) {
-                        twitchDiv.style.display = 'none';
-                    }
+                    if (config.ignoreKick) { kickDiv.style.display = 'none'; }
+                    if (config.ignoreYoutube) { youtubeDiv.style.display = 'none'; }
+                    if (config.ignoreTwitch) { twitchDiv.style.display = 'none'; }
                 } catch (e) {
                     console.error('Failed to parse interface_config:', e);
                     throw e;

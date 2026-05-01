@@ -92,22 +92,36 @@ func FetchLiveChatMessages(liveChatID, pageToken string) (*YouTubeLiveChatMessag
 	return &data, nil
 }
 
-func ListenToChat(id string) {
+func ListenToChat(channelId, chatId string) {
 	helpers.Log(helpers.INFO, "Started yt chat listener!")
+	globals.GetState().AddYouTubeChat(channelId, chatId)
 	page := ""
 	for {
 		helpers.Logf(helpers.DEBUG, "READING YT CHAT...")
-		data, err := FetchLiveChatMessages(id, page)
+		data, err := FetchLiveChatMessages(chatId, page)
 
 		if err != nil {
 			helpers.Logf(helpers.ERROR, "[YT] ListenToChat failed to fetch chat messages %v", err)
+			connectedChat := false
+		findChat:
+			for _, channel := range globals.GetState().GetYouTubeUser().Channels {
+				for _, id := range channel.ChatIDs {
+					if id == chatId {
+						connectedChat = true
+						break findChat
+					}
+				}
+			}
+			if !connectedChat {
+				break
+			}
 			continue
 		}
 
 		for _, msg := range data.Items {
 			messagedata := globals.MessageFromStream{
 				Source:    "youtube",
-				Channel:   id,
+				Channel:   chatId,
 				User:      msg.AuthorDetails.DisplayName,
 				UserId:    msg.AuthorDetails.ChannelID,
 				MessageId: msg.ID,
@@ -143,7 +157,7 @@ func ListenToChat(id string) {
 		if !data.OfflineAt.IsZero() && data.OfflineAt.After(time.Now()) {
 			helpers.Logf(helpers.WARN, "[YT OFF] Chat offline at %v, now is %v", data.OfflineAt, time.Now())
 			globals.WsBroadcast <- globals.SocketMessage{
-				Type: "youtube-live-offline", Data: map[string]any{"liveId": id, "offlineAt": data.OfflineAt},
+				Type: "youtube-live-offline", Data: map[string]any{"liveId": chatId, "offlineAt": data.OfflineAt},
 			}
 			break
 		}

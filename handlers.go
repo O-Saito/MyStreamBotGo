@@ -73,7 +73,7 @@ func RegisterSocketHandlers() {
 			})
 			helpers.Printf(helpers.Cyan, "YT Listen to (%v): %v", finded, v)
 			if !finded {
-				go youtube.ListenToChat(v.Snippet.LiveChatID)
+				go youtube.ListenToChat(v.Snippet.ChannelID, v.Snippet.LiveChatID)
 				connectedChatTyped = append(connectedChatTyped, v)
 			}
 		}
@@ -172,7 +172,7 @@ func RegisterSocketHandlers() {
 
 		if finded {
 			connectedChatTyped = append(connectedChatTyped, current)
-			go youtube.ListenToChat(liveChatId)
+			go youtube.ListenToChat(current.Snippet.ChannelID, liveChatId)
 			globals.GetState().SetData("youtube-lives", connectedChatTyped)
 		}
 

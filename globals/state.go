@@ -41,11 +41,12 @@ type TwitchUser struct {
 }
 
 type YouTubeChannel struct {
-	ID          string `json:"id"`
-	Title       string `json:"title"`
-	Description string `json:"description"`
-	CustomURL   string `json:"customUrl,omitempty"`
-	Thumbnail   string `json:"thumbnail,omitempty"`
+	ID          string   `json:"id"`
+	Title       string   `json:"title"`
+	Description string   `json:"description"`
+	CustomURL   string   `json:"customUrl,omitempty"`
+	Thumbnail   string   `json:"thumbnail,omitempty"`
+	ChatIDs     []string `json:"chat-ids"`
 }
 
 type YouTubeUser struct {
@@ -214,6 +215,23 @@ func (s *State) AddYouTubeChannel(channel YouTubeChannel) {
 	s.Lock()
 	defer s.Unlock()
 	s.YouTubeUser.Channels = append(s.YouTubeUser.Channels, channel)
+	WsBroadcast <- SocketMessage{
+		Type: "youtube-connection",
+		Data: s.YouTubeUser,
+	}
+}
+
+func (s *State) AddYouTubeChat(channelId, chatId string) {
+	s.Lock()
+	defer s.Unlock()
+	for i := range s.YouTubeUser.Channels {
+		c := &s.YouTubeUser.Channels[i]
+		if c.ID == channelId {
+			helpers.Log(helpers.DEBUG, "FOUND!")
+			c.ChatIDs = append(c.ChatIDs, chatId)
+			break
+		}
+	}
 	WsBroadcast <- SocketMessage{
 		Type: "youtube-connection",
 		Data: s.YouTubeUser,

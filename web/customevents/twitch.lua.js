@@ -81,6 +81,19 @@ export default (funcs) => {
     fs = funcs;
     console.log(fs);
 
+    w.on("user-message", appendMessage);
+    w.on("self-message", appendMessage);
+
+    function appendMessage(data) {
+        if (!openPanels.has(data.userId)) return;
+        const message = document.createElement('div');
+        message.innerHTML = fs.checkuserReference(fs.parseText(data));
+        const panel = openPanels.get(data.userId);
+        const chatBox = panel.querySelector(`.chat-history`);
+        chatBox.appendChild(message);
+        chatBox.scrollTop = chatDiv.scrollHeight;
+    }
+
     document.addEventListener('click', (event) => {
         const chatUser = event.target.closest('.chat-user');
         if (!chatUser) return;
@@ -90,7 +103,7 @@ export default (funcs) => {
         const username = chatUser.textContent.trim();
         const userId = messageDiv.dataset.userId;
         const color = chatUser.style.color || '#a970ff';
-        const title = `twitch.lua - <span style="color:${color}">${username}</span>`;
+        const title = `${filename} - <span style="color:${color}">${username}</span>`;
 
         if (openPanels.has(userId)) {
             openPanels.get(userId).focus();
@@ -99,7 +112,6 @@ export default (funcs) => {
 
         const loading = '<div style="padding:20px;text-align:center;">Loading...</div>';
         const panel = fs.showPanel(title, loading, { pos: { x: event.clientX, y: event.clientY }, onClose: () => openPanels.delete(userId) });
-        openPanels.set(userId, panel);
 
         e.send('get_user_data_by_id', [userId], (d) => {
             if (!d) {
@@ -121,17 +133,26 @@ export default (funcs) => {
                 ${d.Description ? `<div style="margin-bottom:16px;padding:8px;background:#2a2a2a;border-radius:4px;font-size:13px;">${d.Description}</div>` : ''}
                 <div style="margin-bottom:16px;">
                     <div style="font-weight:bold;font-size:14px;margin-bottom:8px;">Chat History</div>
-                    <div id="${filename}-chat-history" style="min-height:100px;padding:8px;background:#1a1a1a;border-radius:4px;font-size:12px;color:#666;">
-                        Chat history coming soon...
+                    <div class="chat-history" style="min-height:100px;padding:8px;background:#1a1a1a;border-radius:4px;font-size:12px;overflow-y: auto;max-height: 100px;">
                     </div>
                 </div>
-                <button id="${filename}-open-viewercard" style="padding:6px 14px;background:#6441a5;color:#fff;border:none;border-radius:4px;cursor:pointer;">Open Viewer Card</button>
+                <button class="open-viewercard" style="padding:6px 14px;background:#6441a5;color:#fff;border:none;border-radius:4px;cursor:pointer;">Open Viewer Card</button>
             `;
 
             panel.querySelector('.panel-body').innerHTML = content;
-            document.getElementById(`${filename}-open-viewercard`).onclick = () => {
+            panel.querySelector(`.open-viewercard`).onclick = () => {
                 window.open(`https://www.twitch.tv/popout/scavote/viewercard/${d.Login}`, '_blank');
             };
+            const chat = document.querySelector('#chat .content');
+            const messages = chat.querySelectorAll(`.message[data-user-id="${userId}"]`);
+            const panelChat = panel.querySelector(`.chat-history`);
+            for (let i = 0; i < messages.length; i++) {
+                const msgElement = messages[i];
+                const message = document.createElement('div');
+                message.innerHTML = msgElement.querySelector('.chat-message').innerHTML;
+                panelChat.appendChild(message);
+                panelChat.scrollTop = panelChat.scrollHeight;
+            }
         });
     });
 };

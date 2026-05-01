@@ -1158,7 +1158,6 @@
                     });
                 }
 
-
                 for (let i = 0; i < emotes.length; i++) {
                     const emote = emotes[i];
                     text = text.replaceAll(emote.name, `<img src="${emote.url}" />`)
@@ -1337,6 +1336,8 @@
                     .then(module => module.default?.({
                         addChatMessage,
                         showPanel,
+                        checkuserReference,
+                        parseText,
                     }))
                     .catch(err => console.error('Module loading failed:', m.name, err));
 

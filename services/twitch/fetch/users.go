@@ -76,7 +76,7 @@ type UserActiveExtensionsResponse struct {
 type UserBlock struct {
 	UserID    string `json:"user_id"`
 	UserLogin string `json:"user_login"`
-	UserName  string `json:"user_name"`
+	UserName  string `json:"display_name"`
 }
 
 type UserAuthorization struct {
@@ -137,9 +137,9 @@ func UpdateUser(description string) (*User, error) {
 	return &result.Data[0], nil
 }
 
-func GetAuthorizationByUser(userIDs []string) (*UserAuthorization, error) {
+func GetAuthorizationByUser(userIDs []string) (*GetUserAuthorizationResponse, error) {
 	opts := map[string]any{
-		"iser_id": userIDs,
+		"user_id": userIDs,
 	}
 	url := BuildURL(HelixBaseURL+"authorization/users", opts)
 
@@ -153,7 +153,7 @@ func GetAuthorizationByUser(userIDs []string) (*UserAuthorization, error) {
 		return nil, nil
 	}
 
-	return &result.Data[0], nil
+	return result, nil
 }
 
 func GetUserBlockList(targetUserID string, req *PaginationRequest) (*PaginationData[UserBlock], error) {
@@ -242,7 +242,6 @@ func GetUserExtensions() ([]UserExtension, error) {
 }
 
 func GetUserActiveExtensions() (*UserExtensionData, error) {
-
 	url := BuildURL(urlAPIUserExtensions, map[string]any{})
 
 	result, err := ExecuteRequest[UserActiveExtensionsResponse]("GET", url, 200)

@@ -25,7 +25,6 @@ type OAuthResponse struct {
 }
 
 func HandleLogin() {
-
 	scopes := Scopes
 
 	sqlToken, err := globals.GetGlobalDB().GetToken("youtube")
@@ -64,11 +63,6 @@ func HandleLogin() {
 
 				if sqlErr != nil {
 					helpers.Logf(helpers.ERROR, "Failed to save YT token: %s", sqlErr.Error())
-				}
-
-				globals.WsBroadcast <- globals.SocketMessage{
-					Type: "youtube-connection",
-					Data: newUser,
 				}
 			} else {
 				helpers.Logf(helpers.ERROR, "Failed to fetch YT channels: %s", err.Error())
@@ -164,13 +158,6 @@ func HandleLogin() {
 				Description: v.Snippet.Description,
 				CustomURL:   v.Snippet.Description,
 			})
-		}
-
-		newUser := globals.GetState().GetYouTubeUser()
-
-		globals.WsBroadcast <- globals.SocketMessage{
-			Type: "youtube-connection",
-			Data: newUser,
 		}
 	})
 }

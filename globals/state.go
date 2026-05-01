@@ -178,6 +178,10 @@ func (s *State) SetTwitchUser(user TwitchUser) {
 	s.Lock()
 	defer s.Unlock()
 	s.TwitchUser = user
+	WsBroadcast <- SocketMessage{
+		Type: "twitch-connection",
+		Data: s.TwitchUser,
+	}
 }
 
 func (s *State) GetYouTubeUser() YouTubeUser {
@@ -190,10 +194,18 @@ func (s *State) SetYouTubeUser(user YouTubeUser) {
 	s.Lock()
 	defer s.Unlock()
 	s.YouTubeUser = user
+	WsBroadcast <- SocketMessage{
+		Type: "youtube-connection",
+		Data: s.YouTubeUser,
+	}
 }
 
 func (s *State) AddYouTubeChannel(channel YouTubeChannel) {
 	s.Lock()
 	defer s.Unlock()
 	s.YouTubeUser.Channels = append(s.YouTubeUser.Channels, channel)
+	WsBroadcast <- SocketMessage{
+		Type: "youtube-connection",
+		Data: s.YouTubeUser,
+	}
 }

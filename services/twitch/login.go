@@ -193,10 +193,6 @@ func initTwitchUser(token string) error {
 	if err := Connect(); err != nil {
 		log.Fatal(err)
 	}
-	globals.WsBroadcast <- globals.SocketMessage{
-		Type: "twitch-connection",
-		Data: user,
-	}
 	JoinChannel(user.UserLogin)
 	connectToEventSub()
 	return nil

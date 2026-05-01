@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"hash/fnv"
 	"net/http"
+	"slices"
 	"strings"
 	"time"
 )
@@ -93,26 +94,19 @@ func FetchLiveChatMessages(liveChatID, pageToken string) (*YouTubeLiveChatMessag
 }
 
 func ListenToChat(channelId, chatId string) {
-	helpers.Log(helpers.INFO, "Started yt chat listener!")
 	globals.GetState().AddYouTubeChat(channelId, chatId)
+	helpers.Logf(helpers.INFO, "Started Youtube chat listener! channel: %s; chat: %s", channelId, chatId)
 	page := ""
 	for {
-		helpers.Logf(helpers.DEBUG, "READING YT CHAT...")
+		helpers.Logf(helpers.DEBUG, "READING Youtube CHAT...")
 		data, err := FetchLiveChatMessages(chatId, page)
 
 		if err != nil {
 			helpers.Logf(helpers.ERROR, "[YT] ListenToChat failed to fetch chat messages %v", err)
-			connectedChat := false
-		findChat:
-			for _, channel := range globals.GetState().GetYouTubeUser().Channels {
-				for _, id := range channel.ChatIDs {
-					if id == chatId {
-						connectedChat = true
-						break findChat
-					}
-				}
-			}
-			if !connectedChat {
+			_, foundChannel := helpers.Find(globals.GetState().GetYouTubeUser().Channels, func(c *globals.YouTubeChannel) bool {
+				return slices.Contains(c.ChatIDs, chatId)
+			})
+			if !foundChannel {
 				break
 			}
 			continue
@@ -177,4 +171,5 @@ func ListenToChat(channelId, chatId string) {
 
 		time.Sleep(time.Duration(data.PollingIntervalMillis) * time.Millisecond)
 	}
+	helpers.Logf(helpers.INFO, "Stopped Youtube chat listener! channel: %s; chat: %s", channelId, chatId)
 }

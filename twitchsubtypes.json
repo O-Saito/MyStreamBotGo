@@ -4,6 +4,7 @@
     "channel.shared_chat.begin":  {},
 	"channel.shared_chat.update": {},
 	"channel.shared_chat.end":    {},
+    "channel.update": {},
     "channel.raid":  {},
 	"channel.ban":   {"requires": "channel:moderate"},
 	"channel.unban": {"requires": "channel:moderate"},

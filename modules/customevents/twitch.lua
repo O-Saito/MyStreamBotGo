@@ -4,7 +4,6 @@ function on_start()
 end
 
 function on_request(name, data)
-    g.print(name)
     if name == 'get_functions' then
         local functions = {}
         for k, v in pairs(twitch) do

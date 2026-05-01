@@ -55,11 +55,16 @@ var TwitchFunctionList = []services.LuaFunction{
 		d, _ := tf.GetUser([]string{userid}, nil)
 		return d
 	}},
+	// check
+	{Name: "get_authorization_by_user", Fn: func(userId string) *tf.GetUserAuthorizationResponse {
+		d, _ := tf.GetAuthorizationByUser([]string{userId})
+		return d
+	}},
+	{Name: "get_user_block_list", Fn: tf.GetUserBlockList},
+	{Name: "get_user_extensions", Fn: tf.GetUserExtensions},
+	{Name: "get_user_active_extensions", Fn: tf.GetUserActiveExtensions},
+	// TODO:
 	// update_user -> UpdateUser
-	// get_authorization_by_user -> GetAuthorizationByUser
-	// get_user_block_list -> GetUserBlockList
-	// get_user_extensions -> GetUserExtensions
-	// get_user_active_extensions -> GetUserActiveExtensions
 	// update_user_extensions -> UpdateUserExtensions
 	// block_user -> BlockUser
 	// unblock_user -> UnblockUser

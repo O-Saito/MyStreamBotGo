@@ -68,7 +68,7 @@ func RegisterSocketHandlers() {
 		helpers.Printf(helpers.Cyan, "YT LIVES: %v", len(lives.Items))
 		for _, v := range lives.Items {
 
-			_, finded := helpers.Find(connectedChatTyped, func(l youtube.LiveBroadcast) bool {
+			_, finded := helpers.Find(connectedChatTyped, func(l *youtube.LiveBroadcast) bool {
 				return l.Snippet.LiveChatID == v.Snippet.LiveChatID
 			})
 			helpers.Printf(helpers.Cyan, "YT Listen to (%v): %v", finded, v)
@@ -113,7 +113,7 @@ func RegisterSocketHandlers() {
 
 		for _, v := range lives.Items {
 
-			_, finded := helpers.Find(previewsTyped, func(l youtube.LiveBroadcast) bool {
+			_, finded := helpers.Find(previewsTyped, func(l *youtube.LiveBroadcast) bool {
 				return l.Snippet.LiveChatID == v.Snippet.LiveChatID
 			})
 			if !finded {
@@ -158,7 +158,7 @@ func RegisterSocketHandlers() {
 			return
 		}
 
-		_, findedConnected := helpers.Find(connectedChatTyped, func(l youtube.LiveBroadcast) bool {
+		_, findedConnected := helpers.Find(connectedChatTyped, func(l *youtube.LiveBroadcast) bool {
 			return l.Snippet.LiveChatID == liveChatId
 		})
 
@@ -166,12 +166,12 @@ func RegisterSocketHandlers() {
 			return
 		}
 
-		current, finded := helpers.Find(previewsTyped, func(l youtube.LiveBroadcast) bool {
+		current, finded := helpers.Find(previewsTyped, func(l *youtube.LiveBroadcast) bool {
 			return l.Snippet.LiveChatID == liveChatId
 		})
 
 		if finded {
-			connectedChatTyped = append(connectedChatTyped, current)
+			connectedChatTyped = append(connectedChatTyped, *current)
 			go youtube.ListenToChat(current.Snippet.ChannelID, liveChatId)
 			globals.GetState().SetData("youtube-lives", connectedChatTyped)
 		}

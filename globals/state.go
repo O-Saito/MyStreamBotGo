@@ -184,6 +184,16 @@ func (s *State) SetTwitchUser(user TwitchUser) {
 	}
 }
 
+func (s *State) SetTwitchStreamDetails(sd TwitchStreamData) {
+	s.Lock()
+	defer s.Unlock()
+	s.TwitchUser.StreamDetails = &sd
+	WsBroadcast <- SocketMessage{
+		Type: "twitch-connection",
+		Data: s.TwitchUser,
+	}
+}
+
 func (s *State) GetYouTubeUser() YouTubeUser {
 	s.Lock()
 	defer s.Unlock()

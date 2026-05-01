@@ -198,9 +198,7 @@ var messageHandlers = map[string]func(map[string]any, map[string]any){
 			user := globals.GetState().GetTwitchUser()
 			if user.StreamDetails == nil {
 				user.StreamDetails, _ = GetStreamData(user.UserID)
-				u := globals.GetState().GetTwitchUser()
-				u.StreamDetails = user.StreamDetails
-				globals.GetState().SetTwitchUser(u)
+				globals.GetState().SetTwitchStreamDetails(*user.StreamDetails)
 				return
 			}
 
@@ -208,21 +206,19 @@ var messageHandlers = map[string]func(map[string]any, map[string]any){
 			if ok {
 				user.StreamDetails.StartedAt = startedAt
 			}
-			globals.GetState().SetTwitchUser(user)
+			globals.GetState().SetTwitchStreamDetails(*user.StreamDetails)
 		case "stream.offline":
 			user := globals.GetState().GetTwitchUser()
 			if user.StreamDetails == nil {
 				return
 			}
 			user.StreamDetails.StartedAt = ""
-			globals.GetState().SetTwitchUser(user)
+			globals.GetState().SetTwitchStreamDetails(*user.StreamDetails)
 		case "channel.update":
 			user := globals.GetState().GetTwitchUser()
 			if user.StreamDetails == nil {
 				user.StreamDetails, _ = GetStreamData(user.UserID)
-				u := globals.GetState().GetTwitchUser()
-				u.StreamDetails = user.StreamDetails
-				globals.GetState().SetTwitchUser(u)
+				globals.GetState().SetTwitchStreamDetails(*user.StreamDetails)
 				return
 			}
 			title, _ := event["title"].(string)
@@ -236,7 +232,7 @@ var messageHandlers = map[string]func(map[string]any, map[string]any){
 			if labels, ok := event["content_classification_labels"].([]string); ok && slices.Contains(labels, "MatureGame") {
 				user.StreamDetails.IsMature = false
 			}
-			globals.GetState().SetTwitchUser(user)
+			globals.GetState().SetTwitchStreamDetails(*user.StreamDetails)
 		}
 	},
 }

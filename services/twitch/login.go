@@ -21,7 +21,6 @@ const (
 )
 
 func HandleLogin() {
-
 	redirectURI := fmt.Sprintf("http://localhost:%s/twitch/callback", globals.GetConfig().HTTPPort)
 
 	scopes := Scopes
@@ -179,19 +178,19 @@ func initTwitchUser(token string) error {
 	streamData, _ := tf.GetChannelInformation([]string{user.UserID})
 	if streamData != nil {
 		sd := streamData[0]
-		user.StreamDetails = &globals.TwitchStreamData{
+		globals.GetState().SetTwitchStreamDetails(globals.TwitchStreamData{
 			GameId:      sd.GameID,
 			GameName:    sd.GameName,
 			Title:       sd.Title,
 			Tags:        sd.Tags,
 			ViewerCount: 0,
 			Language:    sd.BroadcasterLanguage,
-		}
+		})
 	}
-	globals.GetState().SetTwitchUser(user)
 
 	if err := Connect(); err != nil {
 		log.Fatal(err)
+		return err
 	}
 	JoinChannel(user.UserLogin)
 	connectToEventSub()

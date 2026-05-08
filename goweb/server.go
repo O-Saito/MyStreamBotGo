@@ -51,7 +51,7 @@ var SocketHandlers = map[string]func(*websocket.Conn, map[string]any, *SocketReq
 				"twitch":  globals.GetState().GetTwitchUser(),
 				"youtube": globals.GetState().GetYouTubeUser(),
 				"kick": map[string]any{
-					"connected_as": kick.UserLogin,
+					"connected_as": globals.GetState().GetKickUser().UserLogin,
 				},
 				"twitch_connected_chat":  twitch.Channels,
 				"kick_connected_chat":    kick.Channels,

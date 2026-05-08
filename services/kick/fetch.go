@@ -169,7 +169,7 @@ func GetChatroom(slug string) (ChatroomData, error) {
 func PostMessage(msg Message) error {
 	url := urlAPIChat
 	var data = map[string]any{
-		"broadcaster_user_id": UserID,
+		"broadcaster_user_id": globals.GetState().GetKickUser().UserID,
 		"content":             msg.Text,
 		"type":                "user",
 	}

@@ -56,6 +56,14 @@ type YouTubeUser struct {
 	Channels       []YouTubeChannel `json:"channels"`
 }
 
+type KickUser struct {
+	Token          string `json:"-"`
+	RefreshToken   string `json:"-"`
+	TokenExpiresIn int
+	UserID         int    `json:"userId"`
+	UserLogin      string `json:"userLogin"`
+}
+
 type State struct {
 	sync.RWMutex
 	ViewersTwitch           []string
@@ -63,6 +71,7 @@ type State struct {
 	TwitchUser              TwitchUser
 	TwitchEventSubSessionId string
 	YouTubeUser             YouTubeUser
+	KickUser                KickUser
 }
 
 type Config struct {
@@ -235,5 +244,21 @@ func (s *State) AddYouTubeChat(channelId, chatId string) {
 	WsBroadcast <- SocketMessage{
 		Type: "youtube-connection",
 		Data: s.YouTubeUser,
+	}
+}
+
+func (s *State) GetKickUser() KickUser {
+	s.Lock()
+	defer s.Unlock()
+	return s.KickUser
+}
+
+func (s *State) SetKickUser(user KickUser) {
+	s.Lock()
+	defer s.Unlock()
+	s.KickUser = user
+	WsBroadcast <- SocketMessage{
+		Type: "kick-connection",
+		Data: s.KickUser.UserLogin,
 	}
 }

@@ -8,19 +8,13 @@ import (
 	"log"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/gorilla/websocket"
 )
 
 // Global variables for the logged-in streamer
-var Token string
-var UserID int
-var UserLogin string
 var LoginDone = make(chan bool)
-var RefreshToken string
-var TokenMutex sync.RWMutex
 var CodeVerifier string
 var OAuthState string
 
@@ -55,7 +49,7 @@ var ircHandlers = map[string]func(km KickMessage, data map[string]any){
 	"pusher:connection_established": func(km KickMessage, data map[string]any) {
 		globals.WsBroadcast <- globals.SocketMessage{
 			Type: "kick-connection",
-			Data: UserLogin,
+			Data: globals.GetState().GetKickUser().UserLogin,
 		}
 	},
 	"pusher_internal:subscription_succeeded": func(km KickMessage, data map[string]any) {
@@ -114,7 +108,7 @@ func FindChannelByID(id string) *IrcChannel {
 }
 
 func Connect() error {
-	token := GetKickToken()
+	token := globals.GetState().GetKickUser().Token
 	if token == "" {
 		return fmt.Errorf("kick Token not found")
 	}
@@ -146,7 +140,7 @@ func Connect() error {
 
 func JoinChannel(channel string) {
 	helpers.Logf(helpers.DEBUG, "[Kick IRC] Connecting to channel: %s", channel)
-	token := GetKickToken()
+	token := globals.GetState().GetKickUser().Token
 	if token == "" {
 		helpers.Logf(helpers.ERROR, "[Kick IRC] Token not found")
 		return

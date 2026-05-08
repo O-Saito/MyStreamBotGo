@@ -55,7 +55,7 @@ func DoRequest(req *http.Request) (*http.Response, error) {
 	AddAuthHeaders(req)
 
 	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
+	if err != nil && resp == nil {
 		return nil, err
 	}
 
@@ -64,9 +64,18 @@ func DoRequest(req *http.Request) (*http.Response, error) {
 		helpers.Logf(helpers.DEBUG, "[TWITCH] Token expired (401), trying refresh...")
 
 		currentAccess, err := globals.GetGlobalDB().GetToken("twitch")
+
+		var retry = 0
 		_, err = RefreshToken(currentAccess.RefreshToken)
-		if err != nil {
+		for err != nil && retry < 3 {
 			helpers.Logf(helpers.ERROR, "[TWITCH] Failed to refresh token: %s", err.Error())
+			_, err = RefreshToken(currentAccess.RefreshToken)
+			retry++
+		}
+
+		// Refresh the token
+		if err != nil {
+			globals.GetState().SetTwitchUser(globals.TwitchUser{})
 			return nil, err
 		}
 
@@ -77,6 +86,10 @@ func DoRequest(req *http.Request) (*http.Response, error) {
 		if err != nil {
 			return nil, err
 		}
+	}
+
+	if err != nil {
+		return nil, err
 	}
 
 	return resp, nil

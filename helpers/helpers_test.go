@@ -6,10 +6,10 @@ import (
 
 func TestContains(t *testing.T) {
 	tests := []struct {
-		name     string
-		slice   []string
-		target  string
-		want    bool
+		name   string
+		slice  []string
+		target string
+		want   bool
 	}{
 		{"found", []string{"a", "b", "c"}, "b", true},
 		{"not_found", []string{"a", "b", "c"}, "d", false},
@@ -31,16 +31,16 @@ func TestContains(t *testing.T) {
 func TestFind(t *testing.T) {
 	t.Run("found", func(t *testing.T) {
 		slice := []string{"a", "b", "c"}
-		predicate := func(s string) bool { return s == "b" }
+		predicate := func(s *string) bool { return *s == "b" }
 		got, ok := Find(slice, predicate)
-		if !ok || got != "b" {
-			t.Errorf("Find() = (%q, %v), want (%q, true)", got, ok, "b")
+		if !ok || *got != "b" {
+			t.Errorf("Find() = (%q, %v), want (%q, true)", *got, ok, "b")
 		}
 	})
 
 	t.Run("not_found", func(t *testing.T) {
 		slice := []string{"a", "b", "c"}
-		predicate := func(s string) bool { return s == "d" }
+		predicate := func(s *string) bool { return *s == "d" }
 		got, ok := Find(slice, predicate)
 		if ok {
 			t.Errorf("Find() = (%q, true), want (zero, false)", got)
@@ -49,7 +49,7 @@ func TestFind(t *testing.T) {
 
 	t.Run("empty", func(t *testing.T) {
 		slice := []string{}
-		predicate := func(s string) bool { return s == "a" }
+		predicate := func(s *string) bool { return *s == "a" }
 		got, ok := Find(slice, predicate)
 		if ok {
 			t.Errorf("Find() = (%q, true), want (zero, false)", got)

@@ -37,12 +37,13 @@ type DynamicEventLua struct {
 }
 
 type DynamicEventState struct {
-	mu       sync.RWMutex
-	LastTick time.Time
-	NextTick time.Time
-	Paused   bool
-	db       *sql.DB
-	Interval time.Duration
+	mu                      sync.RWMutex
+	LastTick                time.Time
+	NextTick                time.Time
+	Paused                  bool
+	ComputeTwitchSharedChat bool
+	db                      *sql.DB
+	Interval                time.Duration
 }
 
 type DynamicEventStats struct {
@@ -127,6 +128,12 @@ func (dev *DynamicEvent) Close() {
 		dev.Lua.LState.Close()
 		dev.Lua.LState = nil
 	}
+}
+
+func (dev *DynamicEvent) GetComputeTwitchSharedChat() bool {
+	dev.State.mu.RLock()
+	defer dev.State.mu.RUnlock()
+	return dev.State.ComputeTwitchSharedChat
 }
 
 func (dev *DynamicEvent) CanProcess() bool {
@@ -543,6 +550,14 @@ func setFunctionOnTable(ev *DynamicEvent, tbl *lua.LTable) {
 		ev.State.mu.Lock()
 		defer ev.State.mu.Unlock()
 		ev.State.Paused = val
+		return 0
+	}))
+
+	ev.Lua.LState.SetField(tbl, "set_compute_twitch_shared_chat", ev.Lua.LState.NewFunction(func(L *lua.LState) int {
+		val := L.CheckBool(1)
+		ev.State.mu.Lock()
+		defer ev.State.mu.Unlock()
+		ev.State.ComputeTwitchSharedChat = val
 		return 0
 	}))
 

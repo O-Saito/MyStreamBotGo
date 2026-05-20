@@ -43,6 +43,11 @@ func ProcessChatQueue() {
 			Type:              mlua.DyEventChat,
 			MessageFromStream: ev,
 		}
+		if ev.Source == "twitch" {
+			if ev.Channel != globals.GetState().TwitchUser.UserLogin {
+				continue
+			}
+		}
 		mlua.HandleChat(&ev)
 	}
 }

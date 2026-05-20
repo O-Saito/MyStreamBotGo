@@ -9,14 +9,14 @@ import (
 func ProcessCommandQueue() {
 	helpers.Log(helpers.INFO, "Started command queue processor!")
 	for ev := range globals.CommandQueue {
+		mlua.DyEventQueue <- mlua.DyEventQueueData{
+			Type:       mlua.DyEventCommand,
+			LuaCommand: ev,
+		}
 		if ev.Source == "twitch" {
 			if ev.Channel != globals.GetState().TwitchUser.UserLogin {
 				continue
 			}
-		}
-		mlua.DyEventQueue <- mlua.DyEventQueueData{
-			Type:       mlua.DyEventCommand,
-			LuaCommand: ev,
 		}
 		mlua.HandleCommand(ev.Name, &ev)
 	}

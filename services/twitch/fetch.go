@@ -196,7 +196,7 @@ func GetBadges(broadcasterId ...string) (*map[string]any, error) {
 		Data []struct {
 			SetId    string `json:"set_id"`
 			Versions []struct {
-				Id          int    `json:"id"`
+				Id          string `json:"id"`
 				ImgUrl1x    string `json:"image_url_1x"`
 				ImgUrl2x    string `json:"image_url_2x"`
 				ImgUrl4x    string `json:"image_url_4x"`

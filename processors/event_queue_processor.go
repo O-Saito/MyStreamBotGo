@@ -9,12 +9,30 @@ import (
 func ProcessEventQueue() {
 	helpers.Log(helpers.INFO, "Started event queue processor!")
 	for ev := range globals.EventQueue {
-		globals.WsBroadcast <- globals.SocketMessage{Type: ev.Type, Data: ev.Data}
-
 		isTwitch := false
+		shouldSkip := false
+		if ev.Type == "twitch-eventsub-notification" {
+			isTwitch = true
+		}
+
+		if isTwitch {
+			if payload, ok := ev.Data["payload"].(map[string]any); ok {
+				if eventData, ok := payload["event"].(map[string]any); ok {
+					if broadcasterId, ok := eventData["broadcaster_user_id"].(string); ok {
+						if broadcasterId != globals.GetState().TwitchUser.UserID {
+							shouldSkip = true
+						}
+					}
+				}
+			}
+		}
+
+		if !shouldSkip {
+			globals.WsBroadcast <- globals.SocketMessage{Type: ev.Type, Data: ev.Data}
+		}
+
 		if ev.Type == "twitch-eventsub-notification" {
 			ev.Type = ev.Data["payload"].(map[string]any)["subscription"].(map[string]any)["type"].(string)
-			isTwitch = true
 		}
 
 		mlua.DyEventQueue <- mlua.DyEventQueueData{
@@ -22,18 +40,8 @@ func ProcessEventQueue() {
 			LuaEvent: ev,
 		}
 
-		if isTwitch {
-			helpers.Logf(helpers.DEBUG, "Skipping Twitch event for broadcaster %v and %V", ev.Data["payload"], globals.GetState().TwitchUser)
-			if payload, ok := ev.Data["payload"].(map[string]any); ok {
-				if eventData, ok := payload["event"].(map[string]any); ok {
-					if broadcasterLogin, ok := eventData["broadcaster_user_login"].(string); ok {
-						if broadcasterLogin != globals.GetState().TwitchUser.UserLogin {
-							continue
-						}
-					}
-				}
-			}
+		if !shouldSkip {
+			mlua.HandleEvent(ev.Type, &ev)
 		}
-		mlua.HandleEvent(ev.Type, &ev)
 	}
 }

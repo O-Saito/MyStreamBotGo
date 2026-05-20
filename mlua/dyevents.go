@@ -130,12 +130,6 @@ func (dev *DynamicEvent) Close() {
 	}
 }
 
-func (dev *DynamicEvent) GetComputeTwitchSharedChat() bool {
-	dev.State.mu.RLock()
-	defer dev.State.mu.RUnlock()
-	return dev.State.ComputeTwitchSharedChat
-}
-
 func (dev *DynamicEvent) CanProcess() bool {
 	dev.mu.RLock()
 	defer dev.mu.RUnlock()
@@ -215,6 +209,16 @@ func (dev *DynamicEvent) ProcessChat(evm *globals.MessageFromStream) {
 		return
 	}
 
+	dev.State.mu.RLock()
+	shouldComputeSharedChat := dev.State.ComputeTwitchSharedChat
+	dev.State.mu.RUnlock()
+
+	if !shouldComputeSharedChat &&
+		evm.Source == "twitch" &&
+		evm.Channel != globals.GetState().TwitchUser.UserLogin {
+		return
+	}
+
 	dev.Lua.mu.Lock()
 	defer dev.Lua.mu.Unlock()
 
@@ -235,6 +239,16 @@ func (dev *DynamicEvent) ProcessChat(evm *globals.MessageFromStream) {
 
 func (dev *DynamicEvent) ProcessCommand(evm *globals.Command) {
 	if !dev.CanProcess() {
+		return
+	}
+
+	dev.State.mu.RLock()
+	shouldComputeSharedChat := dev.State.ComputeTwitchSharedChat
+	dev.State.mu.RUnlock()
+
+	if !shouldComputeSharedChat &&
+		evm.Source == "twitch" &&
+		evm.Channel != globals.GetState().TwitchUser.UserLogin {
 		return
 	}
 
@@ -260,6 +274,22 @@ func (dev *DynamicEvent) ProcessCommand(evm *globals.Command) {
 func (dev *DynamicEvent) ProcessEvent(evm *globals.Event) {
 	if !dev.CanProcess() {
 		return
+	}
+
+	dev.State.mu.RLock()
+	shouldComputeSharedChat := dev.State.ComputeTwitchSharedChat
+	dev.State.mu.RUnlock()
+
+	if !shouldComputeSharedChat {
+		if payload, ok := evm.Data["payload"].(map[string]any); ok {
+			if eventData, ok := payload["event"].(map[string]any); ok {
+				if broadcasterId, ok := eventData["broadcaster_user_id"].(string); ok {
+					if broadcasterId != globals.GetState().TwitchUser.UserID {
+						return
+					}
+				}
+			}
+		}
 	}
 
 	dev.Lua.mu.Lock()

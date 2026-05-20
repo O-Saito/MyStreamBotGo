@@ -587,6 +587,7 @@ button {
 }
 
 #events-list .event {
+    display: block;
     vertical-align: middle;
     line-height: 27px;
 }

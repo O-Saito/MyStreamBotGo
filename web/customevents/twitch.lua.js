@@ -1,4 +1,10 @@
 import w from './../wrapper.js'
+import {
+    formatDuration,
+    parseTimeZone,
+    getDateDiff,
+    isValidLatinString,
+} from './../helper.js'
 
 const filename = "twitch.lua";
 
@@ -80,6 +86,56 @@ const openPanels = new Map();
 export default (funcs) => {
     fs = funcs;
     console.log(fs);
+
+    w.onTwitch("channel.follow", (data) => {
+        const userName = data?.payload?.event?.user_name;
+        const broadcaster = streams.twitch.data?.userId == data?.payload?.event?.broadcaster_user_id
+            ? 'você'
+            : data?.payload?.event?.broadcaster_user_name || 'o canal';
+        fs.addEventMessage(`<span class="user">${userName}</span> seguiu ${broadcaster}!`);
+    });
+    w.onTwitch("channel.raid", (data) => {
+        const fromName = data?.payload?.event?.from_broadcaster_user_name;
+        const toName = streams.twitch.data?.userId == data?.payload?.event?.to_broadcaster_user_id
+            ? 'você'
+            : data?.payload?.event?.to_broadcaster_user_name || 'o canal';
+        const viewers = data?.payload?.event?.viewers || 0;
+        fs.addEventMessage(`<span><span class="user">${fromName}</span> está raidando ${toName} com ${viewers} viewers!</span>`);
+    });
+    w.onTwitch("channel.subscribe", (data) => {
+        const userName = data?.payload?.event?.user_name;
+        const broadcaster = streams.twitch.data?.userId == data?.payload?.event?.broadcaster_user_id
+            ? 'você'
+            : data?.payload?.event?.broadcaster_user_name || 'o canal';
+        fs.addEventMessage(`<span class="user">${userName}</span> se inscreveu em ${broadcaster}!`);
+    });
+    w.onTwitch("channel.subscription.gift", (data) => {
+        const event = data?.payload?.event;
+        const fromName = event?.user_name || 'Alguém';
+        const broadcaster = streams.twitch.data?.userId == event?.broadcaster_user_id
+            ? 'seu canal'
+            : event?.broadcaster_user_name || 'o canal';
+        fs.addEventMessage(`<span><span class="user">${fromName}</span> presenteou <span>${event?.total}</span> viewers em ${broadcaster}!</span>`);
+    });
+    w.onTwitch("channel.ad_break.begin", (data) => {
+        const duration = data?.payload?.event?.duration_seconds || 0;
+        fs.addEventMessage(`<span>Uma pausa para anúncio começou! Duração: ${duration} segundos</span>`);
+    });
+    w.onTwitch("channel.ad_break.end", () => {
+        fs.addEventMessage(`<span>A pausa para anúncio terminou!</span>`);
+    });
+    w.onTwitch("channel.shared_chat.begin", (data) => {
+        const withName = data?.payload?.event?.with_broadcaster_user_name || 'alguém';
+        fs.addEventMessage(`<span>O chat foi compartilhado com ${withName}!</span>`);
+    });
+    w.onTwitch("channel.shared_chat.update", (data) => {
+        const withName = data?.payload?.event?.with_broadcaster_user_name || 'alguém';
+        fs.addEventMessage(`<span>O chat compartilhado com ${withName} foi atualizado!</span>`);
+    });
+    w.onTwitch("channel.shared_chat.end", (data) => {
+        const withName = data?.payload?.event?.with_broadcaster_user_name || 'alguém';
+        fs.addEventMessage(`<span>O chat compartilhado com ${withName} terminou!</span>`);
+    });
 
     w.on("user-message", appendMessage);
     w.on("self-message", appendMessage);

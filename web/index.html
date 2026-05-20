@@ -691,28 +691,7 @@
             div.append(source, channel, badges, user, message, allowBtn);
             addChatMessage(div);
         });
-        w.onTwitch("channel.follow", (data) => {
-            const el = document.createElement('div');
-            el.className = 'event';
-            const userName = data?.payload?.event?.user_name;
-            const broadcaster = streams.twitch.data?.userId == data?.payload?.event?.broadcaster_user_id
-                ? data?.payload?.event?.broadcaster_user_name
-                : 'você';
-            el.innerHTML = `<span><span class="user">${userName}</span> seguiu ${broadcaster}!</span>`;
-            eventDiv.appendChild(el);
-        });
-        w.onTwitch("channel.raid", (data) => {
-            const el = document.createElement('div');
-            el.className = 'event';
-            const fromName = data?.payload?.event?.from_broadcaster_user_name;
-            const toName = streams.twitch.data?.userId == data?.payload?.event?.to_broadcaster_user_id
-                ? data?.payload?.event?.to_broadcaster_user_name
-                : 'você';
-            const viewers = data?.payload?.event?.viewers || 0;
-            el.innerHTML = `<span><span class="user">${fromName}</span> está raidando ${toName} com ${viewers} viewers!</span>`;
-            eventDiv.appendChild(el);
-        });
-
+        
         try {
             w.connect();
         } catch (e) {
@@ -731,6 +710,7 @@
         }, 1000);
 
         function getCurrentState() {
+            return;
             w.send("get-state", {}, (d) => {
                 document.querySelector('#actual-current-state').textContent = JSON.stringify(d, null, 2);
             });
@@ -1306,6 +1286,20 @@
             if (chatAcompanhar.checked) chatDiv.scrollTop = chatDiv.scrollHeight;
         }
 
+        function addEventMessage(element) {
+            if (!element) return;
+            if (typeof element === 'string') {
+                const div = document.createElement('div');
+                div.innerHTML = element;
+                element = div;
+            }
+            if (!element.classList.contains('event')) {
+                element.classList.add('event');
+            }
+            eventDiv.appendChild(element);
+            eventDiv.scrollTop = eventDiv.scrollHeight;
+        }
+
         function loadDyModules(modules) {
             if (!modules?.length) {
                 document.getElementById('dyevents-panel').style.display = 'none';
@@ -1335,6 +1329,7 @@
                 import(`./customevents/${m.name}.js?t=${Date.now()}`)
                     .then(module => module.default?.({
                         addChatMessage,
+                        addEventMessage,
                         showPanel,
                         checkuserReference,
                         parseText,

@@ -88,6 +88,9 @@ type Config struct {
 	DBName              string
 	TwitchSubTypes      map[string]map[string]any
 
+	EventSubWebSocketURL string
+	EventSubAPIURL       string
+
 	YouTubeRefresh string
 }
 
@@ -102,10 +105,12 @@ var (
 func GetConfig() *Config {
 	once.Do(func() {
 		config = &Config{
-			BotPrefix:    "!",
-			HTTPPort:     "1699",
-			TwitchScopes: "",
-			DBName:       "main",
+			BotPrefix:            "!",
+			HTTPPort:             "1699",
+			TwitchScopes:         "",
+			DBName:               "main",
+			EventSubWebSocketURL: "wss://eventsub.wss.twitch.tv/ws",
+			EventSubAPIURL:       "https://api.twitch.tv/helix/eventsub/subscriptions",
 		}
 	})
 	return config
@@ -129,6 +134,18 @@ func (c *Config) SetTwitchSubTypes(data map[string]map[string]any) {
 	c.Lock()
 	defer c.Unlock()
 	c.TwitchSubTypes = data
+}
+
+func (c *Config) GetEventSubWebSocketURL() string {
+	c.RLock()
+	defer c.RUnlock()
+	return c.EventSubWebSocketURL
+}
+
+func (c *Config) GetEventSubAPIURL() string {
+	c.RLock()
+	defer c.RUnlock()
+	return c.EventSubAPIURL
 }
 
 func GetState() *State {

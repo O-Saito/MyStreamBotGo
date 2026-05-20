@@ -242,7 +242,11 @@ var (
 )
 
 func connectToEventSub() {
-	u := url.URL{Scheme: "wss", Host: "eventsub.wss.twitch.tv", Path: "/ws"}
+	u, err := url.Parse(globals.GetConfig().GetEventSubWebSocketURL())
+	if err != nil {
+		helpers.Logf(helpers.ERROR, "[Twitch] Invalid EventSubWebSocketURL: %v", err)
+		return
+	}
 	conn, resp, err := websocket.DefaultDialer.Dial(u.String(), nil)
 	if err != nil {
 		if resp != nil {
@@ -349,6 +353,8 @@ func listenToEventSub(conn *websocket.Conn) {
 }
 
 func subscribeToEvents() {
+	urlAPIEventSub = globals.GetConfig().GetEventSubAPIURL()
+
 	var data = EventSub{
 		Type:    "",
 		Version: 1,

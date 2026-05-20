@@ -421,7 +421,7 @@ button {
     margin-right: 2px;
 }
 
-#chat .message:not([data-source-room]) .chat-channel:not(:has(>img)) {
+#chat .message:not([data-source-room]) .chat-channel:has(>img) {
     display: none;
 }
 

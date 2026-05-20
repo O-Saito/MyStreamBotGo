@@ -227,7 +227,10 @@ var ircHandlers = map[string]func(parts []string, afterMetadataIndex int, metada
 		info := state.GetData("twitch-badges-info")
 		//infoChannel := state.GetData(fmt.Sprintf("twitch-badges-info-%s", channel))
 		if info == nil {
-			data, _ := GetBadges()
+			data, err := GetBadges()
+			if err != nil {
+				helpers.Logf(helpers.ERROR, "[TWITCH FETCH] Error fetching badges list: %s", err.Error())
+			}
 			if data != nil {
 				info = *data
 			}

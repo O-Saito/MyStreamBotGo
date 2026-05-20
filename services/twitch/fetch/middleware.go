@@ -61,7 +61,7 @@ func DoRequest(req *http.Request) (*http.Response, error) {
 
 	if resp.StatusCode == http.StatusUnauthorized {
 		resp.Body.Close()
-		helpers.Logf(helpers.DEBUG, "[TWITCH] Token expired (401), trying refresh...")
+		helpers.Logf(helpers.DEBUG, "[TWITCH] Token expired (401) for %s, trying refresh...", req.URL)
 
 		currentAccess, err := globals.GetGlobalDB().GetToken("twitch")
 
@@ -81,7 +81,7 @@ func DoRequest(req *http.Request) (*http.Response, error) {
 
 		AddAuthHeaders(req)
 
-		helpers.Logf(helpers.DEBUG, "[TWITCH] Retrying request with new token")
+		helpers.Logf(helpers.DEBUG, "[TWITCH] Retrying request with new token for %s", req.URL)
 		resp, err = http.DefaultClient.Do(req)
 		if err != nil {
 			return nil, err
@@ -167,7 +167,7 @@ func ExecuteRequest[T any](method, url string, expectedStatus int) (*T, error) {
 		req, err = http.NewRequest(method, url, nil)
 	}
 	if err != nil {
-		helpers.Logf(helpers.ERROR, "[TWITCH] executeRequest http.NewRequest failed: %v", err)
+		helpers.Logf(helpers.ERROR, "[TWITCH] executeRequest http.NewRequest failed: method=%s url=%s err=%v", method, url, err)
 		return nil, err
 	}
 
@@ -181,7 +181,7 @@ func ExecuteRequest[T any](method, url string, expectedStatus int) (*T, error) {
 	if resp.StatusCode != expectedStatus {
 		respBody, err := io.ReadAll(resp.Body)
 		if err != nil {
-			helpers.Logf(helpers.ERROR, "[TWITCH] executeRequest io.ReadAll failed: %v", err)
+		helpers.Logf(helpers.ERROR, "[TWITCH] executeRequest io.ReadAll failed: url=%s expectedStatus=%d err=%v", url, expectedStatus, err)
 			return nil, err
 		}
 		return nil, fmt.Errorf("executeRequest(%s %s): expected %d, got %d: %s", method, url, expectedStatus, resp.StatusCode, respBody)
@@ -189,14 +189,14 @@ func ExecuteRequest[T any](method, url string, expectedStatus int) (*T, error) {
 
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
-		helpers.Logf(helpers.ERROR, "[TWITCH] executeRequest io.ReadAll failed: %v", err)
+		helpers.Logf(helpers.ERROR, "[TWITCH] executeRequest io.ReadAll failed: url=%s expectedStatus=%d err=%v", url, expectedStatus, err)
 		return nil, err
 	}
 
 	var result T
 	if len(respBody) > 0 {
 		if err := json.Unmarshal(respBody, &result); err != nil {
-			helpers.Logf(helpers.ERROR, "[TWITCH] executeRequest json.Unmarshal failed: %v", err)
+			helpers.Logf(helpers.ERROR, "[TWITCH] executeRequest json.Unmarshal failed: url=%s err=%v", url, err)
 			return nil, err
 		}
 	}
@@ -207,13 +207,13 @@ func ExecuteRequest[T any](method, url string, expectedStatus int) (*T, error) {
 func ExecuteJSONRequest[Resp any, Req any](method, url string, body Req, expectedStatus int) (*Resp, error) {
 	jsonData, err := json.Marshal(body)
 	if err != nil {
-		helpers.Logf(helpers.ERROR, "[TWITCH] executeJSONRequest json.Marshal failed: %v", err)
+		helpers.Logf(helpers.ERROR, "[TWITCH] executeJSONRequest json.Marshal failed: url=%s err=%v", url, err)
 		return nil, err
 	}
 
 	req, err := http.NewRequest(method, url, bytes.NewBuffer(jsonData))
 	if err != nil {
-		helpers.Logf(helpers.ERROR, "[TWITCH] executeJSONRequest http.NewRequest failed: %v", err)
+		helpers.Logf(helpers.ERROR, "[TWITCH] executeJSONRequest http.NewRequest failed: method=%s url=%s err=%v", method, url, err)
 		return nil, err
 	}
 	req.Header.Set("Content-Type", "application/json")
@@ -228,7 +228,7 @@ func ExecuteJSONRequest[Resp any, Req any](method, url string, body Req, expecte
 	if resp.StatusCode != expectedStatus {
 		respBody, err := io.ReadAll(resp.Body)
 		if err != nil {
-			helpers.Logf(helpers.ERROR, "[TWITCH] executeJSONRequest io.ReadAll failed: %v", err)
+			helpers.Logf(helpers.ERROR, "[TWITCH] executeJSONRequest io.ReadAll failed: url=%s expectedStatus=%d err=%v", url, expectedStatus, err)
 			return nil, err
 		}
 		return nil, fmt.Errorf("executeJSONRequest(%s %s): expected %d, got %d: %s", method, url, expectedStatus, resp.StatusCode, respBody)
@@ -236,14 +236,14 @@ func ExecuteJSONRequest[Resp any, Req any](method, url string, body Req, expecte
 
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
-		helpers.Logf(helpers.ERROR, "[TWITCH] executeJSONRequest io.ReadAll failed: %v", err)
+		helpers.Logf(helpers.ERROR, "[TWITCH] executeJSONRequest io.ReadAll failed: url=%s expectedStatus=%d err=%v", url, expectedStatus, err)
 		return nil, err
 	}
 
 	var result Resp
 	if len(respBody) > 0 {
 		if err := json.Unmarshal(respBody, &result); err != nil {
-			helpers.Logf(helpers.ERROR, "[TWITCH] executeJSONRequest json.Unmarshal failed: %v", err)
+			helpers.Logf(helpers.ERROR, "[TWITCH] executeJSONRequest json.Unmarshal failed: url=%s err=%v", url, err)
 			return nil, err
 		}
 	}
@@ -254,7 +254,7 @@ func ExecuteJSONRequest[Resp any, Req any](method, url string, body Req, expecte
 func ExecuteRequestNoParse(method, url string, expectedStatus int) ([]byte, error) {
 	req, err := http.NewRequest(method, url, nil)
 	if err != nil {
-		helpers.Logf(helpers.ERROR, "[TWITCH] executeRequestNoParse http.NewRequest failed: %v", err)
+		helpers.Logf(helpers.ERROR, "[TWITCH] executeRequestNoParse http.NewRequest failed: method=%s url=%s err=%v", method, url, err)
 		return nil, err
 	}
 
@@ -268,7 +268,7 @@ func ExecuteRequestNoParse(method, url string, expectedStatus int) ([]byte, erro
 	if resp.StatusCode != expectedStatus {
 		respBody, err := io.ReadAll(resp.Body)
 		if err != nil {
-			helpers.Logf(helpers.ERROR, "[TWITCH] executeRequestNoParse io.ReadAll failed: %v", err)
+			helpers.Logf(helpers.ERROR, "[TWITCH] executeRequestNoParse io.ReadAll failed: url=%s expectedStatus=%d err=%v", url, expectedStatus, err)
 			return nil, err
 		}
 		return nil, fmt.Errorf("executeRequestNoParse(%s %s): expected %d, got %d: %s", method, url, expectedStatus, resp.StatusCode, respBody)
@@ -276,7 +276,7 @@ func ExecuteRequestNoParse(method, url string, expectedStatus int) ([]byte, erro
 
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
-		helpers.Logf(helpers.ERROR, "[TWITCH] executeRequestNoParse io.ReadAll failed: %v", err)
+		helpers.Logf(helpers.ERROR, "[TWITCH] executeRequestNoParse io.ReadAll failed: url=%s expectedStatus=%d err=%v", url, expectedStatus, err)
 		return nil, err
 	}
 
@@ -301,7 +301,7 @@ func RefreshToken(refreshToken string) (*struct {
 	defer resp.Body.Close()
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		helpers.Logf(helpers.ERROR, "[TWITCH] login io.ReadAll failed: %v", err)
+		helpers.Logf(helpers.ERROR, "[TWITCH] token refresh io.ReadAll failed: err=%v", err)
 		return nil, err
 	}
 
@@ -312,7 +312,7 @@ func RefreshToken(refreshToken string) (*struct {
 	}
 
 	if err := json.Unmarshal(body, &tokenResp); err != nil {
-		helpers.Logf(helpers.ERROR, "[TWITCH] login json.Unmarshal failed: %v", err)
+		helpers.Logf(helpers.ERROR, "[TWITCH] token refresh json.Unmarshal failed: body=%s err=%v", string(body), err)
 		return nil, err
 	}
 
@@ -322,7 +322,7 @@ func RefreshToken(refreshToken string) (*struct {
 
 	sqlErr := globals.GetGlobalDB().SaveToken("twitch", tokenResp.AccessToken, tokenResp.RefreshToken, time.Now().Add(time.Duration(tokenResp.Expires)*time.Second))
 	if sqlErr != nil {
-		helpers.Logf(helpers.ERROR, "[TWITCH] Failed to save token: %s", sqlErr.Error())
+		helpers.Logf(helpers.ERROR, "[TWITCH] Failed to save token for user %s: %s", globals.GetState().GetTwitchUser().UserLogin, sqlErr.Error())
 	}
 
 	user := globals.GetState().GetTwitchUser()

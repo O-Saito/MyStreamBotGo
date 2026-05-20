@@ -4,14 +4,14 @@ package twitch
 
 import (
 	"MyStreamBot/helpers"
-	
+
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 )
 
-var urlAPITeams = "https://api.tv/helix/teams"
+var urlAPITeams = "https://api.twitch.tv/helix/teams"
 
 type Team struct {
 	ID                 string `json:"id"`

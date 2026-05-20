@@ -7,16 +7,16 @@ import (
 	"time"
 )
 
-var urlAPIMod = "https://api.tv/helix/moderation"
-var urlAPIAutoMod = "https://api.tv/helix/automod"
-var urlAPIAutoModSettings = "https://api.tv/helix/automod/settings"
-var urlAPIBanned = "https://api.tv/helix/moderation/banned"
-var urlAPIBlockTerms = "https://api.tv/helix/moderation/blocked_terms"
-var urlAPIModerators = "https://api.tv/helix/moderation/moderators"
-var urlAPIVIPs = "https://api.tv/helix/moderation/vips"
-var urlAPIModeratedChannels = "https://api.tv/helix/moderation/channels"
-var urlAPIShieldMode = "https://api.tv/helix/moderation/shield_mode"
-var urlAPIUnbanRequests = "https://api.tv/helix/moderation/unban_requests"
+var urlAPIMod = "https://api.twitch.tv/helix/moderation"
+var urlAPIAutoMod = "https://api.twitch.tv/helix/automod"
+var urlAPIAutoModSettings = "https://api.twitch.tv/helix/automod/settings"
+var urlAPIBanned = "https://api.twitch.tv/helix/moderation/banned"
+var urlAPIBlockTerms = "https://api.twitch.tv/helix/moderation/blocked_terms"
+var urlAPIModerators = "https://api.twitch.tv/helix/moderation/moderators"
+var urlAPIVIPs = "https://api.twitch.tv/helix/moderation/vips"
+var urlAPIModeratedChannels = "https://api.twitch.tv/helix/moderation/channels"
+var urlAPIShieldMode = "https://api.twitch.tv/helix/moderation/shield_mode"
+var urlAPIUnbanRequests = "https://api.twitch.tv/helix/moderation/unban_requests"
 
 type AutoModStatus struct {
 	Permitted bool `json:"permitted"`

@@ -3,13 +3,13 @@ package twitch
 import (
 	"MyStreamBot/globals"
 	"MyStreamBot/helpers"
-	
+
 	"time"
 )
 
-var urlAPIStreams = "https://api.tv/helix/streams"
-var urlAPIStreamKey = "https://api.tv/helix/streams/key"
-var urlAPIStreamMarkers = "https://api.tv/helix/streams/markers"
+var urlAPIStreams = "https://api.twitch.tv/helix/streams"
+var urlAPIStreamKey = "https://api.twitch.tv/helix/streams/key"
+var urlAPIStreamMarkers = "https://api.twitch.tv/helix/streams/markers"
 
 type Stream struct {
 	ID           string    `json:"id"`

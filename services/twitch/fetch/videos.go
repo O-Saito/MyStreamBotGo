@@ -2,11 +2,11 @@ package twitch
 
 import (
 	"MyStreamBot/helpers"
-	
+
 	"time"
 )
 
-var urlAPIVideos = "https://api.tv/helix/videos"
+var urlAPIVideos = "https://api.twitch.tv/helix/videos"
 
 type Video struct {
 	ID            string              `json:"id"`
@@ -43,7 +43,7 @@ type GetVideosRequest struct {
 }
 
 type GetVideosResponse struct {
-	Data       []Video           `json:"data"`
+	Data       []Video    `json:"data"`
 	Pagination Pagination `json:"pagination"`
 }
 

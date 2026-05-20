@@ -3,38 +3,37 @@ package twitch
 import (
 	"MyStreamBot/globals"
 	"MyStreamBot/helpers"
-	
 )
 
-var urlAPIChat = "https://api.tv/helix/chat"
-var urlAPIChatAnnouncements = "https://api.tv/helix/chat/announcements"
-var urlAPIChatShoutouts = "https://api.tv/helix/chat/shoutouts"
-var urlAPIChatSettings = "https://api.tv/helix/chat/settings"
-var urlAPIChatColor = "https://api.tv/helix/chat/color"
-var urlAPIChatters = "https://api.tv/helix/chat/chatters"
-var urlAPIEmotes = "https://api.tv/helix/chat/emotes"
-var urlAPIEmotesSets = "https://api.tv/helix/chat/emotes/set"
-var urlAPIChatBadges = "https://api.tv/helix/chat/badges"
-var urlAPISharedChat = "https://api.tv/helix/chat/shared_chat"
+var urlAPIChat = "https://api.twitch.tv/helix/chat"
+var urlAPIChatAnnouncements = "https://api.twitch.tv/helix/chat/announcements"
+var urlAPIChatShoutouts = "https://api.twitch.tv/helix/chat/shoutouts"
+var urlAPIChatSettings = "https://api.twitch.tv/helix/chat/settings"
+var urlAPIChatColor = "https://api.twitch.tv/helix/chat/color"
+var urlAPIChatters = "https://api.twitch.tv/helix/chat/chatters"
+var urlAPIEmotes = "https://api.twitch.tv/helix/chat/emotes"
+var urlAPIEmotesSets = "https://api.twitch.tv/helix/chat/emotes/set"
+var urlAPIChatBadges = "https://api.twitch.tv/helix/chat/badges"
+var urlAPISharedChat = "https://api.twitch.tv/helix/chat/shared_chat"
 
 type ChatSettings struct {
-	EmoteOnly                      bool    `json:"emote_only"`
-	FollowersOnly                  int     `json:"followers_only"`
-	NonModeratorChatDelay          bool    `json:"non_moderator_chat_delay"`
-	NonModeratorChatDelayDuration  int     `json:"non_moderator_chat_delay_duration"`
-	R9K                           bool    `json:"r9k"`
-	Slow                          int     `json:"slow"`
-	SubsOnly                      bool    `json:"subs_only"`
+	EmoteOnly                     bool `json:"emote_only"`
+	FollowersOnly                 int  `json:"followers_only"`
+	NonModeratorChatDelay         bool `json:"non_moderator_chat_delay"`
+	NonModeratorChatDelayDuration int  `json:"non_moderator_chat_delay_duration"`
+	R9K                           bool `json:"r9k"`
+	Slow                          int  `json:"slow"`
+	SubsOnly                      bool `json:"subs_only"`
 }
 
 type ChannelEmote struct {
-	ID       string         `json:"id"`
-	Name    string         `json:"name"`
-	Images  EmoteImages   `json:"images"`
-	Tier   string         `json:"tier"`
-	Type   string         `json:"type"`
-	Format []string       `json:"format"`
-	Scale  []string       `json:"scale"`
+	ID     string      `json:"id"`
+	Name   string      `json:"name"`
+	Images EmoteImages `json:"images"`
+	Tier   string      `json:"tier"`
+	Type   string      `json:"type"`
+	Format []string    `json:"format"`
+	Scale  []string    `json:"scale"`
 }
 
 type EmoteImages struct {
@@ -44,30 +43,30 @@ type EmoteImages struct {
 }
 
 type GlobalEmote struct {
-	ID       string         `json:"id"`
-	Name    string         `json:"name"`
-	Images  EmoteImages   `json:"images"`
-	Type    string         `json:"type"`
-	Format []string       `json:"format"`
-	Scale  []string       `json:"scale"`
+	ID     string      `json:"id"`
+	Name   string      `json:"name"`
+	Images EmoteImages `json:"images"`
+	Type   string      `json:"type"`
+	Format []string    `json:"format"`
+	Scale  []string    `json:"scale"`
 }
 
 type EmoteSet struct {
-	ID     string       `json:"id"`
-	Name   string       `json:"name"`
+	ID     string      `json:"id"`
+	Name   string      `json:"name"`
 	Images EmoteImages `json:"images"`
 }
 
 type ChatBadgeVersion struct {
-	ID          int    `json:"id"`
-	ImageURL1x  string `json:"image_url_1x"`
-	ImageURL2x  string `json:"image_url_2x"`
-	ImageURL4x  string `json:"image_url_4x"`
+	ID         int    `json:"id"`
+	ImageURL1x string `json:"image_url_1x"`
+	ImageURL2x string `json:"image_url_2x"`
+	ImageURL4x string `json:"image_url_4x"`
 	Title      string `json:"title"`
 }
 
 type ChatBadgeSet struct {
-	SetID    string            `json:"set_id"`
+	SetID    string             `json:"set_id"`
 	Versions []ChatBadgeVersion `json:"versions"`
 }
 
@@ -78,7 +77,7 @@ type Chatter struct {
 }
 
 type GetChattersResponse struct {
-	Data       []Chatter        `json:"data"`
+	Data       []Chatter  `json:"data"`
 	Pagination Pagination `json:"pagination"`
 }
 
@@ -247,13 +246,13 @@ func GetChatSettings() (*ChatSettings, error) {
 }
 
 type UpdateChatSettingsRequest struct {
-	EmoteOnly                    *bool `json:"emote_only,omitempty"`
-	FollowersOnly                *int  `json:"followers_only,omitempty"`
-	NonModeratorChatDelay        *bool `json:"non_moderator_chat_delay,omitempty"`
-	NonModeratorChatDelayDuration *int `json:"non_moderator_chat_delay_duration,omitempty"`
-	R9K                         *bool `json:"r9k,omitempty"`
-	Slow                        *int  `json:"slow,omitempty"`
-	SubsOnly                    *bool `json:"subs_only,omitempty"`
+	EmoteOnly                     *bool `json:"emote_only,omitempty"`
+	FollowersOnly                 *int  `json:"followers_only,omitempty"`
+	NonModeratorChatDelay         *bool `json:"non_moderator_chat_delay,omitempty"`
+	NonModeratorChatDelayDuration *int  `json:"non_moderator_chat_delay_duration,omitempty"`
+	R9K                           *bool `json:"r9k,omitempty"`
+	Slow                          *int  `json:"slow,omitempty"`
+	SubsOnly                      *bool `json:"subs_only,omitempty"`
 }
 
 func UpdateChatSettings(req UpdateChatSettingsRequest) error {
@@ -305,8 +304,8 @@ func SendShoutout(toBroadcasterID string) error {
 
 	opts := map[string]any{
 		"from_broadcaster_id": user.UserID,
-		"to_broadcaster_id":  toBroadcasterID,
-		"moderator_id":       user.UserID,
+		"to_broadcaster_id":   toBroadcasterID,
+		"moderator_id":        user.UserID,
 	}
 
 	url := BuildURL(urlAPIChatShoutouts, opts)
@@ -321,7 +320,7 @@ func SendShoutout(toBroadcasterID string) error {
 }
 
 type SendChatMessageRequest struct {
-	Message             string `json:"message"`
+	Message              string `json:"message"`
 	ReplyParentMessageID string `json:"reply_parent_message_id,omitempty"`
 }
 
@@ -330,7 +329,7 @@ func SendChatMessage(msg string) error {
 
 	opts := map[string]any{
 		"broadcaster_id": user.UserID,
-		"moderator_id":  user.UserID,
+		"moderator_id":   user.UserID,
 	}
 
 	url := BuildURL(HelixBaseURL+"/chat", opts)
@@ -353,7 +352,7 @@ func UpdateUserChatColor(userID, color string) error {
 
 	opts := map[string]any{
 		"user_id": userID,
-		"color":  color,
+		"color":   color,
 	}
 
 	url := BuildURL(urlAPIChatColor, opts)
@@ -373,7 +372,7 @@ func DeleteMessage(msgID string) error {
 	opts := map[string]any{
 		"broadcaster_id": user.UserID,
 		"moderator_id":   user.UserID,
-		"message_id":    msgID,
+		"message_id":     msgID,
 	}
 
 	url := BuildURL(HelixBaseURL+"/moderation/chat", opts)
@@ -389,11 +388,11 @@ func DeleteMessage(msgID string) error {
 
 type SharedChatSession struct {
 	SharedChatEnabled bool   `json:"shared_chat_enabled"`
-	Color          string `json:"color"`
-	EmoteSetID     string `json:"emote_set_id"`
-	DisplayName   string `json:"display_name"`
-	Login        string `json:"login"`
-	UserID       string `json:"user_id"`
+	Color             string `json:"color"`
+	EmoteSetID        string `json:"emote_set_id"`
+	DisplayName       string `json:"display_name"`
+	Login             string `json:"login"`
+	UserID            string `json:"user_id"`
 }
 
 type GetSharedChatSessionResponse struct {
@@ -408,7 +407,7 @@ func GetSharedChatSession(userID string) (*SharedChatSession, error) {
 
 	opts := map[string]any{
 		"broadcaster_id": user.UserID,
-		"user_id":      userID,
+		"user_id":        userID,
 	}
 
 	url := BuildURL(urlAPISharedChat, opts)
@@ -426,12 +425,12 @@ func GetSharedChatSession(userID string) (*SharedChatSession, error) {
 }
 
 type UserEmote struct {
-	ID        string       `json:"id"`
-	Name     string       `json:"name"`
-	Images  EmoteImages `json:"images"`
-	Tier    string       `json:"tier"`
-	Format  []string     `json:"format"`
-	Scale   []string     `json:"scale"`
+	ID     string      `json:"id"`
+	Name   string      `json:"name"`
+	Images EmoteImages `json:"images"`
+	Tier   string      `json:"tier"`
+	Format []string    `json:"format"`
+	Scale  []string    `json:"scale"`
 }
 
 type GetUserEmotesResponse struct {
@@ -476,7 +475,7 @@ func GetUserChatColor(userID string) (map[string]string, error) {
 			UserID    string `json:"user_id"`
 			UserName  string `json:"user_name"`
 			UserLogin string `json:"user_login"`
-			Color   string `json:"color"`
+			Color     string `json:"color"`
 		} `json:"data"`
 	}]("GET", url, 200)
 	if err != nil {

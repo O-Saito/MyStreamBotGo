@@ -3,10 +3,9 @@ package twitch
 import (
 	"MyStreamBot/globals"
 	"MyStreamBot/helpers"
-	
 )
 
-var urlAPISubscriptions = "https://api.tv/helix/subscriptions"
+var urlAPISubscriptions = "https://api.twitch.tv/helix/subscriptions"
 
 type Subscription struct {
 	BroadcasterID    string `json:"broadcaster_id"`
@@ -25,13 +24,13 @@ type Subscription struct {
 }
 
 type UserSubscription struct {
-	BroadcasterID   string  `json:"broadcaster_id"`
-	BroadcasterLogin string `json:"broadcaster_login"`
+	BroadcasterID    string  `json:"broadcaster_id"`
+	BroadcasterLogin string  `json:"broadcaster_login"`
 	BroadcasterName  string  `json:"broadcaster_name"`
-	IsGift          bool    `json:"is_gift"`
-	GifterLogin     *string `json:"gifter_login,omitempty"`
-	GifterName      *string `json:"gifter_name,omitempty"`
-	Tier           string  `json:"tier"`
+	IsGift           bool    `json:"is_gift"`
+	GifterLogin      *string `json:"gifter_login,omitempty"`
+	GifterName       *string `json:"gifter_name,omitempty"`
+	Tier             string  `json:"tier"`
 }
 
 type GetBroadcasterSubscriptionsResponse struct {

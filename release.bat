@@ -25,12 +25,12 @@ go build -ldflags "-X main.Version=%VERSION% -X main.BuildDate=%BUILD_DATE% -X m
 
 echo ^==^> Copying files...
 
-#copy init.txt            "%BUILD_DIR%\" >nul
+::copy init.txt            "%BUILD_DIR%\" >nul
 copy twitchsubtypes.json "%BUILD_DIR%\" >nul
 xcopy /e /i /y definitions "%BUILD_DIR%\definitions\" >nul
 xcopy /e /i /y modules     "%BUILD_DIR%\modules\" >nul
 xcopy /e /i /y web         "%BUILD_DIR%\web\" >nul
-#xcopy /e /i /y db          "%BUILD_DIR%\db\" >nul
-#xcopy /e /i /y logs        "%BUILD_DIR%\logs\" >nul
+::xcopy /e /i /y db          "%BUILD_DIR%\db\" >nul
+::xcopy /e /i /y logs        "%BUILD_DIR%\logs\" >nul
 
 echo Done ^→^ %BUILD_DIR%

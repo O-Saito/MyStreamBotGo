@@ -385,6 +385,12 @@ button {
     transition: background var(--transition);
 }
 
+#chat .twitch-me-message {
+    font-style: italic;
+    color: #9146ff;
+    font-weight: bold;
+}
+
 #chat .message:hover {
     background: var(--bg-tertiary);
 }

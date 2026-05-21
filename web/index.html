@@ -1190,6 +1190,11 @@
 
             // Parse message with emotes
             if (msg.source === "twitch") {
+                if (msg.message.startsWith('\u0001ACTION')) {
+                    div.classList.add('twitch-me-message');
+                    msg.message = msg.message.replace('\u0001ACTION', '').replace('\u0001', '').trim();
+                }
+
                 message.innerHTML = checkuserReference(parseText(msg));
             } else {
                 message.innerHTML = parseText(msg);

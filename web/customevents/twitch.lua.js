@@ -121,8 +121,48 @@ export default (funcs) => {
         const duration = data?.payload?.event?.duration_seconds || 0;
         fs.addEventMessage(`<span>Uma pausa para anúncio começou! Duração: ${duration} segundos</span>`);
     });
-    w.onTwitch("channel.ad_break.end", () => {
-        fs.addEventMessage(`<span>A pausa para anúncio terminou!</span>`);
+    w.onTwitch("channel.ban", (data) => {
+        const userName = data?.payload?.event?.user_name;
+        const moderator = data?.payload?.event?.moderator_user_name || 'alguém';
+        fs.addEventMessage(`<span><span class="user">${userName}</span> foi banido por ${moderator}!</span>`);
+    });
+    w.onTwitch("channel.unban", (data) => {
+        const userName = data?.payload?.event?.user_name;
+        const moderator = data?.payload?.event?.moderator_user_name || 'alguém';
+        fs.addEventMessage(`<span><span class="user">${userName}</span> foi desbanido por ${moderator}!</span>`);
+    });
+    w.onTwitch("channel.moderate", (data) => {
+        const userName = data?.payload?.event?.warn?.user_name;
+        const moderator = data?.payload?.event?.moderator_user_name || 'alguém';
+        const action = data?.payload?.event?.action || 'alguma ação';
+        fs.addEventMessage(`<span><span class="user">${userName}</span> foi moderado (${action}) por ${moderator}!</span>`);
+    });
+    w.onTwitch("channel.channel_points_custom_reward_redemption.add", (data) => {
+        const userName = data?.payload?.event?.user_name;
+        const rewardTitle = data?.payload?.event?.reward?.title || 'uma recompensa';
+        const status = data?.payload?.event?.status || 'atualizada';
+        const input = data?.payload?.event?.user_input || '';
+        const prompt = data?.payload?.event?.reward?.prompt || '';
+        fs.addEventMessage(`<span><span class="user">${userName}</span> teve a recompensa ${rewardTitle} ${status}! Com a entrada ${input}. (Prompt: ${prompt})</span>`);
+    });
+    w.onTwitch("channel.channel_points_custom_reward_redemption.update", (data) => {
+        const userName = data?.payload?.event?.user_name;
+        const rewardTitle = data?.payload?.event?.reward?.title || 'uma recompensa';
+        const status = data?.payload?.event?.status || 'atualizada';
+        const input = data?.payload?.event?.user_input || '';
+        const prompt = data?.payload?.event?.reward?.prompt || '';
+        fs.addEventMessage(`<span><span class="user">${userName}</span> teve a recompensa ${rewardTitle} ${status}! Com a entrada ${input}. (Prompt: ${prompt})</span>`);
+    });
+    // need test
+    w.onTwitch("channel.custom_power_up_redemption.add", (data) => {
+        const userName = data?.payload?.event?.user_name;
+        const powerUpName = data?.payload?.event?.power_up_name || 'um power-up';
+        fs.addEventMessage(`<span><span class="user">${userName}</span> resgatou ${powerUpName}!</span>`);
+    });
+    w.onTwitch("channel.bits.use", (data) => {
+        const userName = data?.payload?.event?.user_name;
+        const bitsUsed = data?.payload?.event?.bits_used || 0;
+        fs.addEventMessage(`<span class="user">${userName}</span> usou ${bitsUsed} bits!`);
     });
     w.onTwitch("channel.shared_chat.begin", (data) => {
         const withName = data?.payload?.event?.with_broadcaster_user_name || 'alguém';

@@ -448,7 +448,6 @@ button {
 #chat .message .chat-user {
     display: inline;
     font-weight: 500;
-    vertical-align: middle;
 }
 
 #chat .message .chat-user>img {
@@ -461,7 +460,6 @@ button {
 
 #chat .message .chat-message {
     display: inline;
-    vertical-align: middle;
 }
 
 #chat .message .chat-message::before {
@@ -588,7 +586,6 @@ button {
 
 #events-list .event {
     display: block;
-    vertical-align: middle;
     line-height: 27px;
 }
 

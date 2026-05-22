@@ -40,3 +40,10 @@ To configure see https://dev.twitch.tv/docs/cli/configure-command
 
 To trigger a event 
 `twitch event trigger channel.ban --transport=websocket -t <broadcaster-id>`
+
+For using the mock add at init.txt
+`
+[Config]
+EventSubWebSocketURL=ws://<ip>:8080/ws
+EventSubAPIURL=http://<ip>:8080/eventsub/subscriptions
+`

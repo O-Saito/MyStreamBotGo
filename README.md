@@ -28,3 +28,15 @@ This address can also be accessed through your browser smartphone as long as it 
 The modules is written in `.lua` and is how you add more functionalities to the bot
 
 [Detailed module creation](docs/MODULE.md)
+
+
+## Twitch Mock
+https://dev.twitch.tv/docs/cli/
+
+For run at LAN
+`twitch event websocket start-server --ip 0.0.0.0`
+
+To configure see https://dev.twitch.tv/docs/cli/configure-command
+
+To trigger a event 
+`twitch event trigger channel.ban --transport=websocket -t <broadcaster-id>`

@@ -56,15 +56,16 @@ type DynamicEventStats struct {
 }
 
 type DynamicEventInfo struct {
-	Name               string         `json:"name"`
-	Paused             bool           `json:"paused"`
-	Interval           time.Duration  `json:"interval"`
-	ModuleData         map[string]any `json:"moduleData"`
-	ProcessedTimes     int            `json:"processedTimes"`
-	ProcessedTotalTime time.Duration  `json:"ProcessedTotalTimes"`
-	LastProcessedTime  time.Duration  `json:"LastProcessedTime"`
-	HighestTime        time.Duration  `json:"highestTime"`
-	LowestTime         time.Duration  `json:"lowestTime"`
+	Name                    string         `json:"name"`
+	Paused                  bool           `json:"paused"`
+	Interval                time.Duration  `json:"interval"`
+	ComputeTwitchSharedChat bool           `json:"computeTwitchSharedChat"`
+	ModuleData              map[string]any `json:"moduleData"`
+	ProcessedTimes          int            `json:"processedTimes"`
+	ProcessedTotalTime      time.Duration  `json:"ProcessedTotalTimes"`
+	LastProcessedTime       time.Duration  `json:"LastProcessedTime"`
+	HighestTime             time.Duration  `json:"highestTime"`
+	LowestTime              time.Duration  `json:"lowestTime"`
 }
 
 var (
@@ -386,15 +387,16 @@ func ListDynamicEvents() []DynamicEventInfo {
 		val.State.mu.RLock()
 		val.Statistics.mu.RLock()
 		events = append(events, DynamicEventInfo{
-			Name:               name,
-			Paused:             val.State.Paused,
-			Interval:           val.State.Interval,
-			ModuleData:         d,
-			ProcessedTimes:     val.Statistics.ProcessedTimes,
-			ProcessedTotalTime: val.Statistics.ProcessedTotalTime,
-			LastProcessedTime:  val.Statistics.LastProcessedTime,
-			HighestTime:        val.Statistics.HighestTime,
-			LowestTime:         val.Statistics.LowestTime,
+			Name:                    name,
+			Paused:                  val.State.Paused,
+			ComputeTwitchSharedChat: val.State.ComputeTwitchSharedChat,
+			Interval:                val.State.Interval,
+			ModuleData:              d,
+			ProcessedTimes:          val.Statistics.ProcessedTimes,
+			ProcessedTotalTime:      val.Statistics.ProcessedTotalTime,
+			LastProcessedTime:       val.Statistics.LastProcessedTime,
+			HighestTime:             val.Statistics.HighestTime,
+			LowestTime:              val.Statistics.LowestTime,
 		})
 		val.State.mu.RUnlock()
 		val.Statistics.mu.RUnlock()
@@ -412,6 +414,7 @@ func UpdateDynamicEvent(event *DynamicEventInfo) error {
 		ev.State.mu.Lock()
 		defer ev.State.mu.Unlock()
 		ev.State.Paused = event.Paused
+		ev.State.ComputeTwitchSharedChat = event.ComputeTwitchSharedChat
 		ev.State.Interval = time.Duration(float64(event.Interval) * float64(time.Second))
 		return nil
 	}
@@ -518,10 +521,11 @@ func LoadDyEventModule(folder, fileName string) {
 			OnRequest: getGlobalFunction(L, "on_request"),
 		},
 		State: DynamicEventState{
-			NextTick: time.Now().Add(time.Second),
-			Interval: time.Second, // default
-			Paused:   true,        // default
-			db:       nil,
+			NextTick:                time.Now().Add(time.Second),
+			Interval:                time.Second, // default
+			Paused:                  true,        // default
+			ComputeTwitchSharedChat: false,       // default
+			db:                      nil,
 		},
 	}
 

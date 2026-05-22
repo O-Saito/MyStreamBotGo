@@ -12,6 +12,8 @@ import (
 	"sync"
 	"time"
 
+	tf "MyStreamBot/services/twitch/fetch"
+
 	"github.com/gorilla/websocket"
 )
 
@@ -27,22 +29,6 @@ type EventSubTransport struct {
 	SessionId      string `json:"session_id"`
 	ConnectedAt    string `json:"connected_at"`
 	DisconnectedAt string `json:"disconnected_at"`
-}
-
-type EventSubData struct {
-	Data []struct {
-		Id        string            `json:"id"`
-		Status    string            `json:"status"`
-		Type      string            `json:"type"`
-		Version   string            `json:"version"`
-		Condition EventSubCondition `json:"condition"`
-		CreatedAt string            `json:"created_at"`
-		Transport EventSubTransport `json:"transport"`
-		Cost      int32             `json:"cost"`
-	} `json:"data"`
-	TotalCost    int32          `json:"total_cost"`
-	MaxTotalCost int32          `json:"max_total_cost"`
-	Pagination   map[string]any `json:"pagination"`
 }
 
 type EventSub struct {
@@ -212,9 +198,7 @@ var messageHandlers = map[string]func(map[string]any, map[string]any){
 			user := globals.GetState().GetTwitchUser()
 			if user.StreamDetails == nil {
 				user.StreamDetails, _ = GetStreamData(user.UserID)
-				u := globals.GetState().GetTwitchUser()
-				u.StreamDetails = user.StreamDetails
-				globals.GetState().SetTwitchUser(u)
+				globals.GetState().SetTwitchStreamDetails(*user.StreamDetails)
 				return
 			}
 
@@ -222,21 +206,19 @@ var messageHandlers = map[string]func(map[string]any, map[string]any){
 			if ok {
 				user.StreamDetails.StartedAt = startedAt
 			}
-			globals.GetState().SetTwitchUser(user)
+			globals.GetState().SetTwitchStreamDetails(*user.StreamDetails)
 		case "stream.offline":
 			user := globals.GetState().GetTwitchUser()
 			if user.StreamDetails == nil {
 				return
 			}
 			user.StreamDetails.StartedAt = ""
-			globals.GetState().SetTwitchUser(user)
+			globals.GetState().SetTwitchStreamDetails(*user.StreamDetails)
 		case "channel.update":
 			user := globals.GetState().GetTwitchUser()
 			if user.StreamDetails == nil {
 				user.StreamDetails, _ = GetStreamData(user.UserID)
-				u := globals.GetState().GetTwitchUser()
-				u.StreamDetails = user.StreamDetails
-				globals.GetState().SetTwitchUser(u)
+				globals.GetState().SetTwitchStreamDetails(*user.StreamDetails)
 				return
 			}
 			title, _ := event["title"].(string)
@@ -250,7 +232,7 @@ var messageHandlers = map[string]func(map[string]any, map[string]any){
 			if labels, ok := event["content_classification_labels"].([]string); ok && slices.Contains(labels, "MatureGame") {
 				user.StreamDetails.IsMature = false
 			}
-			globals.GetState().SetTwitchUser(user)
+			globals.GetState().SetTwitchStreamDetails(*user.StreamDetails)
 		}
 	},
 }
@@ -260,7 +242,11 @@ var (
 )
 
 func connectToEventSub() {
-	u := url.URL{Scheme: "wss", Host: "eventsub.wss.twitch.tv", Path: "/ws"}
+	u, err := url.Parse(globals.GetConfig().GetEventSubWebSocketURL())
+	if err != nil {
+		helpers.Logf(helpers.ERROR, "[Twitch] Invalid EventSubWebSocketURL: %v", err)
+		return
+	}
 	conn, resp, err := websocket.DefaultDialer.Dial(u.String(), nil)
 	if err != nil {
 		if resp != nil {
@@ -367,6 +353,8 @@ func listenToEventSub(conn *websocket.Conn) {
 }
 
 func subscribeToEvents() {
+	urlAPIEventSub = globals.GetConfig().GetEventSubAPIURL()
+
 	var data = EventSub{
 		Type:    "",
 		Version: 1,
@@ -387,12 +375,12 @@ func subscribeToEvents() {
 		events, _ = e.([]string)
 	}
 
-	oldSubs, _ := GetEventSubscriptions()
+	oldSubs, _ := tf.GetEventSubscriptions()
 
 	if oldSubs != nil && oldSubs.Data != nil {
 		for _, sub := range oldSubs.Data {
-			if sub.Transport.Method == "websocket" && sub.Condition.BroadcasterUserId == data.Condition.BroadcasterUserId && sub.Transport.SessionId != data.Transport.SessionId {
-				DeleteEventSubscriptions(sub.Id)
+			if sub.Transport.Method == "websocket" && sub.Condition.BroadcasterUserId == data.Condition.BroadcasterUserId && sub.Transport.SessionID != data.Transport.SessionId {
+				tf.DeleteEventSubscriptions(sub.ID)
 			}
 		}
 	}
@@ -415,7 +403,7 @@ func subscribeToEvents() {
 			helpers.Logf(helpers.ERROR, "[TWITCH] subscribe http.NewRequest failed: %v", err)
 			continue
 		}
-		AddAuthHeaders(req)
+		tf.AddAuthHeaders(req)
 		req.Header.Set("Content-Type", "application/json")
 		resp, err := http.DefaultClient.Do(req)
 		if err != nil {

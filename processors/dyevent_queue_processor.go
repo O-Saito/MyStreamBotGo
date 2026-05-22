@@ -28,13 +28,10 @@ func ProcessDyEventQueue() {
 				default:
 				}
 				elapsed := time.Since(start)
-				//helpers.Logf(helpers.DEBUG, "PROCESSED DY EVENT %s[%d] IN %v", dev.Name, deq.Type, elapsed)
 				dev.Statistics.AddTiming(elapsed)
 				wait.Done()
 			}()
 		}
-		//helpers.Logf(helpers.DEBUG, "WAINTING DY PROCESSOR (%d events)", len(events))
 		wait.Wait()
-		//helpers.Logf(helpers.DEBUG, "DONE DY PROCESSOR")
 	}
 }

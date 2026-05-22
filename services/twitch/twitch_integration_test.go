@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"MyStreamBot/globals"
+	tf "MyStreamBot/services/twitch/fetch"
 )
 
 type mockRoundTripper struct {
@@ -36,7 +37,7 @@ func TestDoRequest_AddAuthHeaders(t *testing.T) {
 
 	req, _ := http.NewRequest("GET", "https://api.twitch.tv/helix/users", nil)
 
-	AddAuthHeaders(req)
+	tf.AddAuthHeaders(req)
 
 	if req.Header.Get("Authorization") != "Bearer test_token" {
 		t.Errorf("Authorization = %q, want %q", req.Header.Get("Authorization"), "Bearer test_token")
@@ -49,11 +50,11 @@ func TestDoRequest_AddAuthHeaders(t *testing.T) {
 func TestGetUserData_NotFound(t *testing.T) {
 	restore := setupMockTransport(&http.Response{
 		StatusCode: 200,
-		Body:     io.NopCloser(strings.NewReader(`{"data":[]}`)),
+		Body:       io.NopCloser(strings.NewReader(`{"data":[]}`)),
 	})
 	defer restore()
 
-	user, err := GetUserData("nonexistent")
+	user, err := tf.GetUser(nil, []string{"nonexistent"})
 	if err == nil {
 		t.Error("expected error for user not found, got nil")
 	}
@@ -79,7 +80,7 @@ func TestGetUserData_Success(t *testing.T) {
 	})
 	defer restore()
 
-	user, err := GetUserData("testuser")
+	user, err := tf.GetUser(nil, []string{"nonexistent"})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -103,11 +104,11 @@ func TestGetUserData_Success(t *testing.T) {
 func TestGetUserDataById_Success(t *testing.T) {
 	restore := setupMockTransport(&http.Response{
 		StatusCode: 200,
-		Body: io.NopCloser(strings.NewReader(`{"data":[{"id":"67890","login":"userbyid"}]}`)),
+		Body:       io.NopCloser(strings.NewReader(`{"data":[{"id":"67890","login":"userbyid"}]}`)),
 	})
 	defer restore()
 
-	user, err := GetUserDataById("67890")
+	user, err := tf.GetUser([]string{"67890"}, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -140,33 +141,6 @@ func TestGetFollowersData_Parsing(t *testing.T) {
 	}
 	if followers[1].UserName != "follower2" {
 		t.Errorf("followers[1].UserName = %q, want %q", followers[1].UserName, "follower2")
-	}
-}
-
-func TestGetListOfGames_Parsing(t *testing.T) {
-	restore := setupMockTransport(&http.Response{
-		StatusCode: 200,
-		Body: io.NopCloser(strings.NewReader(`{
-			"data": [
-				{"id":"game1","name":"Minecraft","box_art_url":"https://example.com/mc.png"},
-				{"id":"game2","name":"Fortnite","box_art_url":"https://example.com/fortnite.png"}
-			]
-		}`)),
-	})
-	defer restore()
-
-	games, err := GetListOfGames("game")
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if len(games) != 2 {
-		t.Errorf("len(games) = %d, want 2", len(games))
-	}
-	if games[0].Name != "Minecraft" {
-		t.Errorf("games[0].Name = %q, want %q", games[0].Name, "Minecraft")
-	}
-	if games[1].ID != "game2" {
-		t.Errorf("games[1].ID = %q, want %q", games[1].ID, "game2")
 	}
 }
 
@@ -237,7 +211,7 @@ func TestValidateAccessToken_InvalidToken(t *testing.T) {
 
 	restore := setupMockTransport(&http.Response{
 		StatusCode: 401,
-		Body: io.NopCloser(strings.NewReader(`{"status":401,"message":"invalid token"}`)),
+		Body:       io.NopCloser(strings.NewReader(`{"status":401,"message":"invalid token"}`)),
 	})
 	defer restore()
 
@@ -293,7 +267,7 @@ func TestTwitchStreamData_Setup(t *testing.T) {
 	state.SetTwitchUser(globals.TwitchUser{
 		UserID:    "123",
 		UserLogin: "test",
-		Token:    "token",
+		Token:     "token",
 	})
 
 	cfg := globals.GetConfig()

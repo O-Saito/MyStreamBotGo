@@ -12,6 +12,8 @@ import (
 	"slices"
 	"strings"
 	"time"
+
+	tf "MyStreamBot/services/twitch/fetch"
 )
 
 const (
@@ -19,7 +21,6 @@ const (
 )
 
 func HandleLogin() {
-
 	redirectURI := fmt.Sprintf("http://localhost:%s/twitch/callback", globals.GetConfig().HTTPPort)
 
 	scopes := Scopes
@@ -72,7 +73,7 @@ func HandleLogin() {
 		}
 
 		if reconnect {
-			d, err := RefreshToken(currentAccess.RefreshToken)
+			d, err := tf.RefreshToken(currentAccess.RefreshToken)
 			if err != nil {
 				helpers.Logf(helpers.ERROR, "[TWITCH HANDLELOGIN] Failed to fetch token: %s", err.Error())
 			}
@@ -149,55 +150,6 @@ func HandleLogin() {
 	})
 }
 
-func RefreshToken(refreshToken string) (*struct {
-	AccessToken  string `json:"access_token"`
-	Expires      int    `json:"expires_in"`
-	RefreshToken string `json:"refresh_token"`
-}, error) {
-	data := url.Values{}
-	data.Set("client_id", globals.GetConfig().TwitchClientID)
-	data.Set("client_secret", globals.GetConfig().TwitchClientSecret)
-	data.Set("grant_type", "refresh_token")
-	data.Set("refresh_token", refreshToken)
-
-	resp, err := http.PostForm("https://id.twitch.tv/oauth2/token", data)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		helpers.Logf(helpers.ERROR, "[TWITCH] login io.ReadAll failed: %v", err)
-		return nil, err
-	}
-
-	var tokenResp struct {
-		AccessToken  string `json:"access_token"`
-		Expires      int    `json:"expires_in"`
-		RefreshToken string `json:"refresh_token"`
-	}
-
-	if err := json.Unmarshal(body, &tokenResp); err != nil {
-		helpers.Logf(helpers.ERROR, "[TWITCH] login json.Unmarshal failed: %v", err)
-		return nil, err
-	}
-
-	if tokenResp.AccessToken == "" {
-		return nil, fmt.Errorf("[TWITCH] empty access token")
-	}
-
-	sqlErr := globals.GetGlobalDB().SaveToken("twitch", tokenResp.AccessToken, tokenResp.RefreshToken, time.Now().Add(time.Duration(tokenResp.Expires)*time.Second))
-	if sqlErr != nil {
-		helpers.Logf(helpers.ERROR, "[TWITCH] Failed to save token: %s", sqlErr.Error())
-	}
-
-	user := globals.GetState().GetTwitchUser()
-	user.Token = tokenResp.AccessToken
-	globals.GetState().SetTwitchUser(user)
-
-	return &tokenResp, nil
-}
-
 func initTwitchUser(token string) error {
 	globals.GetState().SetTwitchUser(globals.TwitchUser{
 		Token: token,
@@ -217,31 +169,28 @@ func initTwitchUser(token string) error {
 		Description:            d.Description,
 		ProfileImageURL:        d.ProfileImageURL,
 		ProfileOfflineImageURL: d.ProfileOfflineImageURL,
-		ViewCount:              d.ViewCount,
-		Email:                  d.Email,
-		Connected:              true,
+		//ViewCount:              d.ViewCount,
+		Email:     d.Email,
+		Connected: true,
 	}
 	globals.GetState().SetTwitchUser(user)
 	helpers.Printf(helpers.Reset, "[TWITCH LOGIN] UserID: %s, UserLogin: %s", user.UserID, user.UserLogin)
-	streamData, _ := GetChannelStreamData(user.UserID)
+	streamData, _ := tf.GetChannelInformation([]string{user.UserID})
 	if streamData != nil {
-		user.StreamDetails = &globals.TwitchStreamData{
-			GameId:      streamData.GameID,
-			GameName:    streamData.GameName,
-			Title:       streamData.Title,
-			Tags:        streamData.Tags,
+		sd := streamData[0]
+		globals.GetState().SetTwitchStreamDetails(globals.TwitchStreamData{
+			GameId:      sd.GameID,
+			GameName:    sd.GameName,
+			Title:       sd.Title,
+			Tags:        sd.Tags,
 			ViewerCount: 0,
-			Language:    streamData.BroadcasterLanguage,
-		}
+			Language:    sd.BroadcasterLanguage,
+		})
 	}
-	globals.GetState().SetTwitchUser(user)
 
 	if err := Connect(); err != nil {
 		log.Fatal(err)
-	}
-	globals.WsBroadcast <- globals.SocketMessage{
-		Type: "twitch-connection",
-		Data: user,
+		return err
 	}
 	JoinChannel(user.UserLogin)
 	connectToEventSub()

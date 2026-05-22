@@ -12,10 +12,11 @@ import (
 )
 
 type SocketMessage struct {
-	Filter  string `json:"filter"`
-	Type    string `json:"type"`
-	Data    any    `json:"data"`
-	Respond int    `json:"respond"`
+	Filter            string `json:"filter"`
+	Type              string `json:"type"`
+	Data              any    `json:"data"`
+	SocketTag         int    `json:"respond"`
+	ResponseMessageID string `json:"responseClientID"`
 }
 
 type MessageFromStream struct {
@@ -72,7 +73,6 @@ func LoadInitFile() {
 	filePath := filepath.Join(".", "init.txt")
 	file, err := os.Open(filePath)
 	if err != nil {
-		//helpers.Logf(helpers.Red, "Error opening file: %v", err)
 		os.WriteFile(filePath, []byte(""), 0644)
 		return
 	}
@@ -83,8 +83,6 @@ func LoadInitFile() {
 	for scanner.Scan() {
 		line := scanner.Text()
 		line = strings.TrimSpace(line)
-		//helpers.Logf(helpers.Cyan, "Reading line: %s", line)
-
 		// Process the line (e.g., parse key-value pairs)
 		if line == "" || line[0] == '#' {
 			continue // Skip empty lines and comments
@@ -96,12 +94,10 @@ func LoadInitFile() {
 			continue
 		}
 		if current == "" {
-			//helpers.Logf(helpers.Yellow, "Skipping line outside section: %s", line)
 			continue
 		}
 		parts := strings.SplitN(line, "=", 2)
 		if len(parts) != 2 {
-			//helpers.Logf(helpers.Yellow, "Invalid line: %s", line)
 			continue
 		}
 
@@ -110,7 +106,6 @@ func LoadInitFile() {
 
 		obj, ok := sectionMap[current]
 		if !ok {
-			//helpers.Logf(helpers.Yellow, "Unknown section: %s", current)
 			continue
 		}
 

@@ -4,10 +4,19 @@
     "channel.shared_chat.begin":  {},
 	"channel.shared_chat.update": {},
 	"channel.shared_chat.end":    {},
+    "channel.update": {},
     "channel.raid":  {},
 	"channel.ban":   {"requires": "channel:moderate"},
 	"channel.unban": {"requires": "channel:moderate"},
     "channel.channel_points_automatic_reward_redemption.add": {"requires": "channel:manage:redemptions"},
     "stream.online":  {},
-	"stream.offline": {}
+	"stream.offline": {},
+    "channel.moderate": {"version": 2, "requires": "moderator:read:vips moderator:read:moderators moderator:manage:warnings moderator:manage:chat_messages moderator:manage:banned_users moderator:manage:unban_requests moderator:manage:chat_settings moderator:manage:blocked_terms"},
+    "channel.channel_points_custom_reward_redemption.add": {"requires": "moderator:manage:redemptions"},
+    "channel.channel_points_custom_reward_redemption.update": {"requires": "moderator:manage:redemptions"},
+    "channel.custom_power_up_redemption.add": {"requires": "bits:read"},
+    "channel.subscribe": {"requires": "channel:read:subscriptions"},
+    "channel.subscription.gift": {"requires": "channel:read:subscriptions"},
+    "channel.ad_break.begin": {"requires": "channel:read:ads"},
+    "channel.bits.use": {"requires": "bits:read"}
 }

@@ -37,12 +37,13 @@ type DynamicEventLua struct {
 }
 
 type DynamicEventState struct {
-	mu       sync.RWMutex
-	LastTick time.Time
-	NextTick time.Time
-	Paused   bool
-	db       *sql.DB
-	Interval time.Duration
+	mu                      sync.RWMutex
+	LastTick                time.Time
+	NextTick                time.Time
+	Paused                  bool
+	ComputeTwitchSharedChat bool
+	db                      *sql.DB
+	Interval                time.Duration
 }
 
 type DynamicEventStats struct {
@@ -55,15 +56,16 @@ type DynamicEventStats struct {
 }
 
 type DynamicEventInfo struct {
-	Name               string         `json:"name"`
-	Paused             bool           `json:"paused"`
-	Interval           time.Duration  `json:"interval"`
-	ModuleData         map[string]any `json:"moduleData"`
-	ProcessedTimes     int            `json:"processedTimes"`
-	ProcessedTotalTime time.Duration  `json:"ProcessedTotalTimes"`
-	LastProcessedTime  time.Duration  `json:"LastProcessedTime"`
-	HighestTime        time.Duration  `json:"highestTime"`
-	LowestTime         time.Duration  `json:"lowestTime"`
+	Name                    string         `json:"name"`
+	Paused                  bool           `json:"paused"`
+	Interval                time.Duration  `json:"interval"`
+	ComputeTwitchSharedChat bool           `json:"computeTwitchSharedChat"`
+	ModuleData              map[string]any `json:"moduleData"`
+	ProcessedTimes          int            `json:"processedTimes"`
+	ProcessedTotalTime      time.Duration  `json:"ProcessedTotalTimes"`
+	LastProcessedTime       time.Duration  `json:"LastProcessedTime"`
+	HighestTime             time.Duration  `json:"highestTime"`
+	LowestTime              time.Duration  `json:"lowestTime"`
 }
 
 var (
@@ -208,6 +210,16 @@ func (dev *DynamicEvent) ProcessChat(evm *globals.MessageFromStream) {
 		return
 	}
 
+	dev.State.mu.RLock()
+	shouldComputeSharedChat := dev.State.ComputeTwitchSharedChat
+	dev.State.mu.RUnlock()
+
+	if !shouldComputeSharedChat &&
+		evm.Source == "twitch" &&
+		evm.Channel != globals.GetState().TwitchUser.UserLogin {
+		return
+	}
+
 	dev.Lua.mu.Lock()
 	defer dev.Lua.mu.Unlock()
 
@@ -228,6 +240,16 @@ func (dev *DynamicEvent) ProcessChat(evm *globals.MessageFromStream) {
 
 func (dev *DynamicEvent) ProcessCommand(evm *globals.Command) {
 	if !dev.CanProcess() {
+		return
+	}
+
+	dev.State.mu.RLock()
+	shouldComputeSharedChat := dev.State.ComputeTwitchSharedChat
+	dev.State.mu.RUnlock()
+
+	if !shouldComputeSharedChat &&
+		evm.Source == "twitch" &&
+		evm.Channel != globals.GetState().TwitchUser.UserLogin {
 		return
 	}
 
@@ -253,6 +275,22 @@ func (dev *DynamicEvent) ProcessCommand(evm *globals.Command) {
 func (dev *DynamicEvent) ProcessEvent(evm *globals.Event) {
 	if !dev.CanProcess() {
 		return
+	}
+
+	dev.State.mu.RLock()
+	shouldComputeSharedChat := dev.State.ComputeTwitchSharedChat
+	dev.State.mu.RUnlock()
+
+	if !shouldComputeSharedChat {
+		if payload, ok := evm.Data["payload"].(map[string]any); ok {
+			if eventData, ok := payload["event"].(map[string]any); ok {
+				if broadcasterId, ok := eventData["broadcaster_user_id"].(string); ok {
+					if broadcasterId != globals.GetState().TwitchUser.UserID {
+						return
+					}
+				}
+			}
+		}
 	}
 
 	dev.Lua.mu.Lock()
@@ -294,6 +332,35 @@ func (dev *DynamicEvent) ProcessRequest(evm *globals.SocketMessage) {
 
 	tbl := ToLValue(LState, evm.Data)
 
+	socketTag := evm.SocketTag
+	responseMessageID := evm.ResponseMessageID
+	filter := evm.Filter
+	t := evm.Type
+	LState.SetField(tbl, "respond", LState.NewFunction(func(L *lua.LState) int {
+		if L.Get(1) == lua.LNil {
+			helpers.Printf(helpers.Lua, "[LUA] OnRequest no data passed!")
+			return -1
+		}
+
+		d := L.CheckTable(1)
+
+		if socketTag == 0 || responseMessageID == "" {
+			helpers.Printf(helpers.Lua, "[LUA] OnRequest nowhere to respond [%v:%v]", socketTag, responseMessageID)
+			return -1
+		}
+		data := TableToMap(d)
+
+		globals.WsBroadcast <- globals.SocketMessage{
+			SocketTag:         socketTag,
+			ResponseMessageID: responseMessageID,
+			Filter:            filter,
+			Type:              fmt.Sprintf("return-%s", t),
+			Data:              data,
+		}
+
+		return 0
+	}))
+
 	if err := LState.CallByParam(lua.P{Fn: f, NRet: 0, Protect: true}, lua.LString(evm.Type), tbl); err != nil {
 		helpers.Logf(helpers.ERROR, "[LUA EVENT ERROR] %s: %v", dev.Name, err)
 	}
@@ -320,15 +387,16 @@ func ListDynamicEvents() []DynamicEventInfo {
 		val.State.mu.RLock()
 		val.Statistics.mu.RLock()
 		events = append(events, DynamicEventInfo{
-			Name:               name,
-			Paused:             val.State.Paused,
-			Interval:           val.State.Interval,
-			ModuleData:         d,
-			ProcessedTimes:     val.Statistics.ProcessedTimes,
-			ProcessedTotalTime: val.Statistics.ProcessedTotalTime,
-			LastProcessedTime:  val.Statistics.LastProcessedTime,
-			HighestTime:        val.Statistics.HighestTime,
-			LowestTime:         val.Statistics.LowestTime,
+			Name:                    name,
+			Paused:                  val.State.Paused,
+			ComputeTwitchSharedChat: val.State.ComputeTwitchSharedChat,
+			Interval:                val.State.Interval,
+			ModuleData:              d,
+			ProcessedTimes:          val.Statistics.ProcessedTimes,
+			ProcessedTotalTime:      val.Statistics.ProcessedTotalTime,
+			LastProcessedTime:       val.Statistics.LastProcessedTime,
+			HighestTime:             val.Statistics.HighestTime,
+			LowestTime:              val.Statistics.LowestTime,
 		})
 		val.State.mu.RUnlock()
 		val.Statistics.mu.RUnlock()
@@ -346,6 +414,7 @@ func UpdateDynamicEvent(event *DynamicEventInfo) error {
 		ev.State.mu.Lock()
 		defer ev.State.mu.Unlock()
 		ev.State.Paused = event.Paused
+		ev.State.ComputeTwitchSharedChat = event.ComputeTwitchSharedChat
 		ev.State.Interval = time.Duration(float64(event.Interval) * float64(time.Second))
 		return nil
 	}
@@ -452,10 +521,11 @@ func LoadDyEventModule(folder, fileName string) {
 			OnRequest: getGlobalFunction(L, "on_request"),
 		},
 		State: DynamicEventState{
-			NextTick: time.Now().Add(time.Second),
-			Interval: time.Second, // default
-			Paused:   true,        // default
-			db:       nil,
+			NextTick:                time.Now().Add(time.Second),
+			Interval:                time.Second, // default
+			Paused:                  true,        // default
+			ComputeTwitchSharedChat: false,       // default
+			db:                      nil,
 		},
 	}
 
@@ -514,6 +584,14 @@ func setFunctionOnTable(ev *DynamicEvent, tbl *lua.LTable) {
 		ev.State.mu.Lock()
 		defer ev.State.mu.Unlock()
 		ev.State.Paused = val
+		return 0
+	}))
+
+	ev.Lua.LState.SetField(tbl, "set_compute_twitch_shared_chat", ev.Lua.LState.NewFunction(func(L *lua.LState) int {
+		val := L.CheckBool(1)
+		ev.State.mu.Lock()
+		defer ev.State.mu.Unlock()
+		ev.State.ComputeTwitchSharedChat = val
 		return 0
 	}))
 
@@ -649,6 +727,10 @@ func globalEventLoop() {
 				}
 
 				ev.State.mu.RLock()
+				if ev.State.Interval == 0 {
+					ev.State.mu.RUnlock()
+					continue
+				}
 				nextTick := ev.State.NextTick
 				ev.State.mu.RUnlock()
 

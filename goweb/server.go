@@ -6,6 +6,7 @@ import (
 	"MyStreamBot/mlua"
 	"MyStreamBot/services/kick"
 	"MyStreamBot/services/twitch"
+	tf "MyStreamBot/services/twitch/fetch"
 	"encoding/json"
 	"fmt"
 	"net"
@@ -16,10 +17,25 @@ import (
 	"github.com/gorilla/websocket"
 )
 
+type SocketRequestMetadata struct {
+	Tag int    `json:"tag"`
+	ID  string `json:"id"`
+}
+
 var upgrader = websocket.Upgrader{
 	CheckOrigin: func(r *http.Request) bool {
 		return true
 	},
+}
+
+func (srm *SocketRequestMetadata) Respond(t string, data any) {
+
+	globals.WsBroadcast <- globals.SocketMessage{
+		SocketTag:         srm.Tag,
+		ResponseMessageID: srm.ID,
+		Type:              t,
+		Data:              data,
+	}
 }
 
 var mu sync.RWMutex
@@ -27,31 +43,32 @@ var lastTagIndex = 0
 var wsClients = make(map[*websocket.Conn]int)
 var wsClientsUpgraded = make(map[string][]*websocket.Conn)
 
-var SocketHandlers = map[string]func(*websocket.Conn, map[string]any, int){
-	"init": func(c *websocket.Conn, m map[string]any, mytag int) {
+var SocketHandlers = map[string]func(*websocket.Conn, map[string]any, *SocketRequestMetadata){
+	"init": func(c *websocket.Conn, m map[string]any, md *SocketRequestMetadata) {
 		globals.WsBroadcast <- globals.SocketMessage{
 			Type: "init",
 			Data: map[string]any{
 				"twitch":  globals.GetState().GetTwitchUser(),
 				"youtube": globals.GetState().GetYouTubeUser(),
 				"kick": map[string]any{
-					"connected_as": kick.UserLogin,
+					"connected_as": globals.GetState().GetKickUser().UserLogin,
 				},
 				"twitch_connected_chat":  twitch.Channels,
 				"kick_connected_chat":    kick.Channels,
 				"youtube_connected_chat": globals.GetState().GetData("youtube-lives"),
+				"youtube_live_previews":  globals.GetState().GetData("youtube-preview-lives"),
 				"custom_events_modules":  mlua.ListDynamicEvents(),
 				"twitch_eventsubs":       globals.GetState().GetData("TwitchSubEventsConnectedEvents"),
 				"interface_config":       globals.GetState().GetData("htmlinterface"),
 			},
-			Respond: mytag,
+			SocketTag: md.Tag,
 		}
 	},
-	"upgrade-conn": func(c *websocket.Conn, m map[string]any, mytag int) {
+	"upgrade-conn": func(c *websocket.Conn, m map[string]any, md *SocketRequestMetadata) {
 		data := globals.SocketMessage{
-			Type:    "response-upgrade",
-			Data:    "",
-			Respond: mytag,
+			Type:      "response-upgrade",
+			Data:      "",
+			SocketTag: md.Tag,
 		}
 		if m["conn"] != nil {
 			connVal, ok := m["conn"].(string)
@@ -111,7 +128,9 @@ func StartHTTPServer() {
 			//helpers.Logf(helpers.Cyan, "[Socket] Message: %s", string(msg))
 			m := string(msg)
 			if m == "init" {
-				SocketHandlers["init"](conn, nil, mytag)
+				SocketHandlers["init"](conn, nil, &SocketRequestMetadata{
+					Tag: mytag,
+				})
 				continue
 			}
 			var data globals.SocketMessage
@@ -123,6 +142,7 @@ func StartHTTPServer() {
 			}
 
 			if data.Filter != "" {
+				data.SocketTag = mytag
 				globals.LuaRequest <- data
 				continue
 			}
@@ -133,7 +153,10 @@ func StartHTTPServer() {
 					helpers.Logf(helpers.ERROR, "[WebSocket] Invalid message data type")
 					continue
 				}
-				handler(conn, dataMap, mytag)
+				handler(conn, dataMap, &SocketRequestMetadata{
+					Tag: mytag,
+					ID:  data.ResponseMessageID,
+				})
 				continue
 			}
 		}
@@ -149,7 +172,7 @@ func StartHTTPServer() {
 			Message string `json:"message"`
 		}
 		json.NewDecoder(r.Body).Decode(&req)
-		twitch.DeleteMessage(req.Message)
+		tf.DeleteMessage(req.Message)
 		//if IrcHandler != nil {
 		//	IrcHandler.SendMessage("/delete " + req.Message)
 		//}
@@ -167,7 +190,7 @@ func StartHTTPServer() {
 			Reason   string `json:"reason"`
 		}
 		json.NewDecoder(r.Body).Decode(&req)
-		d, err := twitch.BanUser(req.UserId, req.Duration, req.Reason)
+		d, err := tf.BanUser(req.UserId, req.Duration, req.Reason)
 		//if IrcHandler != nil {
 		//	IrcHandler.SendMessage("/ban " + req.User)
 		//}
@@ -198,9 +221,6 @@ func StartHTTPServer() {
 			return
 		}
 		d, err := twitch.UpdateAutomod(req.UserId, req.MsgId, req.Action)
-		//if IrcHandler != nil {
-		//	IrcHandler.SendMessage("/ban " + req.User)
-		//}
 		if err != nil {
 			w.WriteHeader(200)
 			w.Write([]byte(fmt.Sprintf("Error %v", err)))
@@ -216,7 +236,6 @@ func StartHTTPServer() {
 		for msg := range globals.WsBroadcast {
 
 			if msg.Filter != "" {
-				//helpers.Logf(helpers.Cyan, "[WebSocket] Message filter %s: %s - %s", msg.Filter, msg.Type, msg.Data)
 				mu.RLock()
 				wsList := append([]*websocket.Conn(nil), wsClientsUpgraded[msg.Filter]...)
 				mu.RUnlock()
@@ -246,8 +265,8 @@ func StartHTTPServer() {
 				if tag == -1 {
 					continue
 				}
-				if msg.Respond != 0 && msg.Respond != -1 {
-					if msg.Respond != tag {
+				if msg.SocketTag != 0 && msg.SocketTag != -1 {
+					if msg.SocketTag != tag {
 						continue
 					}
 				}

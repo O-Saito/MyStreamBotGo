@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"hash/fnv"
 	"net/http"
+	"slices"
 	"strings"
 	"time"
 )
@@ -92,17 +93,29 @@ func FetchLiveChatMessages(liveChatID, pageToken string) (*YouTubeLiveChatMessag
 	return &data, nil
 }
 
-func ListenToChat(id string) {
-	helpers.Log(helpers.INFO, "Started yt chat listener!")
+func ListenToChat(channelId, chatId string) {
+	globals.GetState().AddYouTubeChat(channelId, chatId)
+	helpers.Logf(helpers.INFO, "Started Youtube chat listener! channel: %s; chat: %s", channelId, chatId)
 	page := ""
 	for {
-		helpers.Logf(helpers.DEBUG, "READING YT CHAT...")
-		data, _ := FetchLiveChatMessages(id, page)
+		helpers.Logf(helpers.DEBUG, "READING Youtube CHAT...")
+		data, err := FetchLiveChatMessages(chatId, page)
+
+		if err != nil {
+			helpers.Logf(helpers.ERROR, "[YT] ListenToChat failed to fetch chat messages %v", err)
+			_, foundChannel := helpers.Find(globals.GetState().GetYouTubeUser().Channels, func(c *globals.YouTubeChannel) bool {
+				return slices.Contains(c.ChatIDs, chatId)
+			})
+			if !foundChannel {
+				break
+			}
+			continue
+		}
 
 		for _, msg := range data.Items {
 			messagedata := globals.MessageFromStream{
 				Source:    "youtube",
-				Channel:   id,
+				Channel:   chatId,
 				User:      msg.AuthorDetails.DisplayName,
 				UserId:    msg.AuthorDetails.ChannelID,
 				MessageId: msg.ID,
@@ -138,7 +151,7 @@ func ListenToChat(id string) {
 		if !data.OfflineAt.IsZero() && data.OfflineAt.After(time.Now()) {
 			helpers.Logf(helpers.WARN, "[YT OFF] Chat offline at %v, now is %v", data.OfflineAt, time.Now())
 			globals.WsBroadcast <- globals.SocketMessage{
-				Type: "youtube-live-offline", Data: map[string]any{"liveId": id, "offlineAt": data.OfflineAt},
+				Type: "youtube-live-offline", Data: map[string]any{"liveId": chatId, "offlineAt": data.OfflineAt},
 			}
 			break
 		}
@@ -158,4 +171,5 @@ func ListenToChat(id string) {
 
 		time.Sleep(time.Duration(data.PollingIntervalMillis) * time.Millisecond)
 	}
+	helpers.Logf(helpers.INFO, "Stopped Youtube chat listener! channel: %s; chat: %s", channelId, chatId)
 }

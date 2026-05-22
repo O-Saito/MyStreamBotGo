@@ -6,9 +6,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"net/url"
+	"time"
 )
 
 const (
@@ -18,7 +18,80 @@ const (
 	Scopes      = "user:read channel:read channel:write chat:read chat:write channel:read streamkey:read events:subscribe moderation:ban"
 )
 
+func RefreshAccessToken() error {
+	current := globals.GetState().GetKickUser()
+
+	data := url.Values{}
+	data.Set("client_id", globals.GetConfig().KickClientID)
+	data.Set("client_secret", globals.GetConfig().KickClientSecret)
+	data.Set("refresh_token", current.RefreshToken)
+	data.Set("grant_type", "refresh_token")
+
+	resp, err := http.PostForm("https://id.kick.com/oauth/token", data)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		helpers.Logf(helpers.ERROR, "[KICK] RefreshToken io.ReadAll failed: %v", err)
+		return err
+	}
+
+	var tokenResp struct {
+		AccessToken  string `json:"access_token"`
+		RefreshToken string `json:"refresh_token"`
+		ExpiresIn    int    `json:"expires_in"`
+	}
+
+	if err := json.Unmarshal(body, &tokenResp); err != nil {
+		return err
+	}
+
+	if tokenResp.AccessToken != "" {
+		globals.GetState().SetKickUser(globals.KickUser{
+			Token:          tokenResp.AccessToken,
+			RefreshToken:   tokenResp.RefreshToken,
+			TokenExpiresIn: tokenResp.ExpiresIn,
+			UserID:         current.UserID,
+			UserLogin:      current.UserLogin,
+		})
+		return nil
+	}
+
+	return fmt.Errorf("RefreshToken: failed to execute refresh token, response: %s", string(body))
+}
+
 func HandleLogin() {
+	current := globals.GetState().GetKickUser()
+	sqlToken, err := globals.GetGlobalDB().GetToken("kick")
+	if err == nil && sqlToken.RefreshToken != "" {
+		current.RefreshToken = sqlToken.RefreshToken
+	}
+
+	if current.RefreshToken != "" {
+		helpers.Print(helpers.Reset, "KICK!")
+
+		globals.GetState().SetKickUser(current)
+		err := RefreshAccessToken()
+		if err == nil {
+			var userData, uErr = GetChannel(0, nil)
+			if uErr == nil {
+				current.UserID = userData.BroadcasterUserId
+				current.UserLogin = userData.Slug
+
+				globals.GetState().SetKickUser(current)
+				close(LoginDone)
+			} else {
+				helpers.Logf(helpers.ERROR, "[KICK] Error getting Kick info: %s", uErr.Error())
+			}
+
+		} else {
+			helpers.Logf(helpers.ERROR, "[KICK] Failed to refresh token: %s", err.Error())
+		}
+	}
+
 	http.HandleFunc("/kick/login", func(w http.ResponseWriter, r *http.Request) {
 		CodeVerifier = helpers.GenerateRandomString(64)
 		codeChallenge := helpers.GenerateCodeChallenge(CodeVerifier)
@@ -83,33 +156,34 @@ func HandleLogin() {
 		}
 
 		helpers.Printf(helpers.Reset, "[KICK LOGIN] Login: access_token: %s; token_type: %s; refresh_token: %s; expires: %d; scope: %s", tokenResp.AccessToken, tokenResp.TokenType, tokenResp.RefreshToken, tokenResp.ExpiresIn, tokenResp.Scope)
-		TokenMutex.Lock()
-		Token = tokenResp.AccessToken
-		RefreshToken = tokenResp.RefreshToken
-		TokenMutex.Unlock()
 
+		current.Token = tokenResp.AccessToken
+		current.RefreshToken = tokenResp.RefreshToken
+		current.TokenExpiresIn = tokenResp.ExpiresIn
+
+		globals.GetState().SetKickUser(current)
 		var userData, uErr = GetChannel(0, nil)
 		if uErr != nil {
-			log.Println("Error getting Kick info:", uErr)
+			helpers.Logf(helpers.ERROR, "[KICK] Error getting Kick info: %s", uErr.Error())
 			http.Error(w, "Error getting user info", 500)
 			return
 		}
 
-		UserID = userData.BroadcasterUserId
-		UserLogin = userData.Slug
+		current.UserID = userData.BroadcasterUserId
+		current.UserLogin = userData.Slug
 
 		close(LoginDone)
+
+		sqlErr := globals.GetGlobalDB().SaveToken("kick", current.Token, current.RefreshToken, time.Now().Add(time.Duration(current.TokenExpiresIn)*time.Second))
+
+		if sqlErr != nil {
+			helpers.Logf(helpers.ERROR, "[KICK HANDLELOGIN] Failed to save token: %s", sqlErr.Error())
+		}
 		fmt.Fprintf(w, "Login Kick completed! You may close this page.\r\n")
-		helpers.Printf(helpers.Reset, "[KICK LOGIN] Login completed: %s (ID: %d)", UserLogin, UserID)
+		helpers.Printf(helpers.Reset, "[KICK LOGIN] Login completed: %s (ID: %d)", current.UserLogin, current.UserID)
 
 		if err := Connect(); err != nil {
-			log.Fatal(err)
+			helpers.Logf(helpers.ERROR, "[KICK] Error connecting: %s", err.Error())
 		}
 	})
-}
-
-func GetKickToken() string {
-	TokenMutex.RLock()
-	defer TokenMutex.RUnlock()
-	return Token
 }

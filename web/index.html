@@ -145,6 +145,10 @@
                 <div><strong>UI Errors:</strong></div>
                 <div id="ui-errors-list"></div>
             </div>
+            <div class="state">
+                <div><strong>State:</strong></div>
+                <pre id="actual-current-state"></pre>
+            </div>
         </div>
     </section>
 
@@ -176,6 +180,12 @@
         }
 
         import w from './wrapper.js'
+        import {
+            formatDuration,
+            parseTimeZone,
+            getDateDiff,
+            isValidLatinString,
+        } from './helper.js'
 
         const CONSTANTS = {
             ICONS: {
@@ -212,6 +222,15 @@
 
         const chatContent = document.querySelector('#chat .content');
         const eventsList = document.getElementById('events-list');
+
+        const twitchGameInput = document.getElementById('twitch-game');
+        if (twitchGameInput) {
+            twitchGameInput.addEventListener('input', (e) => {
+                if (e.target.value.length >= 3) {
+                    w.send('query-stream-game', { q: e.target.value });
+                }
+            });
+        }
 
         const defaultState = {
             sections: {
@@ -351,9 +370,7 @@
         }
 
         // Preference handlers
-        chatAcompanhar.addEventListener('change', () => {
-            setPreference('acompanharChat', chatAcompanhar.checked);
-        });
+        chatAcompanhar.addEventListener('change', () => { setPreference('acompanharChat', chatAcompanhar.checked); });
 
         chkShowViewCount.addEventListener('change', () => {
             lblTwitchViewCount.style.color = chkShowViewCount.checked ? "" : "var(--bg-primary)";
@@ -380,9 +397,7 @@
             element.dispatchEvent(new Event('change'));
         }
 
-        document.querySelectorAll('.display-collapse').forEach(chk => {
-            setupCollapseHandler(chk, chk.closest('.areas').id);
-        });
+        document.querySelectorAll('.display-collapse').forEach(chk => { setupCollapseHandler(chk, chk.closest('.areas').id); });
 
         setupCollapseHandler(document.getElementById('toggle-dyevents'), 'dyevents-panel');
         setupCollapseHandler(document.getElementById('collapse-events'), 'events-panel');
@@ -391,9 +406,7 @@
         let draggedElement = null;
         let dragContainer = null;
 
-        function isClickableElement(target) {
-            return target.matches('input, a, button, label') || target.closest('label:has(input)');
-        }
+        function isClickableElement(target) { return target.matches('input, a, button, label') || target.closest('label:has(input)'); }
 
         function handleDragStart(e) {
             if (isClickableElement(e.target)) return;
@@ -410,9 +423,7 @@
             if (!draggedElement) return;
             const clientX = e.touches ? e.touches[0].clientX : e.clientX;
             const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-            document.querySelectorAll('.drag-over-above, .drag-over-below').forEach(el => {
-                el.classList.remove('drag-over-above', 'drag-over-below');
-            });
+            document.querySelectorAll('.drag-over-above, .drag-over-below').forEach(el => { el.classList.remove('drag-over-above', 'drag-over-below'); });
             const elements = Array.from(dragContainer.children).filter(el => el !== draggedElement && el.id);
             for (const el of elements) {
                 const rect = el.getBoundingClientRect();
@@ -431,9 +442,7 @@
         function handleDragEnd(e) {
             if (!draggedElement) return;
             draggedElement.classList.remove('dragging');
-            document.querySelectorAll('.drag-over-above, .drag-over-below').forEach(el => {
-                el.classList.remove('drag-over-above', 'drag-over-below');
-            });
+            document.querySelectorAll('.drag-over-above, .drag-over-below').forEach(el => { el.classList.remove('drag-over-above', 'drag-over-below'); });
             const target = document.elementFromPoint(e.changedTouches ? e.changedTouches[0].clientX : e.clientX, e.changedTouches ? e.changedTouches[0].clientY : e.clientY);
             const targetSection = target?.closest('[id]');
             console.log('Drag end:', { targetSection: targetSection?.id, draggedElement: draggedElement.id, parentMatch: targetSection?.parentElement === dragContainer });
@@ -467,9 +476,7 @@
             header.addEventListener('mousedown', handleDragStart);
             header.addEventListener('touchstart', handleDragStart, { passive: false });
             header.addEventListener('click', (e) => {
-                if (isClickableElement(e.target)) {
-                    e.stopPropagation();
-                }
+                if (isClickableElement(e.target)) { e.stopPropagation(); }
             });
         }
 
@@ -478,11 +485,7 @@
         document.addEventListener('touchmove', handleDragMove, { passive: false });
         document.addEventListener('touchend', handleDragEnd);
 
-        ['twitch', 'kick', 'youtube'].forEach(id => setupDragHandlers(document.getElementById(id), id));
-        setupDragHandlers(document.getElementById('chat-section'), 'chat-section');
-        setupDragHandlers(document.getElementById('events-panel'), 'events-panel');
-        setupDragHandlers(document.getElementById('dyevents-panel'), 'dyevents-panel');
-        setupDragHandlers(document.getElementById('system'), 'system');
+        ['twitch', 'kick', 'youtube', 'chat-section', 'events-panel', 'dyevents-panel', 'system'].forEach(id => setupDragHandlers(document.getElementById(id), id));
 
         chatDiv.addEventListener('scroll', () => {
             const atBottom = chatDiv.scrollHeight - chatDiv.scrollTop <= chatDiv.clientHeight + 20;
@@ -499,9 +502,7 @@
         }
 
         document.getElementById('msg-input').addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                sendMessage();
-            }
+            if (e.key === 'Enter') { sendMessage(); }
         });
 
         document.getElementById('btn-mandar-msg').addEventListener('click', (e) => {
@@ -519,20 +520,12 @@
         window.streams = streams;
 
         w.on('init', (data) => {
-            if (data.twitch_connected_chat?.length > 0) {
-                data.twitch_connected_chat.forEach(c => w.exec('twitch-chat-connection', { id: c, name: c }));
-            }
-            if (data.kick_connected_chat?.length > 0) {
-                data.kick_connected_chat.forEach(c => w.exec('kick-chat-connection', { id: c.ID, name: c.Slug }));
-            }
+            if (data.twitch_connected_chat?.length > 0) { data.twitch_connected_chat.forEach(c => w.exec('twitch-chat-connection', { id: c, name: c })); }
+            if (data.kick_connected_chat?.length > 0) { data.kick_connected_chat.forEach(c => w.exec('kick-chat-connection', { id: c.ID, name: c.Slug })); }
 
-            if (data.twitch) {
-                streams.twitch.data = data.twitch;
-            }
-
-            if (data.youtube) {
-                streams.youtube.data = data.youtube;
-            }
+            if (data.twitch) { streams.twitch.data = data.twitch; }
+            if (data.youtube) { streams.youtube.data = data.youtube; }
+            if (data.youtube_live_previews) { addYoutubeStreamPreviewData(data.youtube_live_previews); }
 
             updateTwitchConnectionDetails();
             updateTwitchGameData();
@@ -543,29 +536,26 @@
 
             updateKickConnectionDetails(data.kick?.connected_as);
             loadDyModules(data.custom_events_modules);
-            w.send("get-dy-statistics", {});
+
+            getStreamerData();
+            getDyStatistics();
+            getCurrentState();
+
             if (data.interface_config) {
                 try {
                     const config = JSON.parse(data.interface_config);
-                    if (config.ignoreKick) {
-                        kickDiv.style.display = 'none';
-                    }
-                    if (config.ignoreYoutube) {
-                        youtubeDiv.style.display = 'none';
-                    }
-                    if (config.ignoreTwitch) {
-                        twitchDiv.style.display = 'none';
-                    }
+                    if (config.ignoreKick) { kickDiv.style.display = 'none'; }
+                    if (config.ignoreYoutube) { youtubeDiv.style.display = 'none'; }
+                    if (config.ignoreTwitch) { twitchDiv.style.display = 'none'; }
                 } catch (e) {
                     console.error('Failed to parse interface_config:', e);
                     throw e;
                 }
             }
-            w.send("get-streamer-data", {});
         });
 
         w.on('twitch-connection', (data) => {
-            streams.twitch.data.stream_details = data;
+            streams.twitch.data = data;
             updateTwitchConnectionDetails();
             updateTwitchGameData();
         });
@@ -597,38 +587,14 @@
                 });
             }
         });
-        w.on('result-query-stream-games', (data) => {
-            document.getElementById('twitch-game-list').innerHTML = data.map(x => `<option data-id="${x.id}" data-name="${x.name}">${x.name}</option>`).join('');
-        });
+
         w.on('twitch-eventsub-keepalive', (data) => {
             const date = new Date(data?.metadata?.message_timestamp);
             if (!isNaN(date)) {
                 twitchLastEventsub.textContent = `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}:${date.getSeconds().toString().padStart(2, '0')}`;
             }
         });
-        w.on('result-connect-chat-youtube', (data) => syncYouTubeChatConnections(data));
-        w.on('result-get-next-streams-youtube', (data) => {
-            data.forEach(item => {
-                if (!streams.youtube.previewStreams[item.id]) {
-                    streams.youtube.previewStreams[item.id] = {
-                        channelId: "",
-                        description: "",
-                        liveChatId: "",
-                        publishedAt: "",
-                        thumbnail: "",
-                        title: "",
-                    };
-                }
-                const current = streams.youtube.previewStreams[item.id];
-                current.channelId = item.snippet.channelId;
-                current.title = item.snippet.title;
-                current.description = item.snippet.description;
-                current.liveChatId = item.snippet.liveChatId;
-                current.publishedAt = item.snippet.publishedAt;
-                current.thumbnail = item.snippet.thumbnails?.medium?.url || item.snippet.thumbnails?.default?.url || "";
-            });
-            updateYouTubeConnectionDetails();
-        });
+
         w.on('youtube-live-offline', (data) => {
             const item = document.querySelector(`#chat-connection-youtube [data-live-id="${data?.liveId}"]`);
             if (item) item.classList.add('live-off');
@@ -725,62 +691,7 @@
             div.append(source, channel, badges, user, message, allowBtn);
             addChatMessage(div);
         });
-        w.onTwitch("channel.follow", (data) => {
-            const el = document.createElement('div');
-            el.className = 'event';
-            const userName = data?.payload?.event?.user_name;
-            const broadcaster = streams.twitch.data?.userId == data?.payload?.event?.broadcaster_user_id
-                ? data?.payload?.event?.broadcaster_user_name
-                : 'você';
-            el.innerHTML = `<span><span class="user">${userName}</span> seguiu ${broadcaster}!</span>`;
-            eventDiv.appendChild(el);
-        });
-        w.onTwitch("channel.raid", (data) => {
-            const el = document.createElement('div');
-            el.className = 'event';
-            const fromName = data?.payload?.event?.from_broadcaster_user_name;
-            const toName = streams.twitch.data?.userId == data?.payload?.event?.to_broadcaster_user_id
-                ? data?.payload?.event?.to_broadcaster_user_name
-                : 'você';
-            const viewers = data?.payload?.event?.viewers || 0;
-            el.innerHTML = `<span><span class="user">${fromName}</span> está raidando ${toName} com ${viewers} viewers!</span>`;
-            eventDiv.appendChild(el);
-        });
-        w.on('result-get-streamer-data', (data) => {
-            if (!data) return;
-            const { twitch, youtube } = data;
-
-            if (twitch) {
-                if (!streams.twitch.data.stream_details) streams.twitch.data.stream_details = {};
-                const sd = streams.twitch.data.stream_details;
-                if (twitch.viewer_count) sd.viewer_count = twitch.viewer_count;
-                if (twitch.started_at) sd.started_at = twitch.started_at;
-                updateTwitchStreamOnlineStatus();
-            }
-            if (youtube && Array.isArray(youtube)) {
-                youtube.forEach(yt => {
-                    if (yt.video_id) {
-                        if (streams.youtube.offlineTimers[yt.video_id]) {
-                            clearTimeout(streams.youtube.offlineTimers[yt.video_id]);
-                            delete streams.youtube.offlineTimers[yt.video_id];
-                        }
-                        streams.youtube.streams[yt.video_id] = {
-                            viewer_count: parseInt(yt.concurrent_viewers) || 0,
-                            title: yt.title,
-                            actualStartTime: yt.actual_start_time,
-                            actualEndTime: yt.actual_end_time
-                        };
-                    }
-                });
-            }
-
-            updateViewCount();
-        });
-
-        w.on('result-get-dy-statistics', (data) => {
-            updateDyStatistics(data);
-        });
-
+        
         try {
             w.connect();
         } catch (e) {
@@ -791,11 +702,60 @@
         setInterval(() => {
             if (++timeToUpdateData >= 60) {
                 timeToUpdateData = 0;
-                w.send("get-streamer-data", {});
-                w.send("get-dy-statistics", {});
+                getStreamerData();
+                getDyStatistics();
+                getCurrentState();
             }
             updateViewCount();
         }, 1000);
+
+        function getCurrentState() {
+            return;
+            w.send("get-state", {}, (d) => {
+                document.querySelector('#actual-current-state').textContent = JSON.stringify(d, null, 2);
+            });
+        }
+
+        function getDyStatistics() {
+            w.send("get-dy-statistics", {}, updateDyStatistics);
+        }
+
+        function getStreamerData() {
+            w.send("get-streamer-data", {}, (data) => {
+                if (!data) return;
+                const { twitch, youtube } = data;
+
+                if (twitch) {
+                    if (!streams.twitch.data.stream_details) streams.twitch.data.stream_details = {};
+                    const sd = streams.twitch.data.stream_details;
+                    if (twitch.viewer_count) sd.viewer_count = twitch.viewer_count;
+                    if (twitch.started_at) sd.started_at = twitch.started_at;
+                    updateTwitchStreamOnlineStatus();
+                }
+                if (youtube && Array.isArray(youtube)) {
+                    youtube.forEach(yt => {
+                        if (yt.video_id) {
+                            if (streams.youtube.offlineTimers[yt.video_id]) {
+                                clearTimeout(streams.youtube.offlineTimers[yt.video_id]);
+                                delete streams.youtube.offlineTimers[yt.video_id];
+                            }
+                            streams.youtube.streams[yt.video_id] = {
+                                viewer_count: parseInt(yt.concurrent_viewers) || 0,
+                                title: yt.title,
+                                actualStartTime: yt.actual_start_time,
+                                actualEndTime: yt.actual_end_time
+                            };
+                        }
+                    });
+                }
+
+                updateViewCount();
+            });
+        }
+
+        function resultQueryStreamGames(data) {
+            document.getElementById('twitch-game-list').innerHTML = data.map(x => `<option data-id="${x.id}" data-name="${x.name}">${x.name}</option>`).join('');
+        }
 
         function checkuserReference(text) {
             const t1 = `@${streams.twitch.data?.userLogin || ''}`;
@@ -807,9 +767,36 @@
 
         function connectToTwitchChat(slug) { w.send('connect-chat-twitch', { channel: slug }); }
 
-        function connectToYouTubeChat(id) { w.send('connect-chat-youtube', { channel: id }); }
+        function connectToYouTubeChat(id) { w.send('connect-chat-youtube', { channel: id }, syncYouTubeChatConnections); }
 
-        function getNextYouTubeStreams(id) { w.send('get-next-streams-youtube', { channel: id }); }
+        function getNextYouTubeStreams(id) {
+            w.send('get-next-streams-youtube', { channel: id }, (data) => {
+                addYoutubeStreamPreviewData(data);
+                updateYouTubeConnectionDetails();
+            });
+        }
+
+        function addYoutubeStreamPreviewData(data) {
+            data.forEach(item => {
+                if (!streams.youtube.previewStreams[item.id]) {
+                    streams.youtube.previewStreams[item.id] = {
+                        channelId: "",
+                        description: "",
+                        liveChatId: "",
+                        publishedAt: "",
+                        thumbnail: "",
+                        title: "",
+                    };
+                }
+                const current = streams.youtube.previewStreams[item.id];
+                current.channelId = item.snippet.channelId;
+                current.title = item.snippet.title;
+                current.description = item.snippet.description;
+                current.liveChatId = item.snippet.liveChatId;
+                current.publishedAt = item.snippet.publishedAt;
+                current.thumbnail = item.snippet.thumbnails?.medium?.url || item.snippet.thumbnails?.default?.url || "";
+            });
+        }
 
         function deleteTwitchMessage(e) {
             e.preventDefault();
@@ -926,12 +913,6 @@
             document.getElementById('twitch-tags').innerHTML = (sd.tags || []).map(t => `<li>${t}</li>`).join('');
         }
 
-        // function updateTwitchLiveTimer() {
-        //     if (!streams.twitch?.data?.stream_details?.started_at) return;
-        //     const start = parseTimeZone(new Date(streams.twitch.data.stream_details.started_at));
-        //     twitchDiv.querySelector('.stream-time').textContent = getDateDiff(parseTimeZone(new Date()), start).toString();
-        // }
-
         function updateTwitchStreamOnlineStatus() {
             const data = streams.twitch.data;
             const sd = data?.stream_details;
@@ -981,7 +962,7 @@
             const data = streams.youtube.data;
             loginEl.textContent = '';
 
-            if (!data?.Channels?.length) {
+            if (!data?.channels?.length) {
                 loginEl.innerHTML = '<a href="/youtube/login" target="_blank" class="login-link">Logar YouTube</a>';
                 youtubeConnections.style.display = 'none';
                 const streamStatus = youtubeDiv.querySelector('.stream-status');
@@ -994,18 +975,17 @@
                 return;
             }
 
-            data.Channels.forEach(c => {
-                const span = document.createElement('span');
-                span.innerHTML = `<img src="${c.thumbnail}" /> ${c.title}`;
-                loginEl.appendChild(span);
-            });
-
             const formDiv = youtubeDiv.querySelector('.form');
             formDiv.innerHTML = '';
 
             const buttons = [];
             const buttonsNext = [];
-            data.Channels.forEach(c => {
+
+            data.channels.forEach(c => {
+                const span = document.createElement('span');
+                span.innerHTML = `<img src="${c.thumbnail}" /> ${c.title}`;
+                loginEl.appendChild(span);
+
                 const div = document.createElement('div');
                 const btn = document.createElement('button');
                 btn.type = 'button';
@@ -1025,8 +1005,8 @@
                 formDiv.appendChild(div);
                 buttonsNext.push(btnNext);
             });
-            buttons.forEach(btn => { btn.onclick = () => connectToYouTubeChat(btn.dataset.id); });
 
+            buttons.forEach(btn => { btn.onclick = () => connectToYouTubeChat(btn.dataset.id); });
             buttonsNext.forEach(btn => { btn.onclick = () => getNextYouTubeStreams(btn.dataset.id); });
 
             const previewLives = document.createElement('div');
@@ -1048,7 +1028,7 @@
                 btn.style.width = "120px";
                 if (!activeStream) {
                     btn.textContent = 'Conectar ao Chat';
-                    btn.onclick = () => { w.send('connect-to-preview-youtube', { liveChatId: data.liveChatId }) };
+                    btn.onclick = () => { w.send('connect-to-preview-youtube', { liveChatId: data.liveChatId }, syncYouTubeChatConnections) };
                 }
                 div.appendChild(btn);
                 div.appendChild(span);
@@ -1101,7 +1081,9 @@
         }
 
         function syncYouTubeChatConnections(data) {
+            console.log('sync', data)
             if (!data || !Array.isArray(data)) return;
+            console.log("syncYouTubeChatConnections", data);
             data.forEach(c => {
                 if (c.id) {
                     if (!streams.youtube.streams[c.id]) {
@@ -1119,7 +1101,6 @@
 
                 }
             });
-            console.log(data);
             updateYouTubeStreamStatus();
             updateYouTubeConnectionDetails();
             updateYouTubeChatConnectiongDetails();
@@ -1134,15 +1115,6 @@
                     return `<li data-live-id="${id}"><img src="${data.thumbnail}" alt="${data.title || id}" />${data.title || id}</li>`;
                 }).join('');
             }
-        }
-
-        const twitchGameInput = document.getElementById('twitch-game');
-        if (twitchGameInput) {
-            twitchGameInput.addEventListener('input', (e) => {
-                if (e.target.value.length >= 3) {
-                    w.send('query-stream-game', { q: e.target.value });
-                }
-            });
         }
 
         function parseText(data) {
@@ -1165,7 +1137,6 @@
                         }
                     });
                 }
-
 
                 for (let i = 0; i < emotes.length; i++) {
                     const emote = emotes[i];
@@ -1219,6 +1190,11 @@
 
             // Parse message with emotes
             if (msg.source === "twitch") {
+                if (msg.message.startsWith('\u0001ACTION')) {
+                    div.classList.add('twitch-me-message');
+                    msg.message = msg.message.replace('\u0001ACTION', '').replace('\u0001', '').trim();
+                }
+
                 message.innerHTML = checkuserReference(parseText(msg));
             } else {
                 message.innerHTML = parseText(msg);
@@ -1315,21 +1291,18 @@
             if (chatAcompanhar.checked) chatDiv.scrollTop = chatDiv.scrollHeight;
         }
 
-        function isValidLatinString(str) {
-            return /^[\p{L}\p{N}!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?~`\s]+$/u.test(str);
-        }
-
-        function getDateDiff(date1, date2) {
-            const diff = Math.abs(date2.getTime() - date1.getTime());
-            const hours = Math.floor(diff / 3600000);
-            const minutes = Math.floor((diff % 3600000) / 60000);
-            const seconds = Math.floor((diff % 60000) / 1000);
-            const pad = (n) => n.toString().padStart(2, '0');
-            return { hours, minutes, seconds, toString: () => `${pad(hours)}:${pad(minutes)}:${pad(seconds)}` };
-        }
-
-        function parseTimeZone(date) {
-            return new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+        function addEventMessage(element) {
+            if (!element) return;
+            if (typeof element === 'string') {
+                const div = document.createElement('div');
+                div.innerHTML = element;
+                element = div;
+            }
+            if (!element.classList.contains('event')) {
+                element.classList.add('event');
+            }
+            eventDiv.appendChild(element);
+            eventDiv.scrollTop = eventDiv.scrollHeight;
         }
 
         function loadDyModules(modules) {
@@ -1359,7 +1332,13 @@
 `;
 
                 import(`./customevents/${m.name}.js?t=${Date.now()}`)
-                    .then(module => module.default?.())
+                    .then(module => module.default?.({
+                        addChatMessage,
+                        addEventMessage,
+                        showPanel,
+                        checkuserReference,
+                        parseText,
+                    }))
                     .catch(err => console.error('Module loading failed:', m.name, err));
 
                 dyEventsDiv.appendChild(div);
@@ -1373,19 +1352,6 @@
         function selectDyEvent(name) {
             document.querySelectorAll('.sidebar-item').forEach(item => { item.classList.toggle('active', item.textContent === name); });
             document.querySelectorAll('.dyevent-content').forEach(content => { content.style.display = content.id === name ? 'block' : 'none'; });
-        }
-
-        function formatDuration(ns) {
-            if (!ns || ns <= 0) return 'N/A';
-            if (ns >= 1000000000) {
-                return (ns / 1000000000).toFixed(1) + 's';
-            } else if (ns >= 1000000) {
-                return (ns / 1000000).toFixed(1) + 'ms';
-            } else if (ns >= 1000) {
-                return (ns / 1000).toFixed(0) + 'us';
-            } else {
-                return Math.round(ns) + 'ns';
-            }
         }
 
         function updateDyStatistics(events) {
@@ -1438,6 +1404,81 @@
             });
         }
 
+        function showPanel(title, content, args = {}) {
+            const panel = document.createElement('div');
+            panel.className = 'floating-panel';
+            panel.style.cssText = `
+                position: fixed;
+                left: ${args?.pos?.x ?? ((window.innerWidth - 400) / 2)}px;
+                top: ${args?.pos?.y ?? ((window.innerHeight - 300) / 2)}px;
+                z-index: 9999;
+                background: #1e1e1e;
+                color: #d4d4d4;
+                border: 1px solid #444;
+                border-radius: 6px;
+                min-width: 250px;
+                max-width: 500px;
+                box-shadow: 0 4px 16px rgba(0,0,0,0.5);
+            `;
+
+            const header = document.createElement('div');
+            header.style.cssText = 'display:flex;justify-content:space-between;align-items:center;padding:8px 12px;border-bottom:1px solid #444;';
+
+            const titleEl = document.createElement('span');
+            titleEl.innerHTML = title;
+            titleEl.style.cssText = 'font-weight:bold;font-size:14px;';
+
+            const closeBtn = document.createElement('button');
+            closeBtn.textContent = '×';
+            closeBtn.title = 'Fechar';
+            closeBtn.style.cssText = 'background:none;border:none;color:#d4d4d4;font-size:18px;cursor:pointer;padding:0 4px;line-height:1;';
+            closeBtn.onclick = () => {
+                args?.onClose?.();
+                panel.remove();
+            };
+
+            header.appendChild(titleEl);
+            header.appendChild(closeBtn);
+
+            const body = document.createElement('div');
+            body.className = 'panel-body';
+            body.style.cssText = 'padding:12px;overflow:auto;max-height:60vh;';
+
+            if (typeof content === 'string') {
+                body.innerHTML = content;
+            } else if (content instanceof HTMLElement) {
+                body.appendChild(content);
+            }
+
+            header.style.cursor = 'move';
+
+            panel.appendChild(header);
+            panel.appendChild(body);
+            document.body.appendChild(panel);
+
+            header.addEventListener('mousedown', (e) => {
+                e.preventDefault();
+                const startX = e.clientX;
+                const startY = e.clientY;
+                const startLeft = panel.offsetLeft;
+                const startTop = panel.offsetTop;
+
+                function onMouseMove(e) {
+                    panel.style.left = `${startLeft + e.clientX - startX}px`;
+                    panel.style.top = `${startTop + e.clientY - startY}px`;
+                }
+
+                function onMouseUp() {
+                    document.removeEventListener('mousemove', onMouseMove);
+                    document.removeEventListener('mouseup', onMouseUp);
+                }
+
+                document.addEventListener('mousemove', onMouseMove);
+                document.addEventListener('mouseup', onMouseUp);
+            });
+
+            return panel;
+        }
 
     </script>
 </body>

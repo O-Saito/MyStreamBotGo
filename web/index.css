@@ -385,6 +385,12 @@ button {
     transition: background var(--transition);
 }
 
+#chat .twitch-me-message {
+    font-style: italic;
+    color: #9146ff;
+    font-weight: bold;
+}
+
 #chat .message:hover {
     background: var(--bg-tertiary);
 }
@@ -421,7 +427,7 @@ button {
     margin-right: 2px;
 }
 
-#chat .message:not([data-source-room]) .chat-channel:not(:has(>img)) {
+#chat .message:not([data-source-room]) .chat-channel:has(>img) {
     display: none;
 }
 
@@ -448,7 +454,6 @@ button {
 #chat .message .chat-user {
     display: inline;
     font-weight: 500;
-    vertical-align: middle;
 }
 
 #chat .message .chat-user>img {
@@ -461,7 +466,6 @@ button {
 
 #chat .message .chat-message {
     display: inline;
-    vertical-align: middle;
 }
 
 #chat .message .chat-message::before {
@@ -587,7 +591,7 @@ button {
 }
 
 #events-list .event {
-    vertical-align: middle;
+    display: block;
     line-height: 27px;
 }
 

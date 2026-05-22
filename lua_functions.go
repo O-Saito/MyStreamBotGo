@@ -53,51 +53,6 @@ var YouTubeFunctionList = []services.LuaFunction{
 	{Name: "get_current_streamings", Fn: youtube.GetCurrentStreamings},
 }
 
-var TwitchFunctionList = []services.LuaFunction{
-	{Name: "get_state", Fn: func() TwitchStateLuaData {
-		state := globals.GetState().GetTwitchUser()
-		return TwitchStateLuaData{
-			UserID:                 state.UserID,
-			UserLogin:              state.UserLogin,
-			DisplayName:            state.DisplayName,
-			Type:                   state.Type,
-			BroadcasterType:        state.BroadcasterType,
-			Description:            state.Description,
-			ProfileImageURL:        state.ProfileImageURL,
-			ProfileOfflineImageURL: state.ProfileOfflineImageURL,
-		}
-	}},
-	{Name: "get_cache_stream", Fn: func() TwitchStreamLuaData {
-		stream := globals.GetState().GetTwitchUser().StreamDetails
-		if stream == nil {
-			return TwitchStreamLuaData{}
-		}
-		return TwitchStreamLuaData{
-			ID:           stream.ID,
-			GameId:       stream.GameId,
-			GameName:     stream.GameName,
-			Type:         stream.Type,
-			Title:        stream.Title,
-			Tags:         stream.Tags,
-			ViewerCount:  stream.ViewerCount,
-			StartedAt:    stream.StartedAt,
-			Language:     stream.Language,
-			ThumbnailURL: stream.ThumbnailURL,
-			IsMature:     stream.IsMature,
-		}
-	}},
-	{Name: "get_cache_user_chat_color", Fn: twitch.GetCacheUserChatColor},
-	{Name: "get_user_data", Fn: twitch.GetUserData},
-	{Name: "get_user_data_by_id", Fn: twitch.GetUserDataById},
-	{Name: "get_followers_data", Fn: twitch.GetFollowersData},
-	{Name: "get_follower_data", Fn: func(userId string) ([]twitch.TwitchViewerData, error) {
-		return twitch.GetFollowersData("", userId)
-	}},
-	{Name: "get_channel_stream_data", Fn: twitch.GetChannelStreamData},
-	{Name: "ban_user", Fn: twitch.BanUser},
-	{Name: "delete_message", Fn: twitch.DeleteMessage},
-}
-
 func RegisterLuaFunctions(L *lua.LState) {
 	mlua.ExposeServiceToLua(L, "g", map[string]func(*lua.LState) int{
 		"log": func(L *lua.LState) int {

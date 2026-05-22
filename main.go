@@ -70,7 +70,7 @@ func main() {
 
 	//select {} // keep application running
 	quit := make(chan os.Signal, 1)
-	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
 	<-quit
 
 	// 3. Gracefully shutdown with 10s timeout

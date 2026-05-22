@@ -26,9 +26,16 @@ func DoYouTubeRequest(req *http.Request) (*http.Response, error) {
 		resp.Body.Close()
 		helpers.Logf(helpers.DEBUG, "[YT] Token expired (401), trying refresh...")
 
-		// Refresh the token
-		if err := RefreshToken(); err != nil {
+		var retry = 0
+		err := RefreshToken()
+		for err != nil && retry < 3 {
 			helpers.Logf(helpers.ERROR, "[YT] Failed to refresh token: %s", err.Error())
+			err = RefreshToken()
+			retry++
+		}
+		// Refresh the token
+		if err != nil {
+			globals.GetState().SetYouTubeUser(globals.YouTubeUser{})
 			return nil, err
 		}
 

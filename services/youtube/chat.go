@@ -1,53 +1,21 @@
 package youtube
 
 import (
-	"MyStreamBot/globals"
-	"MyStreamBot/helpers"
-	"encoding/json"
+	"context"
 	"hash/fnv"
-	"net/http"
+	"io"
 	"slices"
 	"strings"
 	"time"
+
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/metadata"
+	"google.golang.org/protobuf/proto"
+
+	"MyStreamBot/globals"
+	"MyStreamBot/helpers"
 )
-
-type YouTubeLiveChatMessagesResponse struct {
-	Kind                  string                   `json:"kind"`
-	Etag                  string                   `json:"etag"`
-	NextPageToken         string                   `json:"nextPageToken"`
-	OfflineAt             time.Time                `json:"offlineAt"`
-	PollingIntervalMillis int                      `json:"pollingIntervalMillis"`
-	Items                 []YouTubeLiveChatMessage `json:"items"`
-}
-
-type YouTubeLiveChatMessage struct {
-	Kind          string                 `json:"kind"`
-	Etag          string                 `json:"etag"`
-	ID            string                 `json:"id"`
-	Snippet       LiveChatMessageSnippet `json:"snippet"`
-	AuthorDetails LiveChatAuthorDetails  `json:"authorDetails"`
-}
-
-type LiveChatMessageSnippet struct {
-	Type               string                      `json:"type"`
-	PublishedAt        time.Time                   `json:"publishedAt"`
-	DisplayMessage     string                      `json:"displayMessage"`
-	TextMessageDetails *LiveChatTextMessageDetails `json:"textMessageDetails"`
-}
-
-type LiveChatTextMessageDetails struct {
-	MessageText string `json:"messageText"`
-}
-
-type LiveChatAuthorDetails struct {
-	ChannelID       string `json:"channelId"`
-	DisplayName     string `json:"displayName"`
-	ProfileImageURL string `json:"profileImageUrl"`
-	IsChatModerator bool   `json:"isChatModerator"`
-	IsChatOwner     bool   `json:"isChatOwner"`
-	IsChatSponsor   bool   `json:"isChatSponsor"`
-	IsVerified      bool   `json:"isVerified"`
-}
 
 func defaultUserColor(username string) string {
 	colors := []string{
@@ -63,113 +31,110 @@ func defaultUserColor(username string) string {
 	return colors[index]
 }
 
-func FetchLiveChatMessages(liveChatID, pageToken string) (*YouTubeLiveChatMessagesResponse, error) {
-	baseURL := "https://www.googleapis.com/youtube/v3/liveChat/messages"
-	req, err := http.NewRequest("GET", baseURL, nil)
-	if err != nil {
-		helpers.Logf(helpers.ERROR, "[YOUTUBE] FetchLiveChatMessages http.NewRequest failed: %v", err)
-		return nil, err
-	}
-
-	q := req.URL.Query()
-	q.Add("liveChatId", liveChatID)
-	q.Add("part", "snippet,authorDetails")
-	if pageToken != "" {
-		q.Add("pageToken", pageToken)
-	}
-	req.URL.RawQuery = q.Encode()
-
-	resp, err := DoYouTubeRequest(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	var data YouTubeLiveChatMessagesResponse
-	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
-		return nil, err
-	}
-
-	return &data, nil
-}
-
 func ListenToChat(channelId, chatId string) {
 	globals.GetState().AddYouTubeChat(channelId, chatId)
 	helpers.Logf(helpers.INFO, "Started Youtube chat listener! channel: %s; chat: %s", channelId, chatId)
-	page := ""
-	for {
-		helpers.Logf(helpers.DEBUG, "READING Youtube CHAT...")
-		data, err := FetchLiveChatMessages(chatId, page)
 
+	conn, err := grpc.NewClient("youtube.googleapis.com:443",
+		grpc.WithTransportCredentials(credentials.NewClientTLSFromCert(nil, "")))
+	if err != nil {
+		helpers.Logf(helpers.ERROR, "[YT] failed to dial gRPC: %v", err)
+		return
+	}
+	defer conn.Close()
+
+	client := NewV3DataLiveChatMessageServiceClient(conn)
+
+	var pageToken string
+	for {
+		user := globals.GetState().GetYouTubeUser()
+
+		ctx := metadata.NewOutgoingContext(context.Background(),
+			metadata.Pairs("authorization", "Bearer "+user.Token))
+
+		req := &LiveChatMessageListRequest{
+			LiveChatId: proto.String(chatId),
+			Part:       []string{"snippet", "authorDetails"},
+		}
+		if pageToken != "" {
+			req.PageToken = proto.String(pageToken)
+		}
+
+		stream, err := client.StreamList(ctx, req)
 		if err != nil {
-			helpers.Logf(helpers.ERROR, "[YT] ListenToChat failed to fetch chat messages %v", err)
+			helpers.Logf(helpers.ERROR, "[YT] StreamList failed: %v", err)
 			_, foundChannel := helpers.Find(globals.GetState().GetYouTubeUser().Channels, func(c *globals.YouTubeChannel) bool {
 				return slices.Contains(c.ChatIDs, chatId)
 			})
 			if !foundChannel {
 				break
 			}
+			time.Sleep(5 * time.Second)
 			continue
 		}
 
-		for _, msg := range data.Items {
-			messagedata := globals.MessageFromStream{
-				Source:    "youtube",
-				Channel:   chatId,
-				User:      msg.AuthorDetails.DisplayName,
-				UserId:    msg.AuthorDetails.ChannelID,
-				MessageId: msg.ID,
-				Message:   msg.Snippet.DisplayMessage,
-				Metadata: map[string]any{
-					"snippet":       msg.Snippet,
-					"authorDetails": msg.AuthorDetails,
-				},
+		for {
+			resp, err := stream.Recv()
+			if err == io.EOF {
+				break
+			}
+			if err != nil {
+				helpers.Logf(helpers.ERROR, "[YT] stream.Recv failed: %v", err)
+				break
 			}
 
-			state := globals.GetState()
-			if messagedata.Metadata["color"] == nil || messagedata.Metadata["color"] == "" {
-				userColor := state.GetData("youtube-user-color")
-				if userColor == nil {
-					userColor = make(map[string]any)
+			pageToken = resp.GetNextPageToken()
+
+			for _, msg := range resp.GetItems() {
+				messagedata := globals.MessageFromStream{
+					Source:    "youtube",
+					Channel:   chatId,
+					User:      msg.GetAuthorDetails().GetDisplayName(),
+					UserId:    msg.GetAuthorDetails().GetChannelId(),
+					MessageId: msg.GetId(),
+					Message:   msg.GetSnippet().GetDisplayMessage(),
+					Metadata: map[string]any{
+						"snippet":       msg.GetSnippet(),
+						"authorDetails": msg.GetAuthorDetails(),
+					},
 				}
-				userColorMap, ok := userColor.(map[string]any)
-				if !ok {
-					userColorMap = make(map[string]any)
+
+				state := globals.GetState()
+				if messagedata.Metadata["color"] == nil || messagedata.Metadata["color"] == "" {
+					userColor := state.GetData("youtube-user-color")
+					if userColor == nil {
+						userColor = make(map[string]any)
+					}
+					userColorMap, ok := userColor.(map[string]any)
+					if !ok {
+						userColorMap = make(map[string]any)
+					}
+					if userColorMap[messagedata.User] == nil {
+						userColorMap[messagedata.User] = defaultUserColor(messagedata.User)
+						state.SetData("youtube-user-color", userColorMap)
+					}
+					if colorVal, ok := userColorMap[messagedata.User].(string); ok {
+						messagedata.Metadata["color"] = colorVal
+					}
 				}
-				if userColorMap[messagedata.User] == nil {
-					userColorMap[messagedata.User] = defaultUserColor(messagedata.User)
-					state.SetData("youtube-user-color", userColorMap)
-				}
-				if colorVal, ok := userColorMap[messagedata.User].(string); ok {
-					messagedata.Metadata["color"] = colorVal
-				}
+
+				globals.ChatQueue <- messagedata
 			}
 
-			globals.ChatQueue <- messagedata
-		}
-
-		if !data.OfflineAt.IsZero() && data.OfflineAt.After(time.Now()) {
-			helpers.Logf(helpers.WARN, "[YT OFF] Chat offline at %v, now is %v", data.OfflineAt, time.Now())
-			globals.WsBroadcast <- globals.SocketMessage{
-				Type: "youtube-live-offline", Data: map[string]any{"liveId": chatId, "offlineAt": data.OfflineAt},
+			offlineAtStr := resp.GetOfflineAt()
+			if offlineAtStr != "" {
+				offlineAt, err := time.Parse(time.RFC3339, offlineAtStr)
+				if err == nil && time.Now().After(offlineAt) {
+					helpers.Logf(helpers.WARN, "[YT OFF] Chat offline at %v, now is %v", offlineAt, time.Now())
+					globals.WsBroadcast <- globals.SocketMessage{
+						Type: "youtube-live-offline", Data: map[string]any{"liveId": chatId, "offlineAt": offlineAt},
+					}
+					return
+				}
 			}
-			break
 		}
 
-		page = data.NextPageToken
-		helpers.Logf(helpers.DEBUG, "YT POLL %d", data.PollingIntervalMillis)
-
-		if len(data.Items) == 0 {
-			data.PollingIntervalMillis = 60000
-		}
-
-		if data.PollingIntervalMillis < 5000 {
-			data.PollingIntervalMillis = 5000
-		}
-
-		helpers.Logf(helpers.DEBUG, "YT POLL NOW %d", data.PollingIntervalMillis)
-
-		time.Sleep(time.Duration(data.PollingIntervalMillis) * time.Millisecond)
+		time.Sleep(1 * time.Second)
 	}
 	helpers.Logf(helpers.INFO, "Stopped Youtube chat listener! channel: %s; chat: %s", channelId, chatId)
 }

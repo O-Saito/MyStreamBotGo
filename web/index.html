@@ -1213,7 +1213,7 @@
                 }
 
                 if (msg.metadata['authorDetails']) {
-                    user.innerHTML = `<img src="${msg.metadata['authorDetails'].profileImageUrl}" /> ${msg.user}`;
+                    user.innerHTML = `<img src="${msg.metadata['authorDetails'].profileImageUrl || msg.metadata['authorDetails'].profile_image_url}" /> ${msg.user}`;
                 }
 
                 if (msg.metadata['badges-info']) {

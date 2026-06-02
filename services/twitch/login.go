@@ -20,9 +20,7 @@ const (
 	Scopes = "chat:read chat:edit user:read:email moderator:manage:chat_messages moderator:manage:banned_users channel:moderate channel:read:subscriptions"
 )
 
-func HandleLogin() {
-	redirectURI := fmt.Sprintf("http://localhost:%s/twitch/callback", globals.GetConfig().HTTPPort)
-
+func getScopes() string {
 	scopes := Scopes
 
 	if globals.GetConfig().TwitchScopes != "" {
@@ -40,6 +38,12 @@ func HandleLogin() {
 			}
 		}
 	}
+
+	return scopes
+}
+
+func RestoreSession() {
+	scopes := getScopes()
 
 	currentAccess, err := globals.GetGlobalDB().GetToken("twitch")
 	if err != nil {
@@ -80,6 +84,13 @@ func HandleLogin() {
 			initTwitchUser(d.AccessToken)
 		}
 	}
+}
+
+func HandleLogin() {
+
+	redirectURI := fmt.Sprintf("http://localhost:%s/twitch/callback", globals.GetConfig().HTTPPort)
+
+	scopes := getScopes()
 
 	// Endpoint that redirects to Twitch
 	http.HandleFunc("/twitch/login", func(w http.ResponseWriter, r *http.Request) {

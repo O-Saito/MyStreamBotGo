@@ -18,6 +18,37 @@ const (
 	Scopes      = "user:read channel:read channel:write chat:read chat:write channel:read streamkey:read events:subscribe moderation:ban"
 )
 
+func RestoreSession() {
+	current := globals.GetState().GetKickUser()
+
+	sqlToken, err := globals.GetGlobalDB().GetToken("kick")
+	if err == nil && sqlToken.RefreshToken != "" {
+		current.RefreshToken = sqlToken.RefreshToken
+	}
+
+	if current.RefreshToken != "" {
+		helpers.Print(helpers.Reset, "KICK!")
+
+		globals.GetState().SetKickUser(current)
+		err := RefreshAccessToken()
+		if err == nil {
+			var userData, uErr = GetChannel(0, nil)
+			if uErr == nil {
+				current.UserID = userData.BroadcasterUserId
+				current.UserLogin = userData.Slug
+
+				globals.GetState().SetKickUser(current)
+				close(LoginDone)
+			} else {
+				helpers.Logf(helpers.ERROR, "[KICK] Error getting Kick info: %s", uErr.Error())
+			}
+
+		} else {
+			helpers.Logf(helpers.ERROR, "[KICK] Failed to refresh token: %s", err.Error())
+		}
+	}
+}
+
 func RefreshAccessToken() error {
 	current := globals.GetState().GetKickUser()
 
@@ -64,34 +95,6 @@ func RefreshAccessToken() error {
 }
 
 func HandleLogin() {
-	current := globals.GetState().GetKickUser()
-	sqlToken, err := globals.GetGlobalDB().GetToken("kick")
-	if err == nil && sqlToken.RefreshToken != "" {
-		current.RefreshToken = sqlToken.RefreshToken
-	}
-
-	if current.RefreshToken != "" {
-		helpers.Print(helpers.Reset, "KICK!")
-
-		globals.GetState().SetKickUser(current)
-		err := RefreshAccessToken()
-		if err == nil {
-			var userData, uErr = GetChannel(0, nil)
-			if uErr == nil {
-				current.UserID = userData.BroadcasterUserId
-				current.UserLogin = userData.Slug
-
-				globals.GetState().SetKickUser(current)
-				close(LoginDone)
-			} else {
-				helpers.Logf(helpers.ERROR, "[KICK] Error getting Kick info: %s", uErr.Error())
-			}
-
-		} else {
-			helpers.Logf(helpers.ERROR, "[KICK] Failed to refresh token: %s", err.Error())
-		}
-	}
-
 	http.HandleFunc("/kick/login", func(w http.ResponseWriter, r *http.Request) {
 		CodeVerifier = helpers.GenerateRandomString(64)
 		codeChallenge := helpers.GenerateCodeChallenge(CodeVerifier)
@@ -156,6 +159,8 @@ func HandleLogin() {
 		}
 
 		helpers.Printf(helpers.Reset, "[KICK LOGIN] Login: access_token: %s; token_type: %s; refresh_token: %s; expires: %d; scope: %s", tokenResp.AccessToken, tokenResp.TokenType, tokenResp.RefreshToken, tokenResp.ExpiresIn, tokenResp.Scope)
+
+		current := globals.GetState().GetKickUser()
 
 		current.Token = tokenResp.AccessToken
 		current.RefreshToken = tokenResp.RefreshToken

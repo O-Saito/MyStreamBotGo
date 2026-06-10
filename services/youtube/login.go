@@ -24,9 +24,7 @@ type OAuthResponse struct {
 	ErrorDesc    string `json:"error_description"`
 }
 
-func HandleLogin() {
-	scopes := Scopes
-
+func RestoreSession() {
 	sqlToken, err := globals.GetGlobalDB().GetToken("youtube")
 	if err == nil && sqlToken.RefreshToken != "" {
 		config := globals.GetConfig()
@@ -71,6 +69,11 @@ func HandleLogin() {
 			helpers.Logf(helpers.ERROR, "Failed to refresh token: %s", err.Error())
 		}
 	}
+}
+
+func HandleLogin() {
+
+	scopes := Scopes
 
 	redirectURI := fmt.Sprintf("http://localhost:%s/youtube/callback", globals.GetConfig().HTTPPort)
 
@@ -160,4 +163,5 @@ func HandleLogin() {
 			})
 		}
 	})
+
 }

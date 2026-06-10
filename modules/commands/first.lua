@@ -4,10 +4,10 @@ function on_command(ev)
         if string.find(target, "@") then
             target = string.gsub(target, "@", "")
         end
-        local message = "O " .. target .. " nunca foi o primeirinho!"
+        local message = "O(a) " .. target .. " nunca foi o primeirinho!"
         local u = find_user_data(ev.Source, target)
         if u ~= nil then
-            message = "O " .. u.display .. " já foi o primeiro " .. u.count .. " vez(es)!"
+            message = "O(a) " .. u.display .. " já foi o primeiro " .. u.count .. " vez(es)!"
         end
         g.send_message(ev.Source, ev.Channel, message, ev.Message.MessageId)
         return
@@ -70,7 +70,7 @@ function find_user_data(source, username)
     end
 
     for k, v in pairs(f) do
-        if v.login == username then
+        if string.gsub(v.login, "@", "") == username or string.gsub(v.display, "@", "") == username then
             u = v
             break
         end

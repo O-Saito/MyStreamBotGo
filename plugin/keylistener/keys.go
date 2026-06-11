@@ -1,3 +1,5 @@
+//go:build windows
+
 package keylistener
 
 import (
@@ -5,11 +7,11 @@ import (
 )
 
 type KeyEvent struct {
-	VkCode    uint32            `json:"vk_code"`
-	VkName    string            `json:"vk_name"`
-	Key       string            `json:"key"`
-	IsDown    bool              `json:"is_down"`
-	Modifiers map[string]bool   `json:"modifiers"`
+	VkCode    uint32          `json:"vk_code"`
+	VkName    string          `json:"vk_name"`
+	Key       string          `json:"key"`
+	IsDown    bool            `json:"is_down"`
+	Modifiers map[string]bool `json:"modifiers"`
 }
 
 func buildKeyEvent(vkCode uint32, wParam uintptr) KeyEvent {
@@ -230,30 +232,30 @@ var vkNames = map[uint32]string{
 	windows.VK_LAUNCH_MEDIA_SELECT: "VK_LAUNCH_MEDIA_SELECT",
 	windows.VK_LAUNCH_APP1:         "VK_LAUNCH_APP1",
 	windows.VK_LAUNCH_APP2:         "VK_LAUNCH_APP2",
-	windows.VK_OEM_1:              "VK_OEM_1",
-	windows.VK_OEM_PLUS:           "VK_OEM_PLUS",
-	windows.VK_OEM_COMMA:          "VK_OEM_COMMA",
-	windows.VK_OEM_MINUS:          "VK_OEM_MINUS",
-	windows.VK_OEM_PERIOD:         "VK_OEM_PERIOD",
-	windows.VK_OEM_2:              "VK_OEM_2",
-	windows.VK_OEM_3:              "VK_OEM_3",
-	windows.VK_OEM_4:              "VK_OEM_4",
-	windows.VK_OEM_5:              "VK_OEM_5",
-	windows.VK_OEM_6:              "VK_OEM_6",
-	windows.VK_OEM_7:              "VK_OEM_7",
-	windows.VK_OEM_8:              "VK_OEM_8",
-	windows.VK_OEM_102:            "VK_OEM_102",
-	windows.VK_PROCESSKEY:         "VK_PROCESSKEY",
-	0xE7:                          "VK_PACKET",
-	windows.VK_ATTN:               "VK_ATTN",
-	windows.VK_CRSEL:              "VK_CRSEL",
-	windows.VK_EXSEL:              "VK_EXSEL",
-	windows.VK_EREOF:              "VK_EREOF",
-	windows.VK_PLAY:               "VK_PLAY",
-	windows.VK_ZOOM:               "VK_ZOOM",
-	windows.VK_NONAME:             "VK_NONAME",
-	windows.VK_PA1:                "VK_PA1",
-	windows.VK_OEM_CLEAR:          "VK_OEM_CLEAR",
+	windows.VK_OEM_1:               "VK_OEM_1",
+	windows.VK_OEM_PLUS:            "VK_OEM_PLUS",
+	windows.VK_OEM_COMMA:           "VK_OEM_COMMA",
+	windows.VK_OEM_MINUS:           "VK_OEM_MINUS",
+	windows.VK_OEM_PERIOD:          "VK_OEM_PERIOD",
+	windows.VK_OEM_2:               "VK_OEM_2",
+	windows.VK_OEM_3:               "VK_OEM_3",
+	windows.VK_OEM_4:               "VK_OEM_4",
+	windows.VK_OEM_5:               "VK_OEM_5",
+	windows.VK_OEM_6:               "VK_OEM_6",
+	windows.VK_OEM_7:               "VK_OEM_7",
+	windows.VK_OEM_8:               "VK_OEM_8",
+	windows.VK_OEM_102:             "VK_OEM_102",
+	windows.VK_PROCESSKEY:          "VK_PROCESSKEY",
+	0xE7:                           "VK_PACKET",
+	windows.VK_ATTN:                "VK_ATTN",
+	windows.VK_CRSEL:               "VK_CRSEL",
+	windows.VK_EXSEL:               "VK_EXSEL",
+	windows.VK_EREOF:               "VK_EREOF",
+	windows.VK_PLAY:                "VK_PLAY",
+	windows.VK_ZOOM:                "VK_ZOOM",
+	windows.VK_NONAME:              "VK_NONAME",
+	windows.VK_PA1:                 "VK_PA1",
+	windows.VK_OEM_CLEAR:           "VK_OEM_CLEAR",
 }
 
 func init() {

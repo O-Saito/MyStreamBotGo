@@ -1,3 +1,5 @@
+//go:build windows
+
 package keylistener
 
 import (
@@ -11,11 +13,11 @@ import (
 var (
 	user32 = windows.NewLazySystemDLL("user32.dll")
 
-	procSetWindowsHookEx = user32.NewProc("SetWindowsHookExW")
-	procCallNextHookEx   = user32.NewProc("CallNextHookEx")
+	procSetWindowsHookEx    = user32.NewProc("SetWindowsHookExW")
+	procCallNextHookEx      = user32.NewProc("CallNextHookEx")
 	procUnhookWindowsHookEx = user32.NewProc("UnhookWindowsHookEx")
-	procGetMessage       = user32.NewProc("GetMessageW")
-	procGetKeyState      = user32.NewProc("GetKeyState")
+	procGetMessage          = user32.NewProc("GetMessageW")
+	procGetKeyState         = user32.NewProc("GetKeyState")
 )
 
 const (
@@ -42,8 +44,8 @@ type MSG struct {
 	WParam  uintptr
 	LParam  uintptr
 	Time    uint32
-	PtX    int32
-	PtY    int32
+	PtX     int32
+	PtY     int32
 }
 
 var (

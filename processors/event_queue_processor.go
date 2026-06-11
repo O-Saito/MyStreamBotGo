@@ -4,6 +4,7 @@ import (
 	"MyStreamBot/globals"
 	"MyStreamBot/helpers"
 	"MyStreamBot/mlua"
+	"MyStreamBot/plugin"
 )
 
 func ProcessEventQueue() {
@@ -39,6 +40,7 @@ func ProcessEventQueue() {
 			Type:     mlua.DyEventEvent,
 			LuaEvent: ev,
 		}
+		plugin.DispatchEvent(&ev)
 
 		if !shouldSkip {
 			mlua.HandleEvent(ev.Type, &ev)

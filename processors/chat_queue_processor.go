@@ -4,6 +4,7 @@ import (
 	"MyStreamBot/globals"
 	"MyStreamBot/helpers"
 	"MyStreamBot/mlua"
+	"MyStreamBot/plugin"
 	"strings"
 )
 
@@ -43,6 +44,7 @@ func ProcessChatQueue() {
 			Type:              mlua.DyEventChat,
 			MessageFromStream: ev,
 		}
+		plugin.DispatchChat(&ev)
 		if ev.Source == "twitch" {
 			if ev.Channel != globals.GetState().TwitchUser.UserLogin {
 				continue

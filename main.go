@@ -6,6 +6,7 @@ import (
 	"MyStreamBot/helpers"
 	"MyStreamBot/mlua"
 	"MyStreamBot/plugin"
+	_ "MyStreamBot/plugin/keylistener"
 	"MyStreamBot/processors"
 	"MyStreamBot/services/kick"
 	"MyStreamBot/services/twitch"

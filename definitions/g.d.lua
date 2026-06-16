@@ -19,7 +19,7 @@ function g.socket_send(type, data) end
 
 ---Send a message to a channel
 ---@param source string
----@param channel table
+---@param channel string
 ---@param message string
 ---@param reply string|nil
 function g.send_message(source, channel, message, reply) end

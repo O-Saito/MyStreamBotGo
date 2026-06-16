@@ -8,13 +8,13 @@ The `services/twitch/fetch/` package contains functions for making Twitch Helix 
 
 ## 1. URL Building Pattern
 
-### Correct Pattern: `twitch.BuildURL()`
+### Correct Pattern: `BuildURL()`
 
 ```go
 opts := map[string]any{
     "param_name": value,
 }
-url := twitch.BuildURL(twitch.HelixBaseURL+"/endpoint", opts)
+url := BuildURL(HelixBaseURL+"/endpoint", opts)
 ```
 
 **Key Benefits:**
@@ -35,7 +35,7 @@ url := fmt.Sprintf("%s?param=%s", urlAPI, value)
 ### GET/DELETE Requests (No Body)
 
 ```go
-result, err := twitch.ExecuteRequest[ResponseType]("GET", url, 200)
+result, err := ExecuteRequest[ResponseType]("GET", url, 200)
 if err != nil {
     helpers.Logf(helpers.DEBUG, "[TWITCH] FunctionName: params=%v", values)
     return nil, err
@@ -47,7 +47,7 @@ if err != nil {
 ```go
 body := map[string]any{"field": value}
 // OR use a request struct
-result, err := twitch.ExecuteJSONRequest[ResponseType, map[string]any]("POST", url, body, 201)
+result, err := ExecuteJSONRequest[ResponseType, map[string]any]("POST", url, body, 201)
 if err != nil {
     helpers.Logf(helpers.DEBUG, "[TWITCH] FunctionName: params=%v", values)
     return nil, err
@@ -57,7 +57,7 @@ if err != nil {
 ### Request with Custom Struct
 
 ```go
-result, err := twitch.ExecuteJSONRequest[ResponseType, RequestStruct]("POST", url, request, 201)
+result, err := ExecuteJSONRequest[ResponseType, RequestStruct]("POST", url, request, 201)
 ```
 
 ## 3. Token-Match Functions
@@ -73,7 +73,7 @@ func FunctionName(requiredParam string) (*ReturnType, error) {
         "param":      requiredParam,
     }
 
-    url := twitch.BuildURL(twitch.HelixBaseURL+"/endpoint", opts)
+    url := BuildURL(HelixBaseURL+"/endpoint", opts)
     // ... rest of function
 }
 ```
@@ -101,7 +101,7 @@ type GetXxxResponse struct {
 ### Function with Pagination
 
 ```go
-func GetXxx(req *twitch.PaginationRequest) (*twitch.PaginationData[Xxx], error) {
+func GetXxx(req *twitch.PaginationRequest) (*PaginationData[Xxx], error) {
     opts := map[string]any{}
 
     if req != nil {
@@ -113,15 +113,15 @@ func GetXxx(req *twitch.PaginationRequest) (*twitch.PaginationData[Xxx], error) 
         }
     }
 
-    url := twitch.BuildURL(twitch.HelixBaseURL+"/endpoint", opts)
+    url := BuildURL(HelixBaseURL+"/endpoint", opts)
 
-    result, err := twitch.ExecuteRequest[twitch.PaginationData[Xxx]]("GET", url, 200)
+    result, err := ExecuteRequest[PaginationData[Xxx]]("GET", url, 200)
     if err != nil {
         helpers.Logf(helpers.DEBUG, "[TWITCH] GetXxx: params=%v", ...)
         return nil, err
     }
 
-    result.GetNext = func() *twitch.PaginationData[Xxx] {
+    result.GetNext = func() *PaginationData[Xxx] {
         GetXxx(&twitch.PaginationRequest{
             Cursor:   result.Pagination.Cursor,
             Quantity: req.Quantity,
@@ -184,9 +184,9 @@ func GetPolls(pollIDs []string) ([]Poll, error) {
         opts["id"] = id
     }
 
-    url := twitch.BuildURL(twitch.HelixBaseURL+"/polls", opts)
+    url := BuildURL(HelixBaseURL+"/polls", opts)
 
-    result, err := twitch.ExecuteRequest[GetPollsResponse]("GET", url, 200)
+    result, err := ExecuteRequest[GetPollsResponse]("GET", url, 200)
     if err != nil {
         helpers.Logf(helpers.DEBUG, "[TWITCH] GetPolls: broadcasterID=%v", user.UserID)
         return nil, err
@@ -205,9 +205,9 @@ func CreatePrediction(req CreatePredictionRequest) (*Prediction, error) {
     opts := map[string]any{
         "broadcaster_id": user.UserID,
     }
-    url := twitch.BuildURL(twitch.HelixBaseURL+"/predictions", opts)
+    url := BuildURL(HelixBaseURL+"/predictions", opts)
 
-    result, err := twitch.ExecuteJSONRequest[GetPredictionsResponse, CreatePredictionRequest]("POST", url, req, 201)
+    result, err := ExecuteJSONRequest[GetPredictionsResponse, CreatePredictionRequest]("POST", url, req, 201)
     if err != nil {
         helpers.Logf(helpers.DEBUG, "[TWITCH] CreatePrediction: title=%v", req.Title)
         return nil, err
@@ -233,7 +233,7 @@ type GetVideosRequest struct {
     Type     string
 }
 
-func GetVideos(req GetVideosRequest) (*twitch.PaginationData[Video], error) {
+func GetVideos(req GetVideosRequest) (*PaginationData[Video], error) {
     opts := map[string]any{}
 
     if req.UserID != "" {
@@ -255,7 +255,7 @@ When adding a new Twitch API endpoint:
 
 1. **Check API docs** - Does the endpoint require token match?
 2. **Create response struct** - Use `GetXxxResponse` naming convention
-3. **Build URL** - Use `twitch.BuildURL()` with `map[string]any`
+3. **Build URL** - Use `BuildURL()` with `map[string]any`
 4. **Execute request** - Use `ExecuteRequest` or `ExecuteJSONRequest`
 5. **Handle response** - Check `len(result.Data)` for empty results
 6. **Log errors** - Include relevant parameters

@@ -36,4 +36,10 @@ cp -r web               "$BUILD_DIR/"
 #cp -r db                "$BUILD_DIR/"
 #cp -r logs              "$BUILD_DIR/"
 
+# Remove example files listed in release_exclude_list.txt (not meant for production)
+while IFS= read -r line; do
+    case "$line" in \#*|"") continue ;; esac
+    rm -f "$BUILD_DIR/$line"
+done < release_exclude_list.txt
+
 echo "==> Done → $BUILD_DIR"

@@ -99,12 +99,34 @@ Upgrades connection to receive filtered broadcasts for specific CustomEvents:
 
 ```go
 "upgrade-conn": func(c *websocket.Conn, m map[string]any, md *SocketRequestMetadata) {
-    if m["conn"] == "ignore-broadcast" {
-        wsClients[c] = -1  // Ignore all broadcasts
-        return
+    data := globals.SocketMessage{
+        Type:      "response-upgrade",
+        Data:      "",
+        SocketTag: md.Tag,
     }
-    // Add to filtered clients list
-    wsClientsUpgraded[m["conn"].(string)] = append(wsClientsUpgraded[m["conn"].(string)], c)
+    if m["conn"] != nil {
+        connVal, ok := m["conn"].(string)
+        if !ok {
+            helpers.Logf(helpers.ERROR, "[WebSocket] upgrade-conn: invalid conn type")
+            return
+        }
+        if connVal == "ignore-broadcast" {
+            mu.Lock()
+            wsClients[c] = -1
+            mu.Unlock()
+            return
+        }
+        mu.Lock()
+        if wsClientsUpgraded[connVal] == nil {
+            wsClientsUpgraded[connVal] = make([]*websocket.Conn, 0)
+        }
+        wsClientsUpgraded[connVal] = append(wsClientsUpgraded[connVal], c)
+        mu.Unlock()
+        data.Data = "Connection updated!"
+    } else {
+        data.Data = "Connection not specified!"
+    }
+    globals.WsBroadcast <- data
 }
 ```
 

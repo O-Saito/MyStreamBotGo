@@ -20,8 +20,8 @@ Key loader functions to refer to: [mlua/mlua.go](./../mlua/mlua.go) (`Init`, `Lo
 See examples in the repository:
 - [modules/commands/first.lua](./../modules/commands/first.lua)
 - [modules/chat/first.lua](./../modules/chat/first.lua)
-- [modules/customevents/vote.lua](./../modules/customevents/vote.lua)
-- [modules/events/channel.follow/example.lua](./../modules/events/channel.follow/example.lua)
+- [modules/customevents/customevent_example.lua](./../modules/customevents/customevent_example.lua)
+- [modules/events/channel.follow/follow_example.lua](./../modules/events/channel.follow/follow_example.lua)
 
 ## Module types & lifecycle hooks
 
@@ -48,7 +48,7 @@ function on_command(ev) end
 ```
 
 ### Static event modules `modules/<event_name>`
-Receives events based on event name folder ([modules/events/channel.follow/example.luamodules/events/channel.follow/example.lua)) 
+Receives events based on event name folder ([modules/events/channel.follow/follow_example.lua](./../modules/events/channel.follow/follow_example.lua)) 
 
 It should have an `on_event` function
 
@@ -129,10 +129,10 @@ The front-end uses `web/wrapper.js` to open a websocket and receive an `init` pa
 Typical client usage (from `web/customevents/*.js`):
 
 ```js
-const vote = w.subscribe("vote.lua");
-if (vote) {
-  vote.on("user_vote_update", onVoteUpdate);
-  vote.send("setup", { options: ["Yes","No"] });
+const example = w.subscribe("customevent_example.lua");
+if (example) {
+  example.on("tick", (data) => console.log("Tick:", data));
+  example.send("ping", {}, (data) => console.log("Pong:", data));
 }
 ```
 
@@ -140,7 +140,7 @@ Notes:
 - `subscribe` expects the module filename that matches the server `Filter` (usually `vote.lua`).
 - The frontend and CustomEvent communicate using messages of the shape `{ type: string, filter: string, data: any }`.
 
-See `web/wrapper.js` for the exact client API and `web/customevents/vote.lua.js` for real examples.
+See `web/wrapper.js` for the exact client API and `web/customevents/customevent_example.lua.js` for real examples.
 
 ## Hot-reload behavior
 

@@ -13,9 +13,11 @@ logs/
 !web/fontawesome
 !web/customevents/vote.lua.js
 !web/customevents/twitch.lua.js
+!web/customevents/customevent_example.lua.js
 !modules/commands/first.lua
 !modules/chat/first.lua
 !modules/events/channel.follow/example.lua
 !modules/customevents/vote.lua
 !modules/customevents/twitch.lua
 !modules/customevents/modules/string_helper.lua
+!modules/customevents/customevent_example.lua

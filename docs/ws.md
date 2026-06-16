@@ -44,10 +44,11 @@ ws.onopen = function () {
 
 ```go
 type SocketMessage struct {
-    Type    string      // Message type (e.g., "init", "response-upgrade")
-    Data    interface{} // Payload data
-    Filter  string      // Filter for targeted broadcasts (module name)
-    Respond int         // Client tag for direct responses
+    Filter            string `json:"filter"`           // Filter for targeted broadcasts (module name)
+    Type              string `json:"type"`             // Message type (e.g., "init", "response-upgrade")
+    Data              any    `json:"data"`             // Payload data
+    SocketTag         int    `json:"respond"`          // Client tag for direct responses
+    ResponseMessageID string `json:"responseClientID"` // Response correlation ID
 }
 ```
 
@@ -71,7 +72,7 @@ init
 Returns initial application state to the client:
 
 ```go
-"init": func(c *websocket.Conn, m map[string]any, mytag int) {
+"init": func(c *websocket.Conn, m map[string]any, md *SocketRequestMetadata) {
     globals.WsBroadcast <- globals.SocketMessage{
         Type: "init",
         Data: map[string]any{
@@ -84,6 +85,9 @@ Returns initial application state to the client:
             "custom_events_modules":    mlua.ListDynamicEvents(),
             "twitch_eventsubs":         globals.GetState().GetData("TwitchSubEventsConnectedEvents"),
         },
+        SocketTag: md.Tag,
+    }
+},
         Respond: mytag,
     }
 }
@@ -94,7 +98,7 @@ Returns initial application state to the client:
 Upgrades connection to receive filtered broadcasts for specific CustomEvents:
 
 ```go
-"upgrade-conn": func(c *websocket.Conn, m map[string]any, mytag int) {
+"upgrade-conn": func(c *websocket.Conn, m map[string]any, md *SocketRequestMetadata) {
     if m["conn"] == "ignore-broadcast" {
         wsClients[c] = -1  // Ignore all broadcasts
         return
@@ -113,7 +117,7 @@ The server uses a global channel `globals.WsBroadcast` to send messages from bac
 ### Broadcast Logic (`goweb/server.go:195-233` and `handlers.go`)
 
 1. **Filtered Broadcasts:** If `msg.Filter` is set, only send to clients subscribed to that filter
-2. **Direct Response:** If `msg.Respond` is set (non-zero, non-negative), send only to specific client
+2. **Direct Response:** If `msg.SocketTag` is set (non-zero, non-negative), send only to specific client
 3. **Broadcast:** Otherwise, send to all clients (except those with tag -1)
 
 ```go
@@ -131,7 +135,7 @@ go func() {
         // Direct response or broadcast
         for client, tag := range wsClients {
             if tag == -1 continue  // Skip ignore-broadcast clients
-            if msg.Respond != 0 && msg.Respond != -1 && msg.Respond != tag {
+            if msg.SocketTag != 0 && msg.SocketTag != -1 && msg.SocketTag != tag {
                 continue  // Skip other clients for direct response
             }
             client.WriteMessage(websocket.TextMessage, jsonData)
@@ -321,16 +325,6 @@ Sends a chat message to all connected platform channels:
 { "type": "send-chat-message", "data": { "text": "Hello world!" } }
 ```
 
-### `query-stream-game`
-
-Queries Twitch for game information:
-
-```json
-{ "type": "query-stream-game", "data": { "q": "Minecraft" } }
-```
-
-**Response:** `result-query-stream-games` with game list
-
 ### `get-streamer-data`
 
 Gets current streamer's data:
@@ -411,18 +405,6 @@ Response to `connect-chat-youtube` request:
 {
   "type": "result-connect-chat-youtube",
   "data": [...],
-  "respond": 1
-}
-```
-
-### `result-query-stream-games`
-
-Response to `query-stream-game` request:
-
-```json
-{
-  "type": "result-query-stream-games",
-  "data": { "list": [...] },
   "respond": 1
 }
 ```

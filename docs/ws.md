@@ -166,12 +166,15 @@ if (vote) {
 }
 ```
 
-### `send(type, data)`
+### `send(type, data, func)`
 
-Sends a message to the server.
+Sends a message to the server. The optional `func` callback receives a response from the server for request-response patterns.
 
 ```js
 w.send("my_event", { key: "value" });
+w.send("my_event", { key: "value" }, (response) => {
+    console.log("Response:", response);
+});
 ```
 
 ### `on(eventType, func)`
@@ -208,6 +211,22 @@ Manually triggers a handler (for testing/internal use).
 
 ```js
 w.exec("my_event", { data: "test" });
+```
+
+### `getEmotes()`
+
+Returns the current emote map (BTTV/FFZ/7TV/YouTube emojis) as `{ "code": "url", ... }`.
+
+```js
+const emotes = w.getEmotes();
+```
+
+### `loadEmote(twitchId, login)`
+
+Loads emotes from BTTV, FFZ, 7TV, and YouTube for a given channel. Returns a promise resolving to the updated emote map.
+
+```js
+await w.loadEmote("12345", "channel_login");
 ```
 
 ## CustomEvents Communication
@@ -334,6 +353,46 @@ Gets current streamer's data:
 ```
 
 **Response:** `result-get-streamer-data` with stream information
+
+### `get-next-streams-youtube`
+
+Gets next scheduled YouTube streams from polling and merges with preview lives:
+
+```json
+{ "type": "get-next-streams-youtube", "data": { "channel": "channel_name" } }
+```
+
+**Response:** `result-get-next-streams-youtube` with merged preview list
+
+### `connect-to-preview-youtube`
+
+Connects to a YouTube live preview chat:
+
+```json
+{ "type": "connect-to-preview-youtube", "data": { "liveChatId": "..." } }
+```
+
+**Response:** `result-connect-chat-youtube` with updated connected chats
+
+### `get-dy-statistics`
+
+Gets dynamic event (CustomEvent module) statistics:
+
+```json
+{ "type": "get-dy-statistics", "data": {} }
+```
+
+**Response:** `result-get-dy-statistics` with event list
+
+### `get-state`
+
+Gets the full bot state object:
+
+```json
+{ "type": "get-state", "data": {} }
+```
+
+**Response:** `result-get-state` with state data
 
 ### Custom Event Types
 

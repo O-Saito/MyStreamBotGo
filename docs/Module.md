@@ -120,6 +120,7 @@ end
 
 Notes:
 - `ev.data` is preserved across reloads for CustomEvents; use it to store module state.
+- `ev.set_compute_twitch_shared_chat(bool)` enables/disables Twitch shared chat computation.
 - The `Filter` used in websocket messages is the module filename (including extension) — front-end subscribe calls must match it exactly.
 
 ## Front-end CustomEvents wrappers (JS)

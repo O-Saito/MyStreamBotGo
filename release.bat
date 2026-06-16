@@ -33,4 +33,13 @@ xcopy /e /i /y web         "%BUILD_DIR%\web\" >nul
 ::xcopy /e /i /y db          "%BUILD_DIR%\db\" >nul
 ::xcopy /e /i /y logs        "%BUILD_DIR%\logs\" >nul
 
+:: Remove example files listed in release_exclude_list.txt (not meant for production)
+if exist release_exclude_list.txt (
+    for /f "usebackq eol=# tokens=*" %%f in ("release_exclude_list.txt") do (
+        set "FILEPATH=%%f"
+        set "FILEPATH=!FILEPATH:/=\!"
+        del /f /q "%BUILD_DIR%\!FILEPATH!" 2>nul
+    )
+)
+
 echo Done ^→^ %BUILD_DIR%

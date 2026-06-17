@@ -3,6 +3,7 @@ package plugin
 import (
 	"MyStreamBot/globals"
 	"MyStreamBot/helpers"
+	"MyStreamBot/plugin/loader"
 	"MyStreamBot/services"
 	"sync"
 
@@ -26,6 +27,21 @@ func Register(p Plugin) {
 		helpers.Logf(helpers.WARN, "[PLUGIN] Register: %s already registered, overwriting", name)
 	}
 	registered[name] = p
+}
+
+func LoadPlugins(dir string) {
+	libs, err := loader.LoadDirectory(dir)
+	if err != nil {
+		helpers.Logf(helpers.ERROR, "[PLUGIN] LoadPlugins: %v", err)
+	}
+	for _, lib := range libs {
+		p, err := loader.LoadLibraryAsPlugin(lib)
+		if err != nil {
+			helpers.Logf(helpers.WARN, "[PLUGIN] skipping %s: %v", lib.Path, err)
+			continue
+		}
+		Register(p)
+	}
 }
 
 func InitAll() {
@@ -57,6 +73,10 @@ func StartAll() {
 	}
 }
 
+type libraryCloser interface {
+	CloseLibrary()
+}
+
 func StopAll() {
 	mu.RLock()
 	plugins := copyPlugins()
@@ -67,6 +87,9 @@ func StopAll() {
 			helpers.Logf(helpers.ERROR, "[PLUGIN] Stop %s: %v", p.Name(), err)
 		} else {
 			helpers.Logf(helpers.DEBUG, "[PLUGIN] Stop %s: ok", p.Name())
+		}
+		if closer, ok := p.(libraryCloser); ok {
+			closer.CloseLibrary()
 		}
 	}
 }

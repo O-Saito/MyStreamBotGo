@@ -47,6 +47,7 @@ func main() {
 
 	RegisterSocketHandlers()
 
+	plugin.LoadPlugins("./plugins")
 	plugin.InitAll()
 
 	// Initialize mlua package

@@ -84,6 +84,7 @@ func main() {
 
 	helpers.Logf(helpers.DEBUG, "Closing...")
 
+	processors.StopProcessors()
 	plugin.StopAll()
 	db.Close()
 	mlua.SaveDynamicEvents()

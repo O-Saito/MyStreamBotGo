@@ -10,9 +10,15 @@ import (
 	lua "github.com/yuin/gopher-lua"
 )
 
+type entry struct {
+	p       Plugin
+	mu      sync.RWMutex
+	stopped bool
+}
+
 var (
 	mu         sync.RWMutex
-	registered = map[string]Plugin{}
+	registered = map[string]*entry{}
 )
 
 func Register(p Plugin) {
@@ -26,7 +32,7 @@ func Register(p Plugin) {
 	if _, exists := registered[name]; exists {
 		helpers.Logf(helpers.WARN, "[PLUGIN] Register: %s already registered, overwriting", name)
 	}
-	registered[name] = p
+	registered[name] = &entry{p: p}
 }
 
 func LoadPlugins(dir string) {
@@ -46,10 +52,18 @@ func LoadPlugins(dir string) {
 
 func InitAll() {
 	mu.RLock()
-	plugins := copyPlugins()
+	entries := copyEntries()
 	mu.RUnlock()
 
-	for _, p := range plugins {
+	for _, e := range entries {
+		e.mu.RLock()
+		p := e.p
+		stopped := e.stopped
+		e.mu.RUnlock()
+		if stopped {
+			continue
+		}
+
 		ctx := &Context{Name: p.Name()}
 		if err := p.Init(ctx); err != nil {
 			helpers.Logf(helpers.ERROR, "[PLUGIN] Init %s: %v", p.Name(), err)
@@ -61,10 +75,18 @@ func InitAll() {
 
 func StartAll() {
 	mu.RLock()
-	plugins := copyPlugins()
+	entries := copyEntries()
 	mu.RUnlock()
 
-	for _, p := range plugins {
+	for _, e := range entries {
+		e.mu.RLock()
+		p := e.p
+		stopped := e.stopped
+		e.mu.RUnlock()
+		if stopped {
+			continue
+		}
+
 		if err := p.Start(); err != nil {
 			helpers.Logf(helpers.ERROR, "[PLUGIN] Start %s: %v", p.Name(), err)
 		} else {
@@ -79,47 +101,68 @@ type libraryCloser interface {
 
 func StopAll() {
 	mu.RLock()
-	plugins := copyPlugins()
+	entries := copyEntries()
 	mu.RUnlock()
 
-	for _, p := range plugins {
-		if err := p.Stop(); err != nil {
-			helpers.Logf(helpers.ERROR, "[PLUGIN] Stop %s: %v", p.Name(), err)
+	for _, e := range entries {
+		e.mu.Lock()
+		if err := e.p.Stop(); err != nil {
+			helpers.Logf(helpers.ERROR, "[PLUGIN] Stop %s: %v", e.p.Name(), err)
 		} else {
-			helpers.Logf(helpers.DEBUG, "[PLUGIN] Stop %s: ok", p.Name())
+			helpers.Logf(helpers.DEBUG, "[PLUGIN] Stop %s: ok", e.p.Name())
 		}
-		if closer, ok := p.(libraryCloser); ok {
+		e.stopped = true
+		if closer, ok := e.p.(libraryCloser); ok {
 			closer.CloseLibrary()
 		}
+		e.mu.Unlock()
 	}
 }
 
 func DispatchChat(msg *globals.MessageFromStream) {
 	mu.RLock()
-	plugins := copyPlugins()
+	entries := copyEntries()
 	mu.RUnlock()
 
-	for _, p := range plugins {
-		p.OnChat(msg)
+	for _, e := range entries {
+		e.mu.RLock()
+		stopped := e.stopped
+		if !stopped {
+			e.p.OnChat(msg)
+		}
+		e.mu.RUnlock()
 	}
 }
 
 func DispatchEvent(event *globals.Event) {
 	mu.RLock()
-	plugins := copyPlugins()
+	entries := copyEntries()
 	mu.RUnlock()
 
-	for _, p := range plugins {
-		p.OnEvent(event)
+	for _, e := range entries {
+		e.mu.RLock()
+		stopped := e.stopped
+		if !stopped {
+			e.p.OnEvent(event)
+		}
+		e.mu.RUnlock()
 	}
 }
 
 func RegisterLuaActions(L *lua.LState) {
 	mu.RLock()
-	plugins := copyPlugins()
+	entries := copyEntries()
 	mu.RUnlock()
 
-	for _, p := range plugins {
+	for _, e := range entries {
+		e.mu.RLock()
+		p := e.p
+		stopped := e.stopped
+		e.mu.RUnlock()
+		if stopped {
+			continue
+		}
+
 		actions := p.Actions()
 		if len(actions) == 0 {
 			continue
@@ -128,10 +171,10 @@ func RegisterLuaActions(L *lua.LState) {
 	}
 }
 
-func copyPlugins() []Plugin {
-	out := make([]Plugin, 0, len(registered))
-	for _, p := range registered {
-		out = append(out, p)
+func copyEntries() []*entry {
+	out := make([]*entry, 0, len(registered))
+	for _, e := range registered {
+		out = append(out, e)
 	}
 	return out
 }

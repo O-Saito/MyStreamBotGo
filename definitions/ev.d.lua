@@ -24,6 +24,10 @@ function ev.is_paused() end
 ---@param paused boolean
 function ev.set_paused(paused) end
 
+---Enable or disable Twitch shared chat computation
+---@param enabled boolean
+function ev.set_compute_twitch_shared_chat(enabled) end
+
 ---Tell the module to use the database connection
 function ev.use_db() end
 

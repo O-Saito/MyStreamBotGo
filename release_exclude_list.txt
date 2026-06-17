@@ -1,0 +1,4 @@
+# Files excluded from release builds (example/educational modules)
+modules/customevents/customevent_example.lua
+modules/events/channel.follow/follow_example.lua
+web/customevents/customevent_example.lua.js

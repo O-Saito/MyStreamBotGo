@@ -15,6 +15,7 @@ import (
 	"MyStreamBot/services"
 	"encoding/json"
 	"fmt"
+	"runtime"
 	"unsafe"
 
 	lua "github.com/yuin/gopher-lua"
@@ -127,7 +128,17 @@ func (p *sharedLibPlugin) Actions() []services.LuaFunction {
 		localActionName := d.Name
 		funcs = append(funcs, services.LuaFunction{
 			Name: localActionName,
-			Fn: func(L *lua.LState) int {
+			Fn: func(L *lua.LState) (n int) {
+				defer func() {
+					if r := recover(); r != nil {
+						buf := make([]byte, 4096)
+						stackLen := runtime.Stack(buf, false)
+						helpers.Logf(helpers.ERROR, "[PLUGIN] %s action %s panicked: %v\n%s", p.name, localActionName, r, buf[:stackLen])
+						L.Push(lua.LNil)
+						L.Push(lua.LString(fmt.Sprintf("plugin %s action %s panicked", p.name, localActionName)))
+						n = 2
+					}
+				}()
 				var jsonArgs string
 				if L.GetTop() > 0 {
 					data, _ := json.Marshal(mlua.FromLValue(L, L.Get(1)))

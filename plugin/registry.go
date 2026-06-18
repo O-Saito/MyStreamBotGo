@@ -5,6 +5,7 @@ import (
 	"MyStreamBot/helpers"
 	"MyStreamBot/plugin/loader"
 	"MyStreamBot/services"
+	"runtime"
 	"sync"
 
 	lua "github.com/yuin/gopher-lua"
@@ -64,12 +65,24 @@ func InitAll() {
 			continue
 		}
 
-		ctx := &Context{Name: p.Name()}
-		if err := p.Init(ctx); err != nil {
-			helpers.Logf(helpers.ERROR, "[PLUGIN] Init %s: %v", p.Name(), err)
-		} else {
-			helpers.Logf(helpers.DEBUG, "[PLUGIN] Init %s: ok", p.Name())
-		}
+		func() {
+			defer func() {
+				if r := recover(); r != nil {
+					buf := make([]byte, 4096)
+					n := runtime.Stack(buf, false)
+					helpers.Logf(helpers.ERROR, "[PLUGIN] %s panicked in Init: %v\n%s", p.Name(), r, buf[:n])
+					e.mu.Lock()
+					e.stopped = true
+					e.mu.Unlock()
+				}
+			}()
+			ctx := &Context{Name: p.Name()}
+			if err := p.Init(ctx); err != nil {
+				helpers.Logf(helpers.ERROR, "[PLUGIN] Init %s: %v", p.Name(), err)
+			} else {
+				helpers.Logf(helpers.DEBUG, "[PLUGIN] Init %s: ok", p.Name())
+			}
+		}()
 	}
 }
 
@@ -87,11 +100,23 @@ func StartAll() {
 			continue
 		}
 
-		if err := p.Start(); err != nil {
-			helpers.Logf(helpers.ERROR, "[PLUGIN] Start %s: %v", p.Name(), err)
-		} else {
-			helpers.Logf(helpers.DEBUG, "[PLUGIN] Start %s: ok", p.Name())
-		}
+		func() {
+			defer func() {
+				if r := recover(); r != nil {
+					buf := make([]byte, 4096)
+					n := runtime.Stack(buf, false)
+					helpers.Logf(helpers.ERROR, "[PLUGIN] %s panicked in Start: %v\n%s", p.Name(), r, buf[:n])
+					e.mu.Lock()
+					e.stopped = true
+					e.mu.Unlock()
+				}
+			}()
+			if err := p.Start(); err != nil {
+				helpers.Logf(helpers.ERROR, "[PLUGIN] Start %s: %v", p.Name(), err)
+			} else {
+				helpers.Logf(helpers.DEBUG, "[PLUGIN] Start %s: ok", p.Name())
+			}
+		}()
 	}
 }
 
@@ -106,15 +131,33 @@ func StopAll() {
 
 	for _, e := range entries {
 		e.mu.Lock()
-		if err := e.p.Stop(); err != nil {
-			helpers.Logf(helpers.ERROR, "[PLUGIN] Stop %s: %v", e.p.Name(), err)
-		} else {
-			helpers.Logf(helpers.DEBUG, "[PLUGIN] Stop %s: ok", e.p.Name())
-		}
+		func() {
+			defer func() {
+				if r := recover(); r != nil {
+					buf := make([]byte, 4096)
+					n := runtime.Stack(buf, false)
+					helpers.Logf(helpers.ERROR, "[PLUGIN] %s panicked in Stop: %v\n%s", e.p.Name(), r, buf[:n])
+				}
+			}()
+			if err := e.p.Stop(); err != nil {
+				helpers.Logf(helpers.ERROR, "[PLUGIN] Stop %s: %v", e.p.Name(), err)
+			} else {
+				helpers.Logf(helpers.DEBUG, "[PLUGIN] Stop %s: ok", e.p.Name())
+			}
+		}()
+		func() {
+			defer func() {
+				if r := recover(); r != nil {
+					buf := make([]byte, 4096)
+					n := runtime.Stack(buf, false)
+					helpers.Logf(helpers.ERROR, "[PLUGIN] %s panicked in CloseLibrary: %v\n%s", e.p.Name(), r, buf[:n])
+				}
+			}()
+			if closer, ok := e.p.(libraryCloser); ok {
+				closer.CloseLibrary()
+			}
+		}()
 		e.stopped = true
-		if closer, ok := e.p.(libraryCloser); ok {
-			closer.CloseLibrary()
-		}
 		e.mu.Unlock()
 	}
 }
@@ -126,11 +169,25 @@ func DispatchChat(msg *globals.MessageFromStream) {
 
 	for _, e := range entries {
 		e.mu.RLock()
+		p := e.p
 		stopped := e.stopped
-		if !stopped {
-			e.p.OnChat(msg)
-		}
 		e.mu.RUnlock()
+		if stopped {
+			continue
+		}
+		func() {
+			defer func() {
+				if r := recover(); r != nil {
+					buf := make([]byte, 4096)
+					n := runtime.Stack(buf, false)
+					helpers.Logf(helpers.ERROR, "[PLUGIN] %s panicked in OnChat: %v\n%s", p.Name(), r, buf[:n])
+					e.mu.Lock()
+					e.stopped = true
+					e.mu.Unlock()
+				}
+			}()
+			p.OnChat(msg)
+		}()
 	}
 }
 
@@ -141,11 +198,25 @@ func DispatchEvent(event *globals.Event) {
 
 	for _, e := range entries {
 		e.mu.RLock()
+		p := e.p
 		stopped := e.stopped
-		if !stopped {
-			e.p.OnEvent(event)
-		}
 		e.mu.RUnlock()
+		if stopped {
+			continue
+		}
+		func() {
+			defer func() {
+				if r := recover(); r != nil {
+					buf := make([]byte, 4096)
+					n := runtime.Stack(buf, false)
+					helpers.Logf(helpers.ERROR, "[PLUGIN] %s panicked in OnEvent: %v\n%s", p.Name(), r, buf[:n])
+					e.mu.Lock()
+					e.stopped = true
+					e.mu.Unlock()
+				}
+			}()
+			p.OnEvent(event)
+		}()
 	}
 }
 

@@ -10,11 +10,14 @@ import "C"
 import (
 	"MyStreamBot/globals"
 	"MyStreamBot/helpers"
+	"MyStreamBot/mlua"
 	"MyStreamBot/plugin/contract"
 	"MyStreamBot/services"
 	"encoding/json"
 	"fmt"
 	"unsafe"
+
+	lua "github.com/yuin/gopher-lua"
 )
 
 type sharedLibPlugin struct {
@@ -121,10 +124,27 @@ func (p *sharedLibPlugin) Actions() []services.LuaFunction {
 
 	funcs := make([]services.LuaFunction, 0, len(descriptors))
 	for _, d := range descriptors {
-		actionName := d.Name
+		localActionName := d.Name
 		funcs = append(funcs, services.LuaFunction{
-			Name: actionName,
-			Fn:   func(jsonArgs string) string { return CallPluginAction(callFn, actionName, jsonArgs, freeFn) },
+			Name: localActionName,
+			Fn: func(L *lua.LState) int {
+				var jsonArgs string
+				if L.GetTop() > 0 {
+					data, _ := json.Marshal(mlua.FromLValue(L, L.Get(1)))
+					jsonArgs = string(data)
+				}
+				result := CallPluginAction(callFn, localActionName, jsonArgs, freeFn)
+				if result == "" {
+					return 0
+				}
+				var parsed any
+				if err := json.Unmarshal([]byte(result), &parsed); err == nil {
+					L.Push(mlua.ToLValue(L, parsed))
+				} else {
+					L.Push(lua.LString(result))
+				}
+				return 1
+			},
 		})
 	}
 	return funcs

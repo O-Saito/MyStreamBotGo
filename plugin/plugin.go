@@ -2,18 +2,14 @@ package plugin
 
 import (
 	"MyStreamBot/globals"
+	"MyStreamBot/plugin/contract"
 	"MyStreamBot/services"
 )
 
-type Plugin interface {
-	Name() string
-	Init(ctx *Context) error
-	Start() error
-	Stop() error
-	Actions() []services.LuaFunction
-	OnChat(msg *globals.MessageFromStream)
-	OnEvent(event *globals.Event)
-}
+type Plugin = contract.Plugin
+type Context = contract.Context
+
+var PluginAPIVersion = contract.PluginAPIVersion
 
 type BasePlugin struct{}
 

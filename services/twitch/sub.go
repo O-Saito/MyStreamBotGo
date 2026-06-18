@@ -424,7 +424,7 @@ func subscribeToEvents() {
 				Data    []any  `json:"data"`
 			}
 			if err := json.Unmarshal(body, &d); err != nil {
-				helpers.Logf(helpers.ERROR, "[TWITCH] sub json.Unmarshal failed: %v", err)
+				helpers.Logf(helpers.ERROR, "[TWITCH] sub json.Unmarshal failed: %v [%v]", err, string(body))
 			}
 
 			if d.Status != 0 || len(d.Data) == 0 {

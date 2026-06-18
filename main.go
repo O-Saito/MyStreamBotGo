@@ -48,6 +48,7 @@ func main() {
 
 	RegisterSocketHandlers()
 
+	plugin.LoadPlugins("./plugins")
 	plugin.InitAll()
 
 	// Initialize mlua package
@@ -84,6 +85,7 @@ func main() {
 
 	helpers.Logf(helpers.DEBUG, "Closing...")
 
+	processors.StopProcessors()
 	plugin.StopAll()
 	db.Close()
 	mlua.SaveDynamicEvents()

@@ -296,7 +296,7 @@ func BanUser(userId string, duration int32, reason string) (string, error) {
 		"broadcaster_id": user.UserID,
 		"moderator_id":   user.UserID,
 	}
-	url := BuildURL(HelixBaseURL+"/moderation/banned", opts)
+	url := BuildURL(HelixBaseURL+"/moderation/bans", opts)
 
 	body := map[string]any{
 		"user_id": userId,
@@ -306,7 +306,7 @@ func BanUser(userId string, duration int32, reason string) (string, error) {
 		body["duration"] = duration
 	}
 
-	_, err := ExecuteJSONRequest[map[string]any, map[string]any]("POST", url, body, 204)
+	_, err := ExecuteJSONRequest[map[string]any]("POST", url, map[string]any{"data": body}, 200)
 	if err != nil {
 		helpers.Logf(helpers.DEBUG, "[TWITCH] BanUser: userId=%v, duration=%v, reason=%v", userId, duration, reason)
 		return "", err

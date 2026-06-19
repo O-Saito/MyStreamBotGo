@@ -1,9 +1,24 @@
-package plugin
+package contract
 
 import (
 	"MyStreamBot/globals"
 	"MyStreamBot/helpers"
+	"MyStreamBot/services"
 )
+
+// 0xMMMmmmmpp where M=major, m=minor, p=patch
+// current: 0.1.0
+const PluginAPIVersion uint32 = 0x00010000
+
+type Plugin interface {
+	Name() string
+	Init(ctx *Context) error
+	Start() error
+	Stop() error
+	Actions() []services.LuaFunction
+	OnChat(msg *globals.MessageFromStream)
+	OnEvent(event *globals.Event)
+}
 
 type Context struct {
 	Name string

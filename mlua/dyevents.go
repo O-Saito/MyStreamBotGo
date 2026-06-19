@@ -331,6 +331,9 @@ func (dev *DynamicEvent) ProcessRequest(evm *globals.SocketMessage) {
 	}
 
 	tbl := ToLValue(LState, evm.Data)
+	if tbl == lua.LNil {
+		tbl = LState.NewTable()
+	}
 
 	socketTag := evm.SocketTag
 	responseMessageID := evm.ResponseMessageID

@@ -1,7 +1,11 @@
 # Files excluded from release builds (example/educational modules)
 modules/customevents/customevent_example.lua
+modules/customevents/test.lua
 modules/events/channel.follow/follow_example.lua
+modules/commands/teste.lua
+modules/chat/uppercase.lua
 web/customevents/customevent_example.lua.js
+web/customevents/test.lua.js
 modules/customevents/test.lua
 modules/customevents/stream_log.lua
 web/customevents/test.lua.js

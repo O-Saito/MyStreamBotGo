@@ -195,7 +195,7 @@ func StartHTTPServer() {
 		//	IrcHandler.SendMessage("/ban " + req.User)
 		//}
 		if err != nil {
-			w.WriteHeader(200)
+			w.WriteHeader(400)
 			w.Write([]byte(fmt.Sprintf("Error %v", err)))
 			return
 		}

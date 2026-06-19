@@ -1,4 +1,6 @@
+release_exclude_list.txt
 init.txt
+plugins/
 build/
 modules/*
 web/*

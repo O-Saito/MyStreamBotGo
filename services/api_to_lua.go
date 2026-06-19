@@ -48,6 +48,10 @@ func ExposeToLua(L *lua.LState, tableName string, functions []LuaFunction) {
 }
 
 func buildLuaWrapper(fn any) func(*lua.LState) int {
+	if lf, ok := fn.(func(*lua.LState) int); ok {
+		return lf
+	}
+
 	fnType := reflect.TypeOf(fn)
 	fnValue := reflect.ValueOf(fn)
 

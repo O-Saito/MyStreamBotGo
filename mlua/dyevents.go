@@ -121,19 +121,19 @@ func (dev *DynamicEvent) Transfer(new *DynamicEvent) {
 }
 
 func (dev *DynamicEvent) Close() {
-	dev.State.mu.Lock()
-	defer dev.State.mu.Unlock()
-
-	if dev.State.db != nil {
-		dev.State.db.Close()
-		dev.State.db = nil
-	}
-
 	dev.Lua.mu.Lock()
 	defer dev.Lua.mu.Unlock()
+
 	if dev.Lua.LState != nil {
 		dev.Lua.LState.Close()
 		dev.Lua.LState = nil
+	}
+
+	dev.State.mu.Lock()
+	defer dev.State.mu.Unlock()
+	if dev.State.db != nil {
+		dev.State.db.Close()
+		dev.State.db = nil
 	}
 }
 
@@ -434,8 +434,8 @@ func SaveDynamicEvents() {
 	dynamicEventsMutex.RLock()
 	defer dynamicEventsMutex.RUnlock()
 	for _, val := range dynamicEvents {
-		val.State.mu.Lock()
 		val.Lua.mu.Lock()
+		val.State.mu.Lock()
 		if val.State.db != nil {
 			val.State.db.Close()
 		}

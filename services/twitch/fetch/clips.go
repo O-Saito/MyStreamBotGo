@@ -3,35 +3,35 @@ package twitch
 import (
 	"MyStreamBot/globals"
 	"MyStreamBot/helpers"
-	
+
 	"time"
 )
 
 type Clip struct {
-	ID              string    `json:"id"`
-	URL             string    `json:"url"`
-	EmbedURL        string    `json:"embed_url"`
-	BroadcasterID   string    `json:"broadcaster_id"`
-	BroadcasterName string    `json:"broadcaster_name"`
-	BroadcasterLogin string   `json:"broadcaster_login"`
-	CreatorID       string    `json:"creator_id"`
-	CreatorName     string    `json:"creator_name"`
-	CreatorLogin    string    `json:"creator_login"`
-	VideoID         string    `json:"video_id"`
-	GameID          string    `json:"game_id"`
-	Language        string    `json:"language"`
-	Title           string    `json:"title"`
-	ViewCount       int       `json:"view_count"`
-	CreatedAt       time.Time `json:"created_at"`
-	Duration        float64   `json:"duration"`
-	ThumbnailURL    string    `json:"thumbnail_url"`
+	ID               string    `json:"id"`
+	URL              string    `json:"url"`
+	EmbedURL         string    `json:"embed_url"`
+	BroadcasterID    string    `json:"broadcaster_id"`
+	BroadcasterName  string    `json:"broadcaster_name"`
+	BroadcasterLogin string    `json:"broadcaster_login"`
+	CreatorID        string    `json:"creator_id"`
+	CreatorName      string    `json:"creator_name"`
+	CreatorLogin     string    `json:"creator_login"`
+	VideoID          string    `json:"video_id"`
+	GameID           string    `json:"game_id"`
+	Language         string    `json:"language"`
+	Title            string    `json:"title"`
+	ViewCount        int       `json:"view_count"`
+	CreatedAt        time.Time `json:"created_at"`
+	Duration         float64   `json:"duration"`
+	ThumbnailURL     string    `json:"thumbnail_url"`
 }
 
 type CreateClipResponse struct {
 	Data []Clip `json:"data"`
 }
 
-func CreateClip(broadcasterID string, hasDelay bool) ([]Clip, error) {
+func CreateClip(broadcasterID, title string, duration float64) ([]Clip, error) {
 	user := globals.GetState().GetTwitchUser()
 	if broadcasterID == "" {
 		broadcasterID = user.UserID
@@ -39,7 +39,8 @@ func CreateClip(broadcasterID string, hasDelay bool) ([]Clip, error) {
 
 	opts := map[string]any{
 		"broadcaster_id": broadcasterID,
-		"has_delay":      hasDelay,
+		"title":          title,
+		"duration":       duration,
 	}
 	url := BuildURL(HelixBaseURL+"/clips", opts)
 
@@ -52,26 +53,26 @@ func CreateClip(broadcasterID string, hasDelay bool) ([]Clip, error) {
 	return resp.Data, nil
 }
 
-func CreateClipFromVOD(broadcasterID, videoID string) ([]Clip, error) {
-	user := globals.GetState().GetTwitchUser()
-	if broadcasterID == "" {
-		broadcasterID = user.UserID
-	}
+// func CreateClipFromVOD(broadcasterID, videoID string) ([]Clip, error) {
+// 	user := globals.GetState().GetTwitchUser()
+// 	if broadcasterID == "" {
+// 		broadcasterID = user.UserID
+// 	}
 
-	opts := map[string]any{
-		"broadcaster_id": broadcasterID,
-		"video_id":       videoID,
-	}
-	url := BuildURL(HelixBaseURL+"/clips", opts)
+// 	opts := map[string]any{
+// 		"broadcaster_id": broadcasterID,
+// 		"video_id":       videoID,
+// 	}
+// 	url := BuildURL(HelixBaseURL+"/clips", opts)
 
-	resp, err := ExecuteRequest[CreateClipResponse]("POST", url, 201)
-	if err != nil {
-		helpers.Logf(helpers.DEBUG, "[TWITCH] CreateClipFromVOD: broadcasterID=%v, videoID=%v", broadcasterID, videoID)
-		return nil, err
-	}
+// 	resp, err := ExecuteRequest[CreateClipResponse]("POST", url, 201)
+// 	if err != nil {
+// 		helpers.Logf(helpers.DEBUG, "[TWITCH] CreateClipFromVOD: broadcasterID=%v, videoID=%v", broadcasterID, videoID)
+// 		return nil, err
+// 	}
 
-	return resp.Data, nil
-}
+// 	return resp.Data, nil
+// }
 
 func GetClips(broadcasterID, gameID string, clipIDs []string, startedAt, endedAt *time.Time, req *PaginationRequest) ([]Clip, error) {
 	opts := map[string]any{}
@@ -112,27 +113,27 @@ func GetClips(broadcasterID, gameID string, clipIDs []string, startedAt, endedAt
 	return resp.Data, nil
 }
 
-type ClipDownload struct {
-	ID  string `json:"id"`
-	URL string `json:"url"`
-	Type string `json:"type"`
-}
+// type ClipDownload struct {
+// 	ID   string `json:"id"`
+// 	URL  string `json:"url"`
+// 	Type string `json:"type"`
+// }
 
-func GetClipsDownload(clipIDs []string) ([]ClipDownload, error) {
-	opts := map[string]any{}
-	for _, id := range clipIDs {
-		opts["id"] = id
-	}
+// func GetClipsDownload(clipIDs []string) ([]ClipDownload, error) {
+// 	opts := map[string]any{}
+// 	for _, id := range clipIDs {
+// 		opts["id"] = id
+// 	}
 
-	url := BuildURL(HelixBaseURL+"/clips/download", opts)
+// 	url := BuildURL(HelixBaseURL+"/clips/download", opts)
 
-	resp, err := ExecuteRequest[struct {
-		Data []ClipDownload `json:"data"`
-	}]("GET", url, 200)
-	if err != nil {
-		helpers.Logf(helpers.DEBUG, "[TWITCH] GetClipsDownload: clipIDs=%v", clipIDs)
-		return nil, err
-	}
+// 	resp, err := ExecuteRequest[struct {
+// 		Data []ClipDownload `json:"data"`
+// 	}]("GET", url, 200)
+// 	if err != nil {
+// 		helpers.Logf(helpers.DEBUG, "[TWITCH] GetClipsDownload: clipIDs=%v", clipIDs)
+// 		return nil, err
+// 	}
 
-	return resp.Data, nil
-}
+// 	return resp.Data, nil
+// }

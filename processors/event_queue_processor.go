@@ -41,7 +41,7 @@ func processEvent(ev globals.Event) {
 	}
 
 	if !shouldSkip {
-		globals.WsBroadcast <- globals.SocketMessage{Type: ev.Type, Data: ev.Data}
+		globals.SafeSend(globals.WsBroadcast, globals.SocketMessage{Type: ev.Type, Data: ev.Data}, "WsBroadcast", false)
 	}
 
 	if ev.Type == "twitch-eventsub-notification" {

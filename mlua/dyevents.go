@@ -353,13 +353,13 @@ func (dev *DynamicEvent) ProcessRequest(evm *globals.SocketMessage) {
 		}
 		data := TableToMap(d)
 
-		globals.WsBroadcast <- globals.SocketMessage{
+		globals.SafeSend(globals.WsBroadcast, globals.SocketMessage{
 			SocketTag:         socketTag,
 			ResponseMessageID: responseMessageID,
 			Filter:            filter,
 			Type:              fmt.Sprintf("return-%s", t),
 			Data:              data,
-		}
+		}, "WsBroadcast")
 
 		return 0
 	}))
@@ -565,11 +565,11 @@ func setFunctionOnTable(ev *DynamicEvent, tbl *lua.LTable) {
 		t := L.CheckString(1)
 		d := L.CheckTable(2)
 
-		globals.WsBroadcast <- globals.SocketMessage{
+		globals.SafeSend(globals.WsBroadcast, globals.SocketMessage{
 			Filter: ev.Name,
 			Type:   t,
 			Data:   TableToMap(d),
-		}
+		}, "WsBroadcast")
 
 		return 0
 	}))

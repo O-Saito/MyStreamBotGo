@@ -47,10 +47,10 @@ var MsgQueue = make(chan Message, 100)
 
 var ircHandlers = map[string]func(km KickMessage, data map[string]any){
 	"pusher:connection_established": func(km KickMessage, data map[string]any) {
-		globals.WsBroadcast <- globals.SocketMessage{
+		globals.SafeSend(globals.WsBroadcast, globals.SocketMessage{
 			Type: "kick-connection",
 			Data: globals.GetState().GetKickUser().UserLogin,
-		}
+		}, "WsBroadcast", false)
 	},
 	"pusher_internal:subscription_succeeded": func(km KickMessage, data map[string]any) {
 		channel := strings.Trim(strings.Split(km.Channel, ".")[1], " ")
@@ -58,10 +58,10 @@ var ircHandlers = map[string]func(km KickMessage, data map[string]any){
 		for _, value := range Channels {
 			if value.ID == channel {
 				value.Connected = true
-				globals.WsBroadcast <- globals.SocketMessage{
-					Type: "kick-chat-connection",
-					Data: map[string]any{"name": value.Slug, "id": value.ID},
-				}
+			globals.SafeSend(globals.WsBroadcast, globals.SocketMessage{
+				Type: "kick-chat-connection",
+				Data: map[string]any{"name": value.Slug, "id": value.ID},
+			}, "WsBroadcast", false)
 				break
 			}
 		}

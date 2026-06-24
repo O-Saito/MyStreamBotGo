@@ -540,7 +540,10 @@ func LoadDyEventModule(folder, fileName string) {
 
 	setFunctionOnTable(ev, eventTable)
 
+	dynamicEventsMutex.RLock()
 	oldEvent := dynamicEvents[fileName]
+	dynamicEventsMutex.RUnlock()
+
 	if oldEvent != nil {
 		oldEvent.Transfer(ev)
 		oldEvent.Close()

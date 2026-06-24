@@ -80,12 +80,12 @@ func RegisterSocketHandlers() {
 
 		globals.GetState().SetData("youtube-lives", connectedChatTyped)
 
-		globals.WsBroadcast <- globals.SocketMessage{
+		globals.SafeSend(globals.WsBroadcast, globals.SocketMessage{
 			SocketTag:         md.Tag,
 			ResponseMessageID: md.ID,
 			Type:              "result-connect-chat-youtube",
 			Data:              connectedChatTyped,
-		}
+		}, "WsBroadcast", false)
 	}
 
 	goweb.SocketHandlers["get-next-streams-youtube"] = func(c *websocket.Conn, data map[string]any, md *goweb.SocketRequestMetadata) {
@@ -234,12 +234,12 @@ func RegisterSocketHandlers() {
 	goweb.SocketHandlers["get-dy-statistics"] = func(c *websocket.Conn, m map[string]any, md *goweb.SocketRequestMetadata) {
 		events := mlua.ListDynamicEvents()
 
-		globals.WsBroadcast <- globals.SocketMessage{
+		globals.SafeSend(globals.WsBroadcast, globals.SocketMessage{
 			SocketTag:         md.Tag,
 			ResponseMessageID: md.ID,
 			Type:              "result-get-dy-statistics",
 			Data:              events,
-		}
+		}, "WsBroadcast", false)
 	}
 
 	goweb.SocketHandlers["get-state"] = func(c *websocket.Conn, m map[string]any, srm *goweb.SocketRequestMetadata) {

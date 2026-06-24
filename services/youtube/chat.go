@@ -126,9 +126,9 @@ func ListenToChat(channelId, chatId string) {
 				offlineAt, err := time.Parse(time.RFC3339, offlineAtStr)
 				if err == nil && time.Now().After(offlineAt) {
 					helpers.Logf(helpers.WARN, "[YT OFF] Chat offline at %v, now is %v", offlineAt, time.Now())
-					globals.WsBroadcast <- globals.SocketMessage{
-						Type: "youtube-live-offline", Data: map[string]any{"liveId": chatId, "offlineAt": offlineAt},
-					}
+				globals.SafeSend(globals.WsBroadcast, globals.SocketMessage{
+					Type: "youtube-live-offline", Data: map[string]any{"liveId": chatId, "offlineAt": offlineAt},
+				}, "WsBroadcast", false)
 					return
 				}
 			}

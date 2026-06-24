@@ -29,13 +29,12 @@ var upgrader = websocket.Upgrader{
 }
 
 func (srm *SocketRequestMetadata) Respond(t string, data any) {
-
-	globals.WsBroadcast <- globals.SocketMessage{
+	globals.SafeSend(globals.WsBroadcast, globals.SocketMessage{
 		SocketTag:         srm.Tag,
 		ResponseMessageID: srm.ID,
 		Type:              t,
 		Data:              data,
-	}
+	}, "WsBroadcast", false)
 }
 
 var mu sync.RWMutex
@@ -45,7 +44,7 @@ var wsClientsUpgraded = make(map[string][]*websocket.Conn)
 
 var SocketHandlers = map[string]func(*websocket.Conn, map[string]any, *SocketRequestMetadata){
 	"init": func(c *websocket.Conn, m map[string]any, md *SocketRequestMetadata) {
-		globals.WsBroadcast <- globals.SocketMessage{
+		globals.SafeSend(globals.WsBroadcast, globals.SocketMessage{
 			Type: "init",
 			Data: map[string]any{
 				"twitch":  globals.GetState().GetTwitchUser(),
@@ -62,7 +61,7 @@ var SocketHandlers = map[string]func(*websocket.Conn, map[string]any, *SocketReq
 				"interface_config":       globals.GetState().GetData("htmlinterface"),
 			},
 			SocketTag: md.Tag,
-		}
+		}, "WsBroadcast", false)
 	},
 	"upgrade-conn": func(c *websocket.Conn, m map[string]any, md *SocketRequestMetadata) {
 		data := globals.SocketMessage{
@@ -94,7 +93,7 @@ var SocketHandlers = map[string]func(*websocket.Conn, map[string]any, *SocketReq
 			data.Data = "Connection not specified!"
 		}
 
-		globals.WsBroadcast <- data
+		globals.SafeSend(globals.WsBroadcast, data, "WsBroadcast", false)
 	},
 }
 

@@ -26,13 +26,13 @@ type Context struct {
 
 func (c *Context) EmitEvent(eventType string, data map[string]any, target ...string) {
 	if len(target) > 0 {
-		globals.LuaRequest <- globals.SocketMessage{
+		globals.SafeSend(globals.LuaRequest, globals.SocketMessage{
 			Filter: target[0] + ".lua",
 			Type:   eventType,
 			Data:   data,
-		}
+		}, "LuaRequest")
 	} else {
-		globals.EventQueue <- globals.Event{Type: eventType, Data: data}
+		globals.SafeSend(globals.EventQueue, globals.Event{Type: eventType, Data: data}, "EventQueue")
 	}
 }
 

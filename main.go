@@ -78,6 +78,8 @@ func main() {
 
 	helpers.Logf(helpers.DEBUG, "Closing...")
 
+	processors.StopProcessors()
+	mlua.StopGlobalLoop()
 	db.Close()
 	mlua.SaveDynamicEvents()
 	twitch.Close()

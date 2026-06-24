@@ -83,6 +83,12 @@ func GetDyEvents() map[string]*DynamicEvent {
 	return dynamicEvents
 }
 
+func StopGlobalLoop() {
+	if stopGlobalLoop != nil {
+		close(stopGlobalLoop)
+	}
+}
+
 func (dev *DynamicEvent) Transfer(new *DynamicEvent) {
 	dev.mu.Lock()
 	defer new.mu.Unlock()

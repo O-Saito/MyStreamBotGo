@@ -164,4 +164,13 @@ func HandleLogin() {
 		}
 	})
 
+	http.HandleFunc("/youtube/logout", func(w http.ResponseWriter, r *http.Request) {
+		globals.GetState().SetYouTubeUser(globals.YouTubeUser{})
+		cfg := globals.GetConfig()
+		cfg.Lock()
+		cfg.YouTubeRefresh = ""
+		cfg.Unlock()
+		globals.GetGlobalDB().DeleteToken("youtube")
+		http.Redirect(w, r, fmt.Sprintf("http://localhost:%s/", globals.GetConfig().HTTPPort), http.StatusFound)
+	})
 }

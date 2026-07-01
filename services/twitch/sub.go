@@ -305,7 +305,9 @@ func listenToEventSub(conn *websocket.Conn) {
 			conn.Close()
 		}
 		helpers.Printf(helpers.Twitch, "[Twitch EventSub] Reading ended.")
-		connectToEventSub()
+		if globals.GetState().GetTwitchUser().Token != "" {
+			connectToEventSub()
+		}
 	}()
 
 	for {

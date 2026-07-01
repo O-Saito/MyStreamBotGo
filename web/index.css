@@ -177,6 +177,17 @@ button {
     text-decoration: underline;
 }
 
+.logout-link {
+    color: #e74c3c;
+    text-decoration: none;
+    font-size: 0.8em;
+    margin-left: 8px;
+}
+
+.logout-link:hover {
+    text-decoration: underline;
+}
+
 /* Inline Lists */
 .inline-list {
     display: flex;

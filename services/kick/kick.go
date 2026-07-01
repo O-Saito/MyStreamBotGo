@@ -201,6 +201,13 @@ func SendMessageIfChannelExist(msg string, channel string) {
 	SendMessage(msg, *c)
 }
 
+func Disconnect() {
+	if Conn != nil {
+		Conn.Close()
+		Conn = nil
+	}
+}
+
 func SendMessage(msg string, channel IrcChannel) {
 	MsgQueue <- Message{Channel: channel, Text: msg}
 }

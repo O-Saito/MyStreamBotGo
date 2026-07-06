@@ -1118,7 +1118,7 @@
                 console.log(streams.youtube.streams);
                 chat.innerHTML = Object.entries(streams.youtube.streams).map(([id, data]) => {
                     console.log(data);
-                    return `<li data-live-id="${id}"><img src="${data.thumbnail}" alt="${data.title || id}" />${data.title || id}</li>`;
+                    return `<li data-live-id="${id}"><img src="${data.thumbnail}" alt="${data.title || id}" title="${data.title || id}" />${data.title || id}</li>`;
                 }).join('');
             }
         }
@@ -1146,7 +1146,7 @@
 
                 for (let i = 0; i < emotes.length; i++) {
                     const emote = emotes[i];
-                    text = text.replaceAll(emote.name, `<img src="${emote.url}" />`)
+                    text = text.replaceAll(emote.name, `<img src="${emote.url}" alt="${emote.name}" title="${emote.name}" />`)
                 }
             }
             return text;

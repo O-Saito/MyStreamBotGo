@@ -63,19 +63,18 @@ func main() {
 	// start web server
 	goweb.StartHTTPServer()
 
+	go twitch.RestoreSession()
+	go youtube.RestoreSession()
+	go kick.RestoreSession()
+
 	// start Twitch login
 	twitch.HandleLogin()
-	kick.HandleLogin()
 	youtube.HandleLogin()
+	kick.HandleLogin()
 
-	//select {} // keep application running
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
 	<-quit
-
-	// 3. Gracefully shutdown with 10s timeout
-	//ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	//defer cancel()
 
 	helpers.Logf(helpers.DEBUG, "Closing...")
 

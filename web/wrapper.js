@@ -16,7 +16,7 @@
 let emoteMap = {};
 (async () => {
     emoteMap = await loadAllEmotes();
-    console.log(emoteMap);
+    console.log('Emote map initialized:', emoteMap);
 })()
 
 let ws = new WebSocket(`ws://${location.host}/ws`);
@@ -75,6 +75,7 @@ async function loadBTTVEmotes(twitchId = "") {
     for (const e of emotes) {
         map[e.code] = `https://cdn.betterttv.net/emote/${e.id}/3x`;
     }
+    emoteMap = { ...emoteMap, ...map };
     return map;
 }
 
@@ -97,6 +98,7 @@ async function loadFFZEmotes(login = "") {
             map[e.name] = url.startsWith("//") ? "https:" + url : url;
         }
     }
+    emoteMap = { ...emoteMap, ...map };
     return map;
 }
 
@@ -117,6 +119,23 @@ async function load7TVEmotes(twitchId = "") {
         const base = e.data?.host?.url || e.host?.url;
         map[e.name] = `${base}/3x.webp`;
     }
+    emoteMap = { ...emoteMap, ...map };
+    return map;
+}
+
+/**
+ * @returns {Promise<Object.<string, string>>}
+ */
+async function loadYouTubeEmojis() {
+    const url = "https://gist.githubusercontent.com/ZonianMidian/fc833761e7d31a3e64cd0ff288d61067/raw/youtube_emojis.json";
+    const emojis = await fetch(url).then(r => r.json());
+
+    /** @type {Object.<string, string>} */
+    const map = {};
+    for (const e of emojis) {
+        map[e.name] = e.image;
+    }
+    emoteMap = { ...emoteMap, ...map };
     return map;
 }
 
@@ -126,13 +145,26 @@ async function load7TVEmotes(twitchId = "") {
  * @returns {Promise<Object.<string, string>>}
  */
 async function loadAllEmotes(twitchId, login) {
-    const [bttv, ffz, stv] = await Promise.all([
+    const [bttv, ffz, stv, yt] = await Promise.all([
         loadBTTVEmotes(twitchId),
         loadFFZEmotes(login),
-        load7TVEmotes(twitchId)
+        load7TVEmotes(twitchId),
+        loadYouTubeEmojis()
     ]);
 
-    return { ...bttv, ...ffz, ...stv };
+    if (bttv) {
+        emoteMap = { ...emoteMap, ...bttv };
+    }
+    if (ffz) {
+        emoteMap = { ...emoteMap, ...ffz };
+    }
+    if (stv) {
+        emoteMap = { ...emoteMap, ...stv };
+    }
+    if (yt) {
+        emoteMap = { ...emoteMap, ...yt };
+    }
+    return emoteMap;
 }
 
 function webSocketConnect() {
@@ -286,7 +318,6 @@ export default {
      */
     loadEmote: async (twitchId, login) => {
         const emotes = await loadAllEmotes(twitchId, login);
-        emoteMap = { ...emoteMap, ...emotes };
         return emotes;
     },
 }

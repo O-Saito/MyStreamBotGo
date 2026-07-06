@@ -199,7 +199,9 @@ func RegisterSocketHandlers() {
 			ytLivesTyped, ok := ytLives.([]youtube.LiveBroadcast)
 			if ok && len(ytLivesTyped) > 0 {
 				for _, live := range ytLivesTyped {
-					helpers.Logf(helpers.DEBUG, "Youtube chat should send to %s: %s", live.Snippet.LiveChatID, text)
+					if err := youtube.SendMessage(live.Snippet.LiveChatID, text); err != nil {
+						helpers.Logf(helpers.ERROR, "[Socket Handler] send-chat-message youtube: %v", err)
+					}
 				}
 			}
 		}

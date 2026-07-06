@@ -1,12 +1,18 @@
 package youtube
 
 import (
+	"context"
 	"io"
+	"net"
 	"net/http"
 	"net/url"
 	"strings"
 	"testing"
 	"time"
+
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/protobuf/proto"
 
 	"MyStreamBot/globals"
 )
@@ -347,4 +353,165 @@ func TestStreamDataStruct(t *testing.T) {
 	}
 
 	_ = time.Now()
+}
+
+type mockStreamListServer struct {
+	UnimplementedV3DataLiveChatMessageServiceServer
+	messages []*LiveChatMessageListResponse
+}
+
+func (s *mockStreamListServer) StreamList(_ *LiveChatMessageListRequest, stream grpc.ServerStreamingServer[LiveChatMessageListResponse]) error {
+	for _, msg := range s.messages {
+		if err := stream.Send(msg); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func TestGRPCStreamList_ReceivesMessages(t *testing.T) {
+	server := grpc.NewServer()
+	mock := &mockStreamListServer{
+		messages: []*LiveChatMessageListResponse{
+			{
+				Items: []*LiveChatMessage{
+					{
+						Id: proto.String("msg1"),
+						Snippet: &LiveChatMessageSnippet{
+							DisplayMessage: proto.String("Hello"),
+							Type:           LiveChatMessageSnippet_TypeWrapper_TEXT_MESSAGE_EVENT.Enum(),
+						},
+						AuthorDetails: &LiveChatMessageAuthorDetails{
+							DisplayName:   proto.String("TestUser"),
+							ChannelId:     proto.String("UCtest"),
+							IsChatOwner:   proto.Bool(true),
+						},
+					},
+				},
+				NextPageToken: proto.String("page2"),
+			},
+			{
+				Items: []*LiveChatMessage{
+					{
+						Id: proto.String("msg2"),
+						Snippet: &LiveChatMessageSnippet{
+							DisplayMessage: proto.String("World"),
+						},
+						AuthorDetails: &LiveChatMessageAuthorDetails{
+							DisplayName: proto.String("TestUser2"),
+							ChannelId:   proto.String("UCtest2"),
+						},
+					},
+				},
+				NextPageToken: proto.String(""),
+			},
+		},
+	}
+	RegisterV3DataLiveChatMessageServiceServer(server, mock)
+
+	lis, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("failed to listen: %v", err)
+	}
+	go server.Serve(lis)
+	defer server.Stop()
+
+	conn, err := grpc.Dial(lis.Addr().String(),
+		grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		t.Fatalf("failed to dial: %v", err)
+	}
+	defer conn.Close()
+
+	client := NewV3DataLiveChatMessageServiceClient(conn)
+	stream, err := client.StreamList(context.Background(), &LiveChatMessageListRequest{
+		LiveChatId: proto.String("test_chat"),
+		Part:       []string{"snippet", "authorDetails"},
+	})
+	if err != nil {
+		t.Fatalf("StreamList failed: %v", err)
+	}
+
+	var received []*LiveChatMessage
+	for {
+		resp, err := stream.Recv()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			t.Fatalf("Recv failed: %v", err)
+		}
+		received = append(received, resp.GetItems()...)
+	}
+
+	if len(received) != 2 {
+		t.Fatalf("got %d messages, want 2", len(received))
+	}
+	if received[0].GetId() != "msg1" {
+		t.Errorf("first msg id = %q, want %q", received[0].GetId(), "msg1")
+	}
+	if received[0].GetSnippet().GetDisplayMessage() != "Hello" {
+		t.Errorf("first msg display = %q", received[0].GetSnippet().GetDisplayMessage())
+	}
+	if received[0].GetAuthorDetails().GetDisplayName() != "TestUser" {
+		t.Errorf("first author = %q", received[0].GetAuthorDetails().GetDisplayName())
+	}
+	if received[1].GetId() != "msg2" {
+		t.Errorf("second msg id = %q, want %q", received[1].GetId(), "msg2")
+	}
+	if received[1].GetAuthorDetails().GetChannelId() != "UCtest2" {
+		t.Errorf("second channel = %q", received[1].GetAuthorDetails().GetChannelId())
+	}
+}
+
+func TestGRPCStreamList_OfflineAt(t *testing.T) {
+	server := grpc.NewServer()
+	offlineTime := time.Now().Add(1 * time.Hour)
+	mock := &mockStreamListServer{
+		messages: []*LiveChatMessageListResponse{
+			{
+				OfflineAt: proto.String(offlineTime.Format(time.RFC3339)),
+			},
+		},
+	}
+	RegisterV3DataLiveChatMessageServiceServer(server, mock)
+
+	lis, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("failed to listen: %v", err)
+	}
+	go server.Serve(lis)
+	defer server.Stop()
+
+	conn, err := grpc.Dial(lis.Addr().String(),
+		grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		t.Fatalf("failed to dial: %v", err)
+	}
+	defer conn.Close()
+
+	client := NewV3DataLiveChatMessageServiceClient(conn)
+	stream, err := client.StreamList(context.Background(), &LiveChatMessageListRequest{
+		LiveChatId: proto.String("test_chat"),
+		Part:       []string{"snippet"},
+	})
+	if err != nil {
+		t.Fatalf("StreamList failed: %v", err)
+	}
+
+	resp, err := stream.Recv()
+	if err != nil {
+		t.Fatalf("Recv failed: %v", err)
+	}
+
+	if resp.GetOfflineAt() == "" {
+		t.Error("OfflineAt should not be empty")
+	}
+	parsed, err := time.Parse(time.RFC3339, resp.GetOfflineAt())
+	if err != nil {
+		t.Fatalf("failed to parse OfflineAt: %v", err)
+	}
+	if !parsed.After(time.Now()) {
+		t.Error("OfflineAt should be in the future")
+	}
 }

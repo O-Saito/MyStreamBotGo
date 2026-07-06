@@ -44,10 +44,11 @@ ws.onopen = function () {
 
 ```go
 type SocketMessage struct {
-    Type    string      // Message type (e.g., "init", "response-upgrade")
-    Data    interface{} // Payload data
-    Filter  string      // Filter for targeted broadcasts (module name)
-    Respond int         // Client tag for direct responses
+    Filter            string `json:"filter"`           // Filter for targeted broadcasts (module name)
+    Type              string `json:"type"`             // Message type (e.g., "init", "response-upgrade")
+    Data              any    `json:"data"`             // Payload data
+    SocketTag         int    `json:"respond"`          // Client tag for direct responses
+    ResponseMessageID string `json:"responseClientID"` // Response correlation ID
 }
 ```
 
@@ -71,7 +72,7 @@ init
 Returns initial application state to the client:
 
 ```go
-"init": func(c *websocket.Conn, m map[string]any, mytag int) {
+"init": func(c *websocket.Conn, m map[string]any, md *SocketRequestMetadata) {
     globals.WsBroadcast <- globals.SocketMessage{
         Type: "init",
         Data: map[string]any{
@@ -84,6 +85,9 @@ Returns initial application state to the client:
             "custom_events_modules":    mlua.ListDynamicEvents(),
             "twitch_eventsubs":         globals.GetState().GetData("TwitchSubEventsConnectedEvents"),
         },
+        SocketTag: md.Tag,
+    }
+},
         Respond: mytag,
     }
 }
@@ -94,13 +98,35 @@ Returns initial application state to the client:
 Upgrades connection to receive filtered broadcasts for specific CustomEvents:
 
 ```go
-"upgrade-conn": func(c *websocket.Conn, m map[string]any, mytag int) {
-    if m["conn"] == "ignore-broadcast" {
-        wsClients[c] = -1  // Ignore all broadcasts
-        return
+"upgrade-conn": func(c *websocket.Conn, m map[string]any, md *SocketRequestMetadata) {
+    data := globals.SocketMessage{
+        Type:      "response-upgrade",
+        Data:      "",
+        SocketTag: md.Tag,
     }
-    // Add to filtered clients list
-    wsClientsUpgraded[m["conn"].(string)] = append(wsClientsUpgraded[m["conn"].(string)], c)
+    if m["conn"] != nil {
+        connVal, ok := m["conn"].(string)
+        if !ok {
+            helpers.Logf(helpers.ERROR, "[WebSocket] upgrade-conn: invalid conn type")
+            return
+        }
+        if connVal == "ignore-broadcast" {
+            mu.Lock()
+            wsClients[c] = -1
+            mu.Unlock()
+            return
+        }
+        mu.Lock()
+        if wsClientsUpgraded[connVal] == nil {
+            wsClientsUpgraded[connVal] = make([]*websocket.Conn, 0)
+        }
+        wsClientsUpgraded[connVal] = append(wsClientsUpgraded[connVal], c)
+        mu.Unlock()
+        data.Data = "Connection updated!"
+    } else {
+        data.Data = "Connection not specified!"
+    }
+    globals.WsBroadcast <- data
 }
 ```
 
@@ -113,7 +139,7 @@ The server uses a global channel `globals.WsBroadcast` to send messages from bac
 ### Broadcast Logic (`goweb/server.go:195-233` and `handlers.go`)
 
 1. **Filtered Broadcasts:** If `msg.Filter` is set, only send to clients subscribed to that filter
-2. **Direct Response:** If `msg.Respond` is set (non-zero, non-negative), send only to specific client
+2. **Direct Response:** If `msg.SocketTag` is set (non-zero, non-negative), send only to specific client
 3. **Broadcast:** Otherwise, send to all clients (except those with tag -1)
 
 ```go
@@ -131,7 +157,7 @@ go func() {
         // Direct response or broadcast
         for client, tag := range wsClients {
             if tag == -1 continue  // Skip ignore-broadcast clients
-            if msg.Respond != 0 && msg.Respond != -1 && msg.Respond != tag {
+            if msg.SocketTag != 0 && msg.SocketTag != -1 && msg.SocketTag != tag {
                 continue  // Skip other clients for direct response
             }
             client.WriteMessage(websocket.TextMessage, jsonData)
@@ -162,12 +188,15 @@ if (vote) {
 }
 ```
 
-### `send(type, data)`
+### `send(type, data, func)`
 
-Sends a message to the server.
+Sends a message to the server. The optional `func` callback receives a response from the server for request-response patterns.
 
 ```js
 w.send("my_event", { key: "value" });
+w.send("my_event", { key: "value" }, (response) => {
+    console.log("Response:", response);
+});
 ```
 
 ### `on(eventType, func)`
@@ -204,6 +233,22 @@ Manually triggers a handler (for testing/internal use).
 
 ```js
 w.exec("my_event", { data: "test" });
+```
+
+### `getEmotes()`
+
+Returns the current emote map (BTTV/FFZ/7TV/YouTube emojis) as `{ "code": "url", ... }`.
+
+```js
+const emotes = w.getEmotes();
+```
+
+### `loadEmote(twitchId, login)`
+
+Loads emotes from BTTV, FFZ, 7TV, and YouTube for a given channel. Returns a promise resolving to the updated emote map.
+
+```js
+await w.loadEmote("12345", "channel_login");
 ```
 
 ## CustomEvents Communication
@@ -321,16 +366,6 @@ Sends a chat message to all connected platform channels:
 { "type": "send-chat-message", "data": { "text": "Hello world!" } }
 ```
 
-### `query-stream-game`
-
-Queries Twitch for game information:
-
-```json
-{ "type": "query-stream-game", "data": { "q": "Minecraft" } }
-```
-
-**Response:** `result-query-stream-games` with game list
-
 ### `get-streamer-data`
 
 Gets current streamer's data:
@@ -340,6 +375,46 @@ Gets current streamer's data:
 ```
 
 **Response:** `result-get-streamer-data` with stream information
+
+### `get-next-streams-youtube`
+
+Gets next scheduled YouTube streams from polling and merges with preview lives:
+
+```json
+{ "type": "get-next-streams-youtube", "data": { "channel": "channel_name" } }
+```
+
+**Response:** `result-get-next-streams-youtube` with merged preview list
+
+### `connect-to-preview-youtube`
+
+Connects to a YouTube live preview chat:
+
+```json
+{ "type": "connect-to-preview-youtube", "data": { "liveChatId": "..." } }
+```
+
+**Response:** `result-connect-chat-youtube` with updated connected chats
+
+### `get-dy-statistics`
+
+Gets dynamic event (CustomEvent module) statistics:
+
+```json
+{ "type": "get-dy-statistics", "data": {} }
+```
+
+**Response:** `result-get-dy-statistics` with event list
+
+### `get-state`
+
+Gets the full bot state object:
+
+```json
+{ "type": "get-state", "data": {} }
+```
+
+**Response:** `result-get-state` with state data
 
 ### Custom Event Types
 
@@ -411,18 +486,6 @@ Response to `connect-chat-youtube` request:
 {
   "type": "result-connect-chat-youtube",
   "data": [...],
-  "respond": 1
-}
-```
-
-### `result-query-stream-games`
-
-Response to `query-stream-game` request:
-
-```json
-{
-  "type": "result-query-stream-games",
-  "data": { "list": [...] },
   "respond": 1
 }
 ```

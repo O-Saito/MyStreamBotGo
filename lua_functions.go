@@ -116,6 +116,9 @@ func RegisterLuaFunctions(L *lua.LState) {
 			if source == "kick" {
 				kick.SendMessageIfChannelExist(msg, channel)
 			}
+			if source == "youtube" {
+				youtube.SendMessage(channel, msg)
+			}
 			return 0
 		},
 		"get": func(L *lua.LState) int {

@@ -691,7 +691,7 @@
             div.append(source, channel, badges, user, message, allowBtn);
             addChatMessage(div);
         });
-        
+
         try {
             w.connect();
         } catch (e) {
@@ -1151,6 +1151,21 @@
             return (message.replace(/\\s|\s/g, ' ').replace(/\n/g, '') || '')
                 .split(/\s+/)
                 .map(word => {
+                    console.log(word);
+                    if (word.includes("::")) {
+                        const splits = word.split("::");
+                        let multiEmotis = '';
+                        splits.forEach(s => {
+                            s = `:${s.replaceAll(":", "")}:`;
+                            const url = emoteMap[s];
+                            if (url) {
+                                multiEmotis += `<img src="${url}" alt="${s}" title="${s}" class="emote">`;
+                            } else {
+                                multiEmotis += s;
+                            }
+                        });
+                        return multiEmotis;
+                    }
                     const url = emoteMap[word];
                     return url ? `<img src="${url}" alt="${word}" title="${word}" class="emote">` : word;
                 })
@@ -1213,7 +1228,7 @@
                 }
 
                 if (msg.metadata['authorDetails']) {
-                    user.innerHTML = `<img src="${msg.metadata['authorDetails'].profileImageUrl}" /> ${msg.user}`;
+                    user.innerHTML = `<img src="${msg.metadata['authorDetails'].profileImageUrl ?? msg.metadata['authorDetails'].profile_image_url}" /> ${msg.user}`;
                 }
 
                 if (msg.metadata['badges-info']) {

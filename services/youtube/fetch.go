@@ -3,11 +3,13 @@ package youtube
 import (
 	"MyStreamBot/globals"
 	"MyStreamBot/helpers"
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 )
 
@@ -278,4 +280,49 @@ func GetStreamData(videoID string) (*StreamData, error) {
 		ScheduledStartTime: video.LiveStreamingDetails.ScheduledStartTime,
 		ScheduledEndTime:   video.LiveStreamingDetails.ScheduledEndTime,
 	}, nil
+}
+
+type sendMessageRequest struct {
+	Snippet sendMessageSnippet `json:"snippet"`
+}
+type sendMessageSnippet struct {
+	LiveChatID         string                `json:"liveChatId"`
+	Type               string                `json:"type"`
+	TextMessageDetails sendMessageTextDetails `json:"textMessageDetails"`
+}
+type sendMessageTextDetails struct {
+	MessageText string `json:"messageText"`
+}
+
+func SendMessage(liveChatID, text string) error {
+	body := sendMessageRequest{
+		Snippet: sendMessageSnippet{
+			LiveChatID: liveChatID,
+			Type:       "textMessageEvent",
+			TextMessageDetails: sendMessageTextDetails{
+				MessageText: strings.Trim(text, " "),
+			},
+		},
+	}
+	jsonBody, _ := json.Marshal(body)
+
+	req, err := http.NewRequest("POST",
+		"https://www.googleapis.com/youtube/v3/liveChat/messages?part=snippet",
+		bytes.NewReader(jsonBody))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := DoYouTubeRequest(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		respBody, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("youtube send message failed (%d): %s", resp.StatusCode, respBody)
+	}
+	return nil
 }

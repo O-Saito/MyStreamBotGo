@@ -27,11 +27,11 @@ func processChatMessage(ev globals.MessageFromStream) {
 	config := globals.GetConfig()
 
 	if ev.MessageId == "self" {
-		globals.WsBroadcast <- globals.SocketMessage{Type: "self-message", Data: ev}
+		globals.SafeSend(globals.WsBroadcast, globals.SocketMessage{Type: "self-message", Data: ev}, "WsBroadcast", false)
 		return
 	}
 
-	globals.WsBroadcast <- globals.SocketMessage{Type: "user-message", Data: ev}
+	globals.SafeSend(globals.WsBroadcast, globals.SocketMessage{Type: "user-message", Data: ev}, "WsBroadcast", false)
 
 	if strings.HasPrefix(ev.Message, config.BotPrefix) {
 		parts := strings.SplitN(ev.Message[1:], " ", 2)

@@ -12,10 +12,7 @@ import (
 )
 
 const (
-	//ClientID     = "01K5HCGTPXM5YWMA214JTZGH4X"
-	//ClientSecret = "2eb76a9352af6eca4001b20a5a84d86103467b1c9e5852bf95427b6b511695e6"
-	RedirectURI = "http://localhost:1699/kick/callback"
-	Scopes      = "user:read channel:read channel:write chat:read chat:write channel:read streamkey:read events:subscribe moderation:ban"
+	Scopes = "user:read channel:read channel:write chat:read chat:write channel:read streamkey:read events:subscribe moderation:ban"
 )
 
 func RestoreSession() {
@@ -103,7 +100,7 @@ func HandleLogin() {
 		authURL := fmt.Sprintf(
 			"https://id.kick.com/oauth/authorize?response_type=code&client_id=%s&redirect_uri=%s&scope=%s&code_challenge=%s&code_challenge_method=S256&state=%s",
 			globals.GetConfig().KickClientID,
-			url.QueryEscape(RedirectURI),
+			url.QueryEscape(fmt.Sprintf("http://localhost:%s/kick/callback", globals.GetConfig().HTTPPort)),
 			url.QueryEscape(Scopes),
 			codeChallenge,
 			OAuthState,
@@ -127,7 +124,7 @@ func HandleLogin() {
 		data.Set("grant_type", "authorization_code")
 		data.Set("client_id", globals.GetConfig().KickClientID)
 		data.Set("client_secret", globals.GetConfig().KickClientSecret)
-		data.Set("redirect_uri", RedirectURI)
+		data.Set("redirect_uri", fmt.Sprintf("http://localhost:%s/kick/callback", globals.GetConfig().HTTPPort))
 		data.Set("code_verifier", CodeVerifier)
 		data.Set("code", code)
 
@@ -190,5 +187,12 @@ func HandleLogin() {
 		if err := Connect(); err != nil {
 			helpers.Logf(helpers.ERROR, "[KICK] Error connecting: %s", err.Error())
 		}
+	})
+
+	http.HandleFunc("/kick/logout", func(w http.ResponseWriter, r *http.Request) {
+		globals.GetState().SetKickUser(globals.KickUser{})
+		Disconnect()
+		globals.GetGlobalDB().DeleteToken("kick")
+		http.Redirect(w, r, fmt.Sprintf("http://localhost:%s/", globals.GetConfig().HTTPPort), http.StatusFound)
 	})
 }

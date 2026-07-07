@@ -83,6 +83,12 @@ func GetDyEvents() map[string]*DynamicEvent {
 	return dynamicEvents
 }
 
+func StopGlobalLoop() {
+	if stopGlobalLoop != nil {
+		close(stopGlobalLoop)
+	}
+}
+
 func (dev *DynamicEvent) Transfer(new *DynamicEvent) {
 	dev.mu.Lock()
 	defer new.mu.Unlock()
@@ -115,19 +121,19 @@ func (dev *DynamicEvent) Transfer(new *DynamicEvent) {
 }
 
 func (dev *DynamicEvent) Close() {
-	dev.State.mu.Lock()
-	defer dev.State.mu.Unlock()
-
-	if dev.State.db != nil {
-		dev.State.db.Close()
-		dev.State.db = nil
-	}
-
 	dev.Lua.mu.Lock()
 	defer dev.Lua.mu.Unlock()
+
 	if dev.Lua.LState != nil {
 		dev.Lua.LState.Close()
 		dev.Lua.LState = nil
+	}
+
+	dev.State.mu.Lock()
+	defer dev.State.mu.Unlock()
+	if dev.State.db != nil {
+		dev.State.db.Close()
+		dev.State.db = nil
 	}
 }
 
@@ -353,13 +359,13 @@ func (dev *DynamicEvent) ProcessRequest(evm *globals.SocketMessage) {
 		}
 		data := TableToMap(d)
 
-		globals.WsBroadcast <- globals.SocketMessage{
+		globals.SafeSend(globals.WsBroadcast, globals.SocketMessage{
 			SocketTag:         socketTag,
 			ResponseMessageID: responseMessageID,
 			Filter:            filter,
 			Type:              fmt.Sprintf("return-%s", t),
 			Data:              data,
-		}
+		}, "WsBroadcast")
 
 		return 0
 	}))
@@ -428,8 +434,8 @@ func SaveDynamicEvents() {
 	dynamicEventsMutex.RLock()
 	defer dynamicEventsMutex.RUnlock()
 	for _, val := range dynamicEvents {
-		val.State.mu.Lock()
 		val.Lua.mu.Lock()
+		val.State.mu.Lock()
 		if val.State.db != nil {
 			val.State.db.Close()
 		}
@@ -534,7 +540,10 @@ func LoadDyEventModule(folder, fileName string) {
 
 	setFunctionOnTable(ev, eventTable)
 
+	dynamicEventsMutex.RLock()
 	oldEvent := dynamicEvents[fileName]
+	dynamicEventsMutex.RUnlock()
+
 	if oldEvent != nil {
 		oldEvent.Transfer(ev)
 		oldEvent.Close()
@@ -565,11 +574,11 @@ func setFunctionOnTable(ev *DynamicEvent, tbl *lua.LTable) {
 		t := L.CheckString(1)
 		d := L.CheckTable(2)
 
-		globals.WsBroadcast <- globals.SocketMessage{
+		globals.SafeSend(globals.WsBroadcast, globals.SocketMessage{
 			Filter: ev.Name,
 			Type:   t,
 			Data:   TableToMap(d),
-		}
+		}, "WsBroadcast")
 
 		return 0
 	}))

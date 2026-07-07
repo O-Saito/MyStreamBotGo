@@ -882,7 +882,7 @@
                 return;
             }
 
-            loginEl.innerHTML = `Twitch: <img src="${streams.twitch.data.profile_image_url}" /> ${streams.twitch.data.userLogin}`;
+            loginEl.innerHTML = `Twitch: <img src="${streams.twitch.data.profile_image_url}" /> ${streams.twitch.data.userLogin} <a href="/twitch/logout" class="logout-link">Sair</a>`;
 
             updateTwitchStreamOnlineStatus();
 
@@ -1009,6 +1009,12 @@
             buttons.forEach(btn => { btn.onclick = () => connectToYouTubeChat(btn.dataset.id); });
             buttonsNext.forEach(btn => { btn.onclick = () => getNextYouTubeStreams(btn.dataset.id); });
 
+            const logoutLink = document.createElement('a');
+            logoutLink.href = '/youtube/logout';
+            logoutLink.className = 'logout-link';
+            logoutLink.textContent = 'Sair';
+            loginEl.appendChild(logoutLink);
+
             const previewLives = document.createElement('div');
             Object.entries(streams.youtube.previewStreams).forEach(([liveId, data]) => {
                 const activeStream = streams.youtube.streams[liveId];
@@ -1075,7 +1081,7 @@
                 return;
             }
 
-            loginEl.textContent = `Kick: ${connectedAs}`;
+            loginEl.innerHTML = `Kick: ${connectedAs} <a href="/kick/logout" class="logout-link">Sair</a>`;
             if (!kickConnections.querySelectorAll('.list li').length) connectToKickChat(connectedAs);
             kickConnections.style.display = "block";
         }
@@ -1112,7 +1118,7 @@
                 console.log(streams.youtube.streams);
                 chat.innerHTML = Object.entries(streams.youtube.streams).map(([id, data]) => {
                     console.log(data);
-                    return `<li data-live-id="${id}"><img src="${data.thumbnail}" alt="${data.title || id}" />${data.title || id}</li>`;
+                    return `<li data-live-id="${id}"><img src="${data.thumbnail}" alt="${data.title || id}" title="${data.title || id}" />${data.title || id}</li>`;
                 }).join('');
             }
         }
@@ -1140,7 +1146,7 @@
 
                 for (let i = 0; i < emotes.length; i++) {
                     const emote = emotes[i];
-                    text = text.replaceAll(emote.name, `<img src="${emote.url}" />`)
+                    text = text.replaceAll(emote.name, `<img src="${emote.url}" alt="${emote.name}" title="${emote.name}" />`)
                 }
             }
             return text;

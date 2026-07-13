@@ -139,12 +139,19 @@ func (p *sharedLibPlugin) Actions() []services.LuaFunction {
 						n = 2
 					}
 				}()
+				meta := "{}"
+				if mt := L.GetGlobal("__plugin_meta"); mt != nil && mt.Type() == lua.LTTable {
+					if m, ok := mlua.TableToMap(mt.(*lua.LTable)).(map[string]interface{}); ok && len(m) > 0 {
+						b, _ := json.Marshal(m)
+						meta = string(b)
+					}
+				}
 				var jsonArgs string
 				if L.GetTop() > 0 {
 					data, _ := json.Marshal(mlua.FromLValue(L, L.Get(1)))
 					jsonArgs = string(data)
 				}
-				result := CallPluginAction(callFn, localActionName, jsonArgs, freeFn)
+				result := CallPluginAction(callFn, localActionName, jsonArgs, meta, freeFn)
 				if result == "" {
 					return 0
 				}

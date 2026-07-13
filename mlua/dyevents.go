@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
@@ -537,6 +538,11 @@ func LoadDyEventModule(folder, fileName string) {
 			db:                      nil,
 		},
 	}
+
+	callerName := strings.TrimSuffix(fileName, ".lua")
+	metaTbl := L.NewTable()
+	L.SetField(metaTbl, "caller", lua.LString(callerName))
+	L.SetGlobal("__plugin_meta", metaTbl)
 
 	setFunctionOnTable(ev, eventTable)
 

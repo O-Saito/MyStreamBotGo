@@ -1,6 +1,13 @@
 package sdk
 
-import "encoding/json"
+import (
+	"encoding/json"
+)
+
+// HostAPIVersion must match plugin/contract.PluginAPIVersion.
+// Native plugins compiled against this version are rejected at load
+// if they don't match the host's expected version.
+const HostAPIVersion uint32 = 0x00020000
 
 type Context struct {
 	Name string `json:"name"`

@@ -80,6 +80,12 @@ func Init(funcs ...func(*lua.LState)) {
 	RegisterGlobalState(LCommands)
 	RegisterGlobalState(LEvents)
 
+	for _, L := range []*lua.LState{LChat, LCommands, LEvents} {
+		metaTbl := L.NewTable()
+		L.SetField(metaTbl, "caller", lua.LString("unknown"))
+		L.SetGlobal("__plugin_meta", metaTbl)
+	}
+
 	dynamicEventsMutex.RLock()
 	for _, f := range funcs {
 		f(LChat)

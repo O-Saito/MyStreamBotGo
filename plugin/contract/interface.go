@@ -7,8 +7,8 @@ import (
 )
 
 // 0xMMMmmmmpp where M=major, m=minor, p=patch
-// current: 0.1.0
-const PluginAPIVersion uint32 = 0x00010000
+// current: 0.2.0
+const PluginAPIVersion uint32 = 0x00020000
 
 type Plugin interface {
 	Name() string

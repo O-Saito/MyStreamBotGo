@@ -14,7 +14,10 @@ extern void call_plugin_stop_ull(unsigned long long fn);
 extern void call_plugin_on_chat_ull(unsigned long long fn, const char* json);
 extern void call_plugin_on_event_ull(unsigned long long fn, const char* json);
 extern const char* call_plugin_get_actions_ull(unsigned long long fn);
-extern const char* call_plugin_call_action_ull(unsigned long long fn, const char* name, const char* json);
+extern const char* call_plugin_call_action_ull(unsigned long long fn,
+                                                const char* name,
+                                                const char* json,
+                                                const char* meta);
 */
 import "C"
 import (
@@ -83,12 +86,14 @@ func CallPluginGetActions(fn, free uintptr) string {
 	return C.GoString(r)
 }
 
-func CallPluginAction(fn uintptr, name, argsJSON string, free uintptr) string {
+func CallPluginAction(fn uintptr, name, argsJSON, meta string, free uintptr) string {
 	cname := C.CString(name)
 	cargs := C.CString(argsJSON)
+	cmeta := C.CString(meta)
 	defer C.free(unsafe.Pointer(cname))
 	defer C.free(unsafe.Pointer(cargs))
-	r := C.call_plugin_call_action_ull(C.ulonglong(fn), cname, cargs)
+	defer C.free(unsafe.Pointer(cmeta))
+	r := C.call_plugin_call_action_ull(C.ulonglong(fn), cname, cargs, cmeta)
 	if r == nil {
 		return ""
 	}

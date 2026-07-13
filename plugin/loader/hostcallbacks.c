@@ -243,11 +243,14 @@ const char* call_plugin_get_actions_ull(unsigned long long fn) {
 	return result;
 }
 
-const char* call_plugin_call_action_ull(unsigned long long fn, const char* name, const char* json) {
-	typedef const char* (*action_fn_t)(const char*, const char*);
+const char* call_plugin_call_action_ull(unsigned long long fn,
+                                        const char* name,
+                                        const char* json,
+                                        const char* meta) {
+	typedef const char* (*action_fn_t)(const char*, const char*, const char*);
 	const char* result = NULL;
 	int crashed = 0;
-	CRASH_GUARD(result = ((action_fn_t)(void*)(uintptr_t)fn)(name, json));
+	CRASH_GUARD(result = ((action_fn_t)(void*)(uintptr_t)fn)(name, json, meta));
 	if (crashed) {
 		hostLog(3, "[PLUGIN_CRASH] crash caught in call_plugin_call_action_ull");
 	}

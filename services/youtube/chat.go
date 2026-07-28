@@ -9,8 +9,10 @@ import (
 	"time"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
 
 	"MyStreamBot/globals"
@@ -29,6 +31,23 @@ func defaultUserColor(username string) string {
 	index := int(h.Sum32()) % len(colors)
 
 	return colors[index]
+}
+
+func refreshYouTubeToken() error {
+	var retry int
+	err := RefreshToken()
+	for err != nil && retry < 3 {
+		helpers.Logf(helpers.ERROR, "[YT] Failed to refresh token: %s", err.Error())
+		err = RefreshToken()
+		retry++
+	}
+	if err != nil {
+		globals.GetState().SetYouTubeUser(globals.YouTubeUser{})
+		return err
+	}
+	newUser := globals.GetState().GetYouTubeUser()
+	return globals.GetGlobalDB().SaveToken("youtube", newUser.Token, newUser.RefreshToken,
+		time.Now().Add(time.Duration(newUser.TokenExpiresIn)*time.Second))
 }
 
 func ListenToChat(channelId, chatId string) {
@@ -63,6 +82,15 @@ func ListenToChat(channelId, chatId string) {
 		stream, err := client.StreamList(ctx, req)
 		if err != nil {
 			helpers.Logf(helpers.ERROR, "[YT] StreamList failed: %v", err)
+			if status.Code(err) == codes.Unauthenticated {
+				helpers.Logf(helpers.INFO, "[YT] Token expired, attempting refresh...")
+				if err := refreshYouTubeToken(); err != nil {
+					helpers.Logf(helpers.ERROR, "[YT] Token refresh failed, stopping chat listener: %v", err)
+					return
+				}
+				time.Sleep(1 * time.Second)
+				continue
+			}
 			_, foundChannel := helpers.Find(globals.GetState().GetYouTubeUser().Channels, func(c *globals.YouTubeChannel) bool {
 				return slices.Contains(c.ChatIDs, chatId)
 			})
@@ -80,6 +108,13 @@ func ListenToChat(channelId, chatId string) {
 			}
 			if err != nil {
 				helpers.Logf(helpers.ERROR, "[YT] stream.Recv failed: %v", err)
+				if status.Code(err) == codes.Unauthenticated {
+					helpers.Logf(helpers.INFO, "[YT] Token expired in stream, attempting refresh...")
+					if err := refreshYouTubeToken(); err != nil {
+						helpers.Logf(helpers.ERROR, "[YT] Token refresh failed, stopping chat listener: %v", err)
+						return
+					}
+				}
 				break
 			}
 

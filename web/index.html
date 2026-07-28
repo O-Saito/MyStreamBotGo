@@ -198,6 +198,19 @@
             SECTIONS: ['twitch', 'kick', 'youtube', 'system', 'events-panel', 'dyevents-panel']
         };
 
+        function playBeep(message) {
+            try {
+                const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                const osc = ctx.createOscillator();
+                osc.type = 'sine';
+                osc.frequency.value = 800;
+                osc.connect(ctx.destination);
+                osc.start();
+                osc.stop(ctx.currentTime + 0.2);
+            } catch (_) {}
+            alert(message);
+        }
+
         const twitchDiv = document.getElementById('twitch');
         const youtubeDiv = document.getElementById('youtube');
         const kickDiv = document.getElementById('kick');
@@ -560,9 +573,13 @@
             updateTwitchGameData();
         });
         w.on('youtube-connection', (data) => {
+            const wasLoggedIn = streams.youtube.data?.channels?.length > 0;
             streams.youtube.data = data;
             updateYouTubeConnectionDetails();
             updateYouTubeStreamStatus();
+            if (wasLoggedIn && !data?.channels?.length) {
+                playBeep("Conexão com YouTube perdida! Faça login novamente.");
+            }
         });
         w.on('kick-connection', updateKickConnectionDetails);
         w.on('twitch-chat-connection', (data) => {

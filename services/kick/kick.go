@@ -8,6 +8,7 @@ import (
 	"log"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -44,6 +45,44 @@ type IrcChannel struct {
 var Conn *websocket.Conn
 var Channels []IrcChannel
 var MsgQueue = make(chan Message, 100)
+var channelsMu sync.RWMutex
+
+// AddChannel registers a new channel to join/track.
+func AddChannel(id, slug string) {
+	channelsMu.Lock()
+	defer channelsMu.Unlock()
+	Channels = append(Channels, IrcChannel{ID: id, Slug: slug})
+}
+
+// GetChannels returns a snapshot copy of the tracked channel list.
+func GetChannels() []IrcChannel {
+	channelsMu.RLock()
+	defer channelsMu.RUnlock()
+	out := make([]IrcChannel, len(Channels))
+	copy(out, Channels)
+	return out
+}
+
+// ResetChannels clears the tracked channel list.
+func ResetChannels() {
+	channelsMu.Lock()
+	defer channelsMu.Unlock()
+	Channels = []IrcChannel{}
+}
+
+// MarkChannelConnected flags the channel with the given ID as connected and
+// returns its slug. ok is false if no channel with that ID is tracked.
+func MarkChannelConnected(id string) (slug string, ok bool) {
+	channelsMu.Lock()
+	defer channelsMu.Unlock()
+	for i := range Channels {
+		if Channels[i].ID == id {
+			Channels[i].Connected = true
+			return Channels[i].Slug, true
+		}
+	}
+	return "", false
+}
 
 var ircHandlers = map[string]func(km KickMessage, data map[string]any){
 	"pusher:connection_established": func(km KickMessage, data map[string]any) {
@@ -55,14 +94,10 @@ var ircHandlers = map[string]func(km KickMessage, data map[string]any){
 	"pusher_internal:subscription_succeeded": func(km KickMessage, data map[string]any) {
 		channel := strings.Trim(strings.Split(km.Channel, ".")[1], " ")
 		helpers.Logf(helpers.DEBUG, "[Kick IRC Handler] Subscribed to channel: %s", channel)
-		for _, value := range Channels {
-			if value.ID == channel {
-				value.Connected = true
-				globals.WsBroadcast <- globals.SocketMessage{
-					Type: "kick-chat-connection",
-					Data: map[string]any{"name": value.Slug, "id": value.ID},
-				}
-				break
+		if slug, ok := MarkChannelConnected(channel); ok {
+			globals.WsBroadcast <- globals.SocketMessage{
+				Type: "kick-chat-connection",
+				Data: map[string]any{"name": slug, "id": channel},
 			}
 		}
 	},
@@ -99,9 +134,12 @@ var ircHandlers = map[string]func(km KickMessage, data map[string]any){
 }
 
 func FindChannelByID(id string) *IrcChannel {
-	for i, c := range Channels {
+	channelsMu.RLock()
+	defer channelsMu.RUnlock()
+	for _, c := range Channels {
 		if c.ID == id {
-			return &Channels[i]
+			c := c
+			return &c
 		}
 	}
 	return nil

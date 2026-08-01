@@ -25,10 +25,7 @@ func RegisterSocketHandlers() {
 			return
 		}
 		helpers.Printf(helpers.Reset, "[Socket Handler] connect-chat-kick %s\r\n", roomId)
-		kick.Channels = append(kick.Channels, kick.IrcChannel{
-			ID:   roomId,
-			Slug: slug,
-		})
+		kick.AddChannel(roomId, slug)
 		kick.JoinChannel(roomId)
 	}
 
@@ -185,13 +182,13 @@ func RegisterSocketHandlers() {
 			helpers.Logf(helpers.ERROR, "[Socket Handler] send-chat-message: invalid text type")
 			return
 		}
-		if len(twitch.Channels) > 0 {
-			for _, channel := range twitch.Channels {
+		if twitchChannels := twitch.GetChannels(); len(twitchChannels) > 0 {
+			for _, channel := range twitchChannels {
 				twitch.SendMessage(text, channel)
 			}
 		}
-		if len(kick.Channels) > 0 {
-			for _, channel := range kick.Channels {
+		if kickChannels := kick.GetChannels(); len(kickChannels) > 0 {
+			for _, channel := range kickChannels {
 				kick.SendMessage(text, channel)
 			}
 		}

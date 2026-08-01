@@ -27,11 +27,36 @@ var (
 	Channels  []string
 	MsgQueue  = make(chan Message, 100)
 
+	channelsMu sync.RWMutex
+
 	readerCancel context.CancelFunc
 	readerMutex  sync.Mutex
 	writerCancel context.CancelFunc
 	writerMutex  sync.Mutex
 )
+
+// GetChannels returns a snapshot copy of the joined channel list.
+func GetChannels() []string {
+	channelsMu.RLock()
+	defer channelsMu.RUnlock()
+	out := make([]string, len(Channels))
+	copy(out, Channels)
+	return out
+}
+
+// HasChannel reports whether channel is currently joined.
+func HasChannel(channel string) bool {
+	channelsMu.RLock()
+	defer channelsMu.RUnlock()
+	return slices.Contains(Channels, channel)
+}
+
+// ResetChannels clears the joined channel list.
+func ResetChannels() {
+	channelsMu.Lock()
+	defer channelsMu.Unlock()
+	Channels = []string{}
+}
 
 func partseTags(tagsStr string) map[string]any {
 	metadata := map[string]any{}
@@ -346,9 +371,9 @@ func Connect() error {
 		Connect()
 	}
 
-	reconnectChannels := Channels
+	reconnectChannels := GetChannels()
 
-	Channels = Channels[:0]
+	ResetChannels()
 
 	for _, channel := range reconnectChannels {
 		JoinChannel(channel)
@@ -365,12 +390,16 @@ func Disconnect() {
 }
 
 func JoinChannel(channel string) {
+	channelsMu.Lock()
 	if slices.Contains(Channels, channel) {
+		channelsMu.Unlock()
 		return
 	}
+	Channels = append(Channels, channel)
+	channelsMu.Unlock()
+
 	helpers.Printf(helpers.Twitch, "[TWITCH] Joining channel: %s", channel)
 	fmt.Fprintf(Conn, "JOIN #%s\r\n", channel)
-	Channels = append(Channels, channel)
 }
 
 func reader(ctx context.Context) {
@@ -437,7 +466,7 @@ func writer(ctx context.Context) {
 }
 
 func SendMessage(msg, channel string, messageToReply ...string) {
-	if helpers.Contains(Channels, channel) {
+	if HasChannel(channel) {
 		user := globals.GetState().GetTwitchUser()
 
 		metadata := map[string]any{

@@ -204,22 +204,22 @@ func (s *State) GetTwitchUser() TwitchUser {
 
 func (s *State) SetTwitchUser(user TwitchUser) {
 	s.Lock()
-	defer s.Unlock()
 	s.TwitchUser = user
-	WsBroadcast <- SocketMessage{
+	s.Unlock()
+	SafeSend(WsBroadcast, SocketMessage{
 		Type: "twitch-connection",
 		Data: s.TwitchUser,
-	}
+	}, "WsBroadcast")
 }
 
 func (s *State) SetTwitchStreamDetails(sd TwitchStreamData) {
 	s.Lock()
-	defer s.Unlock()
 	s.TwitchUser.StreamDetails = &sd
-	WsBroadcast <- SocketMessage{
+	s.Unlock()
+	SafeSend(WsBroadcast, SocketMessage{
 		Type: "twitch-connection",
 		Data: s.TwitchUser,
-	}
+	}, "WsBroadcast")
 }
 
 func (s *State) GetYouTubeUser() YouTubeUser {
@@ -230,12 +230,12 @@ func (s *State) GetYouTubeUser() YouTubeUser {
 
 func (s *State) SetYouTubeUser(user YouTubeUser) {
 	s.Lock()
-	defer s.Unlock()
 	s.YouTubeUser = user
-	WsBroadcast <- SocketMessage{
+	s.Unlock()
+	SafeSend(WsBroadcast, SocketMessage{
 		Type: "youtube-connection",
 		Data: s.YouTubeUser,
-	}
+	}, "WsBroadcast")
 }
 
 // SetYouTubeToken updates only the access token fields, leaving Channels/RefreshToken
@@ -253,17 +253,16 @@ func (s *State) SetYouTubeToken(token string, expiresIn int) {
 
 func (s *State) AddYouTubeChannel(channel YouTubeChannel) {
 	s.Lock()
-	defer s.Unlock()
 	s.YouTubeUser.Channels = append(s.YouTubeUser.Channels, channel)
-	WsBroadcast <- SocketMessage{
+	s.Unlock()
+	SafeSend(WsBroadcast, SocketMessage{
 		Type: "youtube-connection",
 		Data: s.YouTubeUser,
-	}
+	}, "WsBroadcast")
 }
 
 func (s *State) AddYouTubeChat(channelId, chatId string) {
 	s.Lock()
-	defer s.Unlock()
 	for i := range s.YouTubeUser.Channels {
 		c := &s.YouTubeUser.Channels[i]
 		if c.ID == channelId {
@@ -272,10 +271,11 @@ func (s *State) AddYouTubeChat(channelId, chatId string) {
 			break
 		}
 	}
-	WsBroadcast <- SocketMessage{
+	s.Unlock()
+	SafeSend(WsBroadcast, SocketMessage{
 		Type: "youtube-connection",
 		Data: s.YouTubeUser,
-	}
+	}, "WsBroadcast")
 }
 
 func (s *State) RemoveYouTubeChat(channelId, chatId string) {
@@ -302,10 +302,10 @@ func (s *State) GetKickUser() KickUser {
 
 func (s *State) SetKickUser(user KickUser) {
 	s.Lock()
-	defer s.Unlock()
 	s.KickUser = user
-	WsBroadcast <- SocketMessage{
+	s.Unlock()
+	SafeSend(WsBroadcast, SocketMessage{
 		Type: "kick-connection",
 		Data: s.KickUser.UserLogin,
-	}
+	}, "WsBroadcast")
 }

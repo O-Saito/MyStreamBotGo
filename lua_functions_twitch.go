@@ -86,6 +86,10 @@ var TwitchFunctionList = []services.LuaFunction{
 		return d[0]
 	}},
 
+	// fetch/clips.go
+	{Name: "create_clip", Fn: tf.CreateClip},
+	{Name: "get_clips", Fn: tf.GetClips},
+
 	// fetch/chat.go
 	{Name: "delete_message", Fn: tf.DeleteMessage},
 	// get_chatters -> GetChatters
@@ -235,10 +239,6 @@ var TwitchFunctionList = []services.LuaFunction{
 	// delete_conduit -> DeleteConduit
 	// get_conduit_users -> GetConduitUsers
 	// update_conduit_users -> UpdateConduitUsers
-
-	// fetch/clips.go
-	// create_clip -> CreateClip
-	// get_clips -> GetClips
 
 	// fetch/charity.go
 	// get_charity_campaign -> GetCharityCampaign

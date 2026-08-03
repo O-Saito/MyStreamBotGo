@@ -34,22 +34,22 @@
 
 ---@meta
 ---@class kick
-local g = {}
+local kick = {}
 
 ---Get user data by user ID
 ---@param userId string
 ---@return kick.UserData
-function g.get_user(userId) end
+function kick.get_user(userId) end
 
 ---Get channel data by user ID
 ---@param userId number
 ---@return kick.ChannelData
-function g.get_channel(userId) end
+function kick.get_channel(userId) end
 
 ---Get chatroom data by channel ID
 ---@param channelId string
 ---@return kick.ChatroomData
-function g.get_chatroom(channelId) end
+function kick.get_chatroom(channelId) end
 
 -- declare global
-_G.kick = g
+_G.kick = kick

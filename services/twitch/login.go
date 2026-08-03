@@ -159,6 +159,13 @@ func HandleLogin() {
 
 		fmt.Fprintf(w, "Login completed! You may close this page.")
 	})
+
+	http.HandleFunc("/twitch/logout", func(w http.ResponseWriter, r *http.Request) {
+		globals.GetState().SetTwitchUser(globals.TwitchUser{})
+		Close()
+		globals.GetGlobalDB().DeleteToken("twitch")
+		http.Redirect(w, r, fmt.Sprintf("http://localhost:%s/", globals.GetConfig().HTTPPort), http.StatusFound)
+	})
 }
 
 func initTwitchUser(token string) error {

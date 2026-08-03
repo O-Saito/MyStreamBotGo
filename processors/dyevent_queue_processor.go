@@ -15,6 +15,11 @@ func ProcessDyEventQueue() {
 		wait.Add(len(events))
 		for _, dev := range events {
 			go func() {
+				defer func() {
+					if r := recover(); r != nil {
+						helpers.Logf(helpers.ERROR, "[DYEVENT] goroutine panicked in %s: %v", dev.Name, r)
+					}
+				}()
 				start := time.Now()
 				switch deq.Type {
 				case mlua.DyEventChat:

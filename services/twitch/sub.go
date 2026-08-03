@@ -149,24 +149,24 @@ var messageHandlers = map[string]func(map[string]any, map[string]any){
 		globals.GetState().SetTwitchEventSubId(sessionId)
 		subscribeToEvents()
 		helpers.Printf(helpers.Twitch, "Session: %s", sessionId)
-		globals.WsBroadcast <- globals.SocketMessage{
+		globals.SafeSend(globals.WsBroadcast, globals.SocketMessage{
 			Type: "twitch-eventsub-session-welcome",
 			Data: map[string]any{
 				"payload":  payload,
 				"metadata": metadata,
 			},
-		}
+		}, "WsBroadcast", false)
 	},
 	"session_keepalive": func(payload, metadata map[string]any) {
 		//helpers.Logf(helpers.Twitch, "[TWITCH EventSub] Session Keepalive %v", metadata)
 		//ts.execute("session_keepalive", metadata);
-		globals.WsBroadcast <- globals.SocketMessage{
+		globals.SafeSend(globals.WsBroadcast, globals.SocketMessage{
 			Type: "twitch-eventsub-keepalive",
 			Data: map[string]any{
 				"payload":  payload,
 				"metadata": metadata,
 			},
-		}
+		}, "WsBroadcast", false)
 	},
 	"notification": func(payload, metadata map[string]any) {
 		helpers.Printf(helpers.Twitch, "[TWITCH EventSub] notification %v", payload)
@@ -305,7 +305,9 @@ func listenToEventSub(conn *websocket.Conn) {
 			conn.Close()
 		}
 		helpers.Printf(helpers.Twitch, "[Twitch EventSub] Reading ended.")
-		connectToEventSub()
+		if globals.GetState().GetTwitchUser().Token != "" {
+			connectToEventSub()
+		}
 	}()
 
 	for {
@@ -424,7 +426,7 @@ func subscribeToEvents() {
 				Data    []any  `json:"data"`
 			}
 			if err := json.Unmarshal(body, &d); err != nil {
-				helpers.Logf(helpers.ERROR, "[TWITCH] sub json.Unmarshal failed: %v", err)
+				helpers.Logf(helpers.ERROR, "[TWITCH] sub json.Unmarshal failed: %v [%v]", err, string(body))
 			}
 
 			if d.Status != 0 || len(d.Data) == 0 {

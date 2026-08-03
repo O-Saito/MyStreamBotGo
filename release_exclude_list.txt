@@ -2,3 +2,7 @@
 modules/customevents/customevent_example.lua
 modules/events/channel.follow/follow_example.lua
 web/customevents/customevent_example.lua.js
+modules/customevents/test.lua
+modules/customevents/stream_log.lua
+web/customevents/test.lua.js
+web/customevents/stream_log.lua.js

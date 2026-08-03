@@ -52,8 +52,8 @@ var SocketHandlers = map[string]func(*websocket.Conn, map[string]any, *SocketReq
 				"kick": map[string]any{
 					"connected_as": globals.GetState().GetKickUser().UserLogin,
 				},
-				"twitch_connected_chat":  twitch.Channels,
-				"kick_connected_chat":    kick.Channels,
+				"twitch_connected_chat":  twitch.GetChannels(),
+				"kick_connected_chat":    kick.GetChannels(),
 				"youtube_connected_chat": globals.GetState().GetData("youtube-lives"),
 				"youtube_live_previews":  globals.GetState().GetData("youtube-preview-lives"),
 				"custom_events_modules":  mlua.ListDynamicEvents(),

@@ -29,8 +29,8 @@ func main() {
 		}
 	}()
 
-	kick.Channels = []kick.IrcChannel{}
-	twitch.Channels = []string{}
+	kick.ResetChannels()
+	twitch.ResetChannels()
 
 	helpers.InitLog()
 

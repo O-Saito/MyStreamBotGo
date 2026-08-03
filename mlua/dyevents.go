@@ -81,7 +81,11 @@ var (
 func GetDyEvents() map[string]*DynamicEvent {
 	dynamicEventsMutex.RLock()
 	defer dynamicEventsMutex.RUnlock()
-	return dynamicEvents
+	snap := make(map[string]*DynamicEvent, len(dynamicEvents))
+	for k, v := range dynamicEvents {
+		snap[k] = v
+	}
+	return snap
 }
 
 func StopGlobalLoop() {

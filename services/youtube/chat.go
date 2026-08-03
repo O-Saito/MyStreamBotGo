@@ -43,6 +43,10 @@ func refreshYouTubeToken() error {
 	}
 	if err != nil {
 		globals.GetState().SetYouTubeUser(globals.YouTubeUser{})
+		if delErr := globals.GetGlobalDB().DeleteToken("youtube"); delErr != nil {
+			helpers.Logf(helpers.ERROR, "[YT] Failed to delete stale youtube token: %s", delErr.Error())
+		}
+		helpers.Logf(helpers.WARN, "[YT] Refresh token invalid, YouTube session cleared, user must log in again")
 		return err
 	}
 	newUser := globals.GetState().GetYouTubeUser()
@@ -50,14 +54,27 @@ func refreshYouTubeToken() error {
 		time.Now().Add(time.Duration(newUser.TokenExpiresIn)*time.Second))
 }
 
+func notifyYouTubeOffline(chatId string) {
+	globals.WsBroadcast <- globals.SocketMessage{
+		Type: "youtube-live-offline",
+		Data: map[string]any{"liveId": chatId, "offlineAt": time.Now()},
+	}
+}
+
 func ListenToChat(channelId, chatId string) {
 	globals.GetState().AddYouTubeChat(channelId, chatId)
 	helpers.Logf(helpers.INFO, "Started Youtube chat listener! channel: %s; chat: %s", channelId, chatId)
+
+	defer func() {
+		globals.GetState().RemoveYouTubeChat(channelId, chatId)
+		helpers.Logf(helpers.INFO, "Stopped Youtube chat listener! channel: %s; chat: %s", channelId, chatId)
+	}()
 
 	conn, err := grpc.NewClient("youtube.googleapis.com:443",
 		grpc.WithTransportCredentials(credentials.NewClientTLSFromCert(nil, "")))
 	if err != nil {
 		helpers.Logf(helpers.ERROR, "[YT] failed to dial gRPC: %v", err)
+		notifyYouTubeOffline(chatId)
 		return
 	}
 	defer conn.Close()
@@ -86,6 +103,7 @@ func ListenToChat(channelId, chatId string) {
 				helpers.Logf(helpers.INFO, "[YT] Token expired, attempting refresh...")
 				if err := refreshYouTubeToken(); err != nil {
 					helpers.Logf(helpers.ERROR, "[YT] Token refresh failed, stopping chat listener: %v", err)
+					notifyYouTubeOffline(chatId)
 					return
 				}
 				time.Sleep(1 * time.Second)
@@ -112,6 +130,7 @@ func ListenToChat(channelId, chatId string) {
 					helpers.Logf(helpers.INFO, "[YT] Token expired in stream, attempting refresh...")
 					if err := refreshYouTubeToken(); err != nil {
 						helpers.Logf(helpers.ERROR, "[YT] Token refresh failed, stopping chat listener: %v", err)
+						notifyYouTubeOffline(chatId)
 						return
 					}
 				}
@@ -171,5 +190,4 @@ func ListenToChat(channelId, chatId string) {
 
 		time.Sleep(1 * time.Second)
 	}
-	helpers.Logf(helpers.INFO, "Stopped Youtube chat listener! channel: %s; chat: %s", channelId, chatId)
 }

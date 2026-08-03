@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -81,7 +82,47 @@ type Thumbnail struct {
 	Height int    `json:"height,omitempty"`
 }
 
+var (
+	refreshMu   sync.Mutex
+	refreshDone chan struct{}
+	refreshErr  error
+)
+
+// RefreshToken coalesces concurrent callers into a single in-flight refresh:
+// whoever calls first performs the actual HTTP round-trip, everyone else
+// waits for and reuses that result instead of racing Google's OAuth endpoint.
 func RefreshToken() error {
+	refreshMu.Lock()
+	if refreshDone != nil {
+		done := refreshDone
+		refreshMu.Unlock()
+		<-done
+		refreshMu.Lock()
+		err := refreshErr
+		refreshMu.Unlock()
+		return err
+	}
+
+	done := make(chan struct{})
+	refreshDone = done
+	refreshMu.Unlock()
+
+	var err error
+	func() {
+		defer func() {
+			refreshMu.Lock()
+			refreshErr = err
+			refreshDone = nil
+			refreshMu.Unlock()
+			close(done)
+		}()
+		err = doRefreshToken()
+	}()
+
+	return err
+}
+
+func doRefreshToken() error {
 	currentuser := globals.GetState().GetYouTubeUser()
 
 	data := url.Values{}
@@ -109,9 +150,7 @@ func RefreshToken() error {
 		return err
 	}
 	if u.AccessToken != "" {
-		currentuser.Token = u.AccessToken
-		currentuser.TokenExpiresIn = u.ExpiresIn
-		globals.GetState().SetYouTubeUser(currentuser)
+		globals.GetState().SetYouTubeToken(u.AccessToken, u.ExpiresIn)
 		return nil
 	}
 	return fmt.Errorf("RefreshToken: failed to execute refresh token: error=%s, description=%s", u.Error, u.ErrorDesc)

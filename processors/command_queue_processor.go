@@ -13,10 +13,8 @@ func ProcessCommandQueue() {
 			Type:       mlua.DyEventCommand,
 			LuaCommand: ev,
 		}
-		if ev.Source == "twitch" {
-			if ev.Channel != globals.GetState().TwitchUser.UserLogin {
-				continue
-			}
+		if !ev.Message.IsAtOwnerChannel {
+			continue
 		}
 		mlua.HandleCommand(ev.Name, &ev)
 	}

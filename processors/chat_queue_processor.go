@@ -5,6 +5,7 @@ import (
 	"MyStreamBot/helpers"
 	"MyStreamBot/mlua"
 	"MyStreamBot/plugin"
+	"MyStreamBot/services/twitch"
 	"strings"
 )
 
@@ -31,9 +32,16 @@ func processChatMessage(ev globals.MessageFromStream) {
 		return
 	}
 
+	ev.IsCommand = strings.HasPrefix(ev.Message, config.BotPrefix)
+	ev.IsAtOwnerChannel = true
+
+	if ev.Source == "twitch" {
+		ev.IsAtOwnerChannel = twitch.IsOwnChannelMessage(ev.Metadata)
+	}
+
 	globals.SafeSend(globals.WsBroadcast, globals.SocketMessage{Type: "user-message", Data: ev}, "WsBroadcast", false)
 
-	if strings.HasPrefix(ev.Message, config.BotPrefix) {
+	if ev.IsCommand {
 		parts := strings.SplitN(ev.Message[1:], " ", 2)
 		cmd := globals.Command{
 			Source:  ev.Source,
@@ -57,10 +65,7 @@ func processChatMessage(ev globals.MessageFromStream) {
 		MessageFromStream: ev,
 	}
 	plugin.DispatchChat(&ev)
-	if ev.Source == "twitch" {
-		if ev.Channel != globals.GetState().TwitchUser.UserLogin {
-			return
-		}
+	if ev.IsAtOwnerChannel {
+		mlua.HandleChat(&ev)
 	}
-	mlua.HandleChat(&ev)
 }

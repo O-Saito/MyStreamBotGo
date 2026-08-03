@@ -20,13 +20,15 @@ type SocketMessage struct {
 }
 
 type MessageFromStream struct {
-	Source    string         `json:"source"`
-	Channel   string         `json:"channel"`
-	UserId    string         `json:"userId"`
-	User      string         `json:"user"`
-	MessageId string         `json:"messageId"`
-	Message   string         `json:"message"`
-	Metadata  map[string]any `json:"metadata"`
+	IsCommand        bool           `json:"isCommand"`
+	IsAtOwnerChannel bool           `json:"isAtOwnerChannel"`
+	Source           string         `json:"source"`
+	Channel          string         `json:"channel"`
+	UserId           string         `json:"userId"`
+	User             string         `json:"user"`
+	MessageId        string         `json:"messageId"`
+	Message          string         `json:"message"`
+	Metadata         map[string]any `json:"metadata"`
 }
 
 type Event struct {

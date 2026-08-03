@@ -225,9 +225,7 @@ func (dev *DynamicEvent) ProcessChat(evm *globals.MessageFromStream) {
 	shouldComputeSharedChat := dev.State.ComputeTwitchSharedChat
 	dev.State.mu.RUnlock()
 
-	if !shouldComputeSharedChat &&
-		evm.Source == "twitch" &&
-		evm.Channel != globals.GetState().TwitchUser.UserLogin {
+	if !shouldComputeSharedChat && !evm.IsAtOwnerChannel {
 		return
 	}
 
@@ -258,9 +256,7 @@ func (dev *DynamicEvent) ProcessCommand(evm *globals.Command) {
 	shouldComputeSharedChat := dev.State.ComputeTwitchSharedChat
 	dev.State.mu.RUnlock()
 
-	if !shouldComputeSharedChat &&
-		evm.Source == "twitch" &&
-		evm.Channel != globals.GetState().TwitchUser.UserLogin {
+	if !shouldComputeSharedChat && !evm.Message.IsAtOwnerChannel {
 		return
 	}
 

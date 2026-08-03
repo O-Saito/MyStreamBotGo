@@ -22,14 +22,23 @@ mystreambot/
 │   ├── dyevents.go             # DyEvent implementation
 │   ├── parser.go               # Parser lua table to struct and vice-versa
 │   └── mlua.go                 # Implementation
-├── sql/                        # SQLite manager
+├── plugin/                     # compile-time/native plugin system (see plugin.md)
+│   ├── contract/                # Plugin interface, Context, version constant
+│   ├── loader/                  # CGo bridge for native (.dll/.so/.dylib) plugins
+│   └── sdk/                     # JSON-serializable types for native plugin authors
+├── plugins/                    # native plugin binaries + templates, scanned at startup
+├── definitions/                 # Lua .d.lua stub files for editor IntelliSense
+├── sql/                         # SQLite manager
 │   ├── core.go                 # Main db usage
 │   └── modules.go              # Modules focus db
-├── processors/                 # event/message processors
-├── modules/                    # lua modules folder
-├── web/                        # web related folder
-├── db/                         # SQLite database files
-├── build/                      # build output
+├── processors/                  # event/message processors
+├── modules/                     # lua modules folder
+├── web/                         # web related folder
+├── db/                          # SQLite database files
+├── logs/                        # log output
+├── build/                       # build output
+├── init.txt                     # runtime config (see below)
+├── twitchsubtypes.json          # Twitch EventSub subscription types (see below)
 ├── go.mod
 ├── go.sum
 ```
@@ -79,13 +88,17 @@ KickClientID=
 KickClientSecret=
 YouTubeClientID=
 YouTubeClientSecret=
+YouTubeRefresh=
 TwitchScopes=
+HTTPPort=1699
+EventSubWebSocketURL=wss://eventsub.wss.twitch.tv/ws
+EventSubAPIURL=https://api.twitch.tv/helix/eventsub/subscriptions
 ```
 
-Also it can add custom state data like
+Also it can add custom state data via `[State]`, using `Data.<key>=<value>` (no `State.` prefix on the key itself):
 ```
 [State]
-State.Data.Something
+Data.htmlinterface={"ignoreKick":false,"ignoreYoutube": false, "ignoreTwitch": false}
 ```
 
 ### Twitch Subtypes 
@@ -117,6 +130,7 @@ Any Stream API
 	  							└ Lua Handler	
 
 #### ChatQueu
+Receives a `globals.MessageFromStream`, which carries two gating fields computed before dispatch: `IsCommand` (true if the message starts with the configured bot prefix) and `IsAtOwnerChannel` (true if the message originates from the bot owner's own channel/session — e.g. via `twitch.IsOwnChannelMessage`). Messages with `MessageId == "self"` are broadcast as `self-message` instead of `user-message` and are not processed further.
 
 #### CommandQueue
 

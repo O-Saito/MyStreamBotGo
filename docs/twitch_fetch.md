@@ -54,6 +54,17 @@ if err != nil {
 }
 ```
 
+### Requests with No Response Body to Parse
+
+For endpoints that return no JSON body (e.g. a `DELETE` expecting `204`), use `ExecuteRequestNoParse`, which returns the raw response bytes instead of unmarshaling:
+
+```go
+_, err := ExecuteRequestNoParse("DELETE", url, 204)
+if err != nil {
+    return err
+}
+```
+
 ### Request with Custom Struct
 
 ```go
@@ -152,6 +163,11 @@ if err != nil {
 
 ## 6. File Status
 
+`services/twitch/fetch/` also contains `middleware.go`, the core infra file that
+defines `BuildURL`, `ExecuteRequest`, `ExecuteJSONRequest`, and
+`ExecuteRequestNoParse` (see section 9 below) — it doesn't itself contain
+endpoint functions so it isn't listed in the table.
+
 | Status | Files | Notes |
 |--------|-------|-------|
 | ✓ Correct | `polls.go` | GetPolls, CreatePoll, EndPoll |
@@ -168,6 +184,22 @@ if err != nil {
 | ✓ Correct | `channels.go` | ModifyChannelInformation, GetChannelEditors, etc. |
 | ✓ Correct | `whispers.go` | SendWhisper |
 | ✓ Correct | `users.go` | All functions refactored |
+| ✓ Correct | `clips.go` | Uses `BuildURL` |
+| ✓ Correct | `tags.go` | Uses `BuildURL` |
+| ✓ Correct | `schedule.go` | Uses `BuildURL` |
+| ✓ Correct | `raids.go` | Uses `BuildURL` |
+| ✓ Correct | `entitlements.go` | Uses `BuildURL` |
+| ✓ Correct | `conduits.go` | Uses `BuildURL` |
+| ✓ Correct | `bits.go` | Uses `BuildURL` |
+| ✓ Correct | `analytics.go` | Uses `BuildURL` |
+| ✗ Needs update | `teams.go` | Uses `fmt.Sprintf` for URL building instead of `BuildURL` |
+| ✗ Needs update | `guest_star.go` | Uses `fmt.Sprintf` for URL building instead of `BuildURL` |
+| ✗ Needs update | `extensions.go` | Uses `fmt.Sprintf` for URL building instead of `BuildURL` |
+| ✗ Needs update | `ads.go` | Uses `fmt.Sprintf` for URL building instead of `BuildURL` |
+| ✗ Needs update | `goals.go` | Builds URL via string concatenation (`HelixBaseURL + "/goals?..." + id`) instead of `BuildURL` |
+| ✗ Needs update | `hype_train.go` | Builds URL via string concatenation instead of `BuildURL` |
+| ✗ Needs update | `eventsub.go` | Builds URL via string concatenation; also uses `ExecuteRequestNoParse` for `DeleteEventSubscriptions` |
+| N/A (no params) | `content_classification_labels.go` | Single param-less endpoint, no query string to build — `BuildURL` not needed |
 
 ## 7. Code Examples
 

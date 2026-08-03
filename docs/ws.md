@@ -6,30 +6,10 @@ MyStreamBot uses WebSockets for real-time bidirectional communication between th
 
 ## Connection Flow
 
-### Server Side (`goweb/server.go`)
-
-1. HTTP request to `/ws` is upgraded to WebSocket connection
-2. Server assigns a unique tag index to each client
-3. Client connection is stored in `wsClients` map
-4. Server listens for messages in a loop and processes them
-
-```go
-http.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
-    conn, err := upgrader.Upgrade(w, r, nil)
-    // ... assign tag and store client
-    for {
-        _, msg, err := conn.ReadMessage()
-        // ... process message
-    }
-})
-```
-
-### Frontend Side (`web/wrapper.js`)
-
-1. Create WebSocket connection to `ws://${location.host}/ws`
-2. Send `"init"` string on open to receive initial state
-3. Handle incoming messages via `onmessage` handler
-4. Auto-reconnect on disconnect with exponential backoff
+1. Client opens a WebSocket connection to `ws://${location.host}/ws`.
+2. On open, the client sends the raw string `"init"` to request initial state.
+3. The server assigns the connection a tag and replies with an `init` message containing full application state.
+4. Client handles further messages via its `onmessage` handler; `web/wrapper.js` also auto-reconnects on disconnect with exponential backoff.
 
 ```js
 let ws = new WebSocket(`ws://${location.host}/ws`);
@@ -40,17 +20,17 @@ ws.onopen = function () {
 
 ## Message Format
 
-### SocketMessage Structure
+### Message Envelope
 
-```go
-type SocketMessage struct {
-    Filter            string `json:"filter"`           // Filter for targeted broadcasts (module name)
-    Type              string `json:"type"`             // Message type (e.g., "init", "response-upgrade")
-    Data              any    `json:"data"`             // Payload data
-    SocketTag         int    `json:"respond"`          // Client tag for direct responses
-    ResponseMessageID string `json:"responseClientID"` // Response correlation ID
-}
-```
+Every message (client→server or server→client) is JSON with these fields:
+
+| JSON field | Type | Purpose |
+|---|---|---|
+| `type` | string | Message type (e.g. `"init"`, `"response-upgrade"`) |
+| `data` | any | Payload data |
+| `filter` | string | Targets the message to connections subscribed via `upgrade-conn` with a matching module name |
+| `respond` | number | Client tag; used for direct (single-client) responses |
+| `responseClientID` | string | Correlation ID tying a response back to the request that triggered it |
 
 ### Client to Server Messages
 
@@ -67,104 +47,16 @@ init
 
 ## Server Handlers
 
-### `init` Handler
+- **`init`** — returns full application state (see the `init` message under Server-to-Client Message Types below).
+- **`upgrade-conn`** — subscribes the connection to a filter so it receives targeted broadcasts (see Client-to-Server Request Types below). The special filter value `"ignore-broadcast"` opts the connection out of all broadcasts instead.
 
-Returns initial application state to the client:
+## Broadcast Rules
 
-```go
-"init": func(c *websocket.Conn, m map[string]any, md *SocketRequestMetadata) {
-    globals.WsBroadcast <- globals.SocketMessage{
-        Type: "init",
-        Data: map[string]any{
-            "twitch":                   globals.GetState().GetTwitchUser(),
-            "youtube":                  globals.GetState().GetYouTubeUser(),
-            "kick":                     map[string]any{"connected_as": kick.UserLogin},
-            "twitch_connected_chat":    twitch.Channels,
-            "kick_connected_chat":      kick.Channels,
-            "youtube_connected_chat":   globals.GetState().GetData("youtube-lives"),
-            "custom_events_modules":    mlua.ListDynamicEvents(),
-            "twitch_eventsubs":         globals.GetState().GetData("TwitchSubEventsConnectedEvents"),
-        },
-        SocketTag: md.Tag,
-    }
-},
-        Respond: mytag,
-    }
-}
-```
+The server routes every outgoing message according to its fields:
 
-### `upgrade-conn` Handler
-
-Upgrades connection to receive filtered broadcasts for specific CustomEvents:
-
-```go
-"upgrade-conn": func(c *websocket.Conn, m map[string]any, md *SocketRequestMetadata) {
-    data := globals.SocketMessage{
-        Type:      "response-upgrade",
-        Data:      "",
-        SocketTag: md.Tag,
-    }
-    if m["conn"] != nil {
-        connVal, ok := m["conn"].(string)
-        if !ok {
-            helpers.Logf(helpers.ERROR, "[WebSocket] upgrade-conn: invalid conn type")
-            return
-        }
-        if connVal == "ignore-broadcast" {
-            mu.Lock()
-            wsClients[c] = -1
-            mu.Unlock()
-            return
-        }
-        mu.Lock()
-        if wsClientsUpgraded[connVal] == nil {
-            wsClientsUpgraded[connVal] = make([]*websocket.Conn, 0)
-        }
-        wsClientsUpgraded[connVal] = append(wsClientsUpgraded[connVal], c)
-        mu.Unlock()
-        data.Data = "Connection updated!"
-    } else {
-        data.Data = "Connection not specified!"
-    }
-    globals.WsBroadcast <- data
-}
-```
-
-## Broadcast System
-
-### WsBroadcast Channel
-
-The server uses a global channel `globals.WsBroadcast` to send messages from backend to all connected clients.
-
-### Broadcast Logic (`goweb/server.go:195-233` and `handlers.go`)
-
-1. **Filtered Broadcasts:** If `msg.Filter` is set, only send to clients subscribed to that filter
-2. **Direct Response:** If `msg.SocketTag` is set (non-zero, non-negative), send only to specific client
-3. **Broadcast:** Otherwise, send to all clients (except those with tag -1)
-
-```go
-go func() {
-    for msg := range globals.WsBroadcast {
-        if msg.Filter != "" {
-            // Filtered broadcast
-            wsList := wsClientsUpgraded[msg.Filter]
-            for _, client := range wsList {
-                client.WriteMessage(websocket.TextMessage, jsonData)
-            }
-            continue
-        }
-
-        // Direct response or broadcast
-        for client, tag := range wsClients {
-            if tag == -1 continue  // Skip ignore-broadcast clients
-            if msg.SocketTag != 0 && msg.SocketTag != -1 && msg.SocketTag != tag {
-                continue  // Skip other clients for direct response
-            }
-            client.WriteMessage(websocket.TextMessage, jsonData)
-        }
-    }
-}()
-```
+1. **Filtered:** if `filter` is set, the message is sent only to connections that called `upgrade-conn` with that same filter value.
+2. **Direct response:** if `respond` (the client tag) is set to a specific client's tag, the message is sent only to that client.
+3. **Broadcast:** otherwise, the message is sent to every connected client (except ones that opted out via `"ignore-broadcast"`).
 
 ## Frontend API (`web/wrapper.js`)
 
@@ -257,11 +149,10 @@ await w.loadEmote("12345", "channel_login");
 
 1. Server loads CustomEvent Lua modules and exposes them via `init` message
 2. Frontend receives `custom_events_modules` array in init data
-3. Frontend calls `subscribe("module_name.lua")` to upgrade connection
-4. Server adds client to `wsClientsUpgraded[module_name]` map
-5. Lua CustomEvent uses `ev.socket_send(type, data)` to send messages
-6. Server broadcasts to filtered clients based on Filter field
-7. Frontend handler receives message via registered `on()` callback
+3. Frontend calls `subscribe("module_name.lua")` to upgrade the connection to that filter
+4. Lua CustomEvent uses `ev.socket_send(type, data)` to send messages
+5. Server routes the message to connections subscribed to that filter
+6. Frontend handler receives message via registered `on()` callback
 
 ### Filter Matching
 
@@ -273,6 +164,26 @@ ev.socket_send("update", { score = 100 })
 -- Server sends with Filter = "vote.lua"
 -- Frontend subscribed to "vote.lua" receives it
 ```
+
+### Request/response convention (`respond()`)
+
+When the frontend calls `subscribe(mod).send(type, data, callback)`, the outgoing message carries `respond`/`responseClientID` for correlation. On the Lua side, `on_request(type, data)` handlers can call the injected `respond(data)` function to reply:
+
+```lua
+function on_request(type, data)
+    if type == "get_score" then
+        respond({ score = 42 })
+    end
+end
+```
+
+The server echoes the original `respond`/`responseClientID`, keeps `filter` as the module name, and sends back `type: "return-" + <original type>`:
+
+```json
+{ "type": "return-get_score", "filter": "vote.lua", "data": { "score": 42 }, "respond": 1, "responseClientID": "..." }
+```
+
+The `send(type, data, func)` callback on the JS side is invoked when a message with `responseClientID` matching the original request arrives — this is what ties `return-<type>` back to the original `send()` call.
 
 ## Message Flow Diagram
 
@@ -304,7 +215,7 @@ The server also exposes admin endpoints (`/admin/*`) for moderation actions:
 
 ## Client-to-Server Request Types
 
-These are message types sent from the frontend to the server via WebSocket. The server uses `SocketHandlers` map to route these messages.
+These are message types sent from the frontend to the server via WebSocket.
 
 ### `init`
 
@@ -350,10 +261,10 @@ Connects to a Twitch chat channel:
 
 ### `connect-chat-youtube`
 
-Connects to YouTube live chat. Returns current live broadcasts:
+Connects to YouTube live chat. Returns current live broadcasts. `channel` is required (the handler silently no-ops if it's missing or not a string):
 
 ```json
-{ "type": "connect-chat-youtube", "data": {} }
+{ "type": "connect-chat-youtube", "data": { "channel": "channel_name" } }
 ```
 
 **Response:** `result-connect-chat-youtube` with live broadcast list
@@ -374,7 +285,7 @@ Gets current streamer's data:
 { "type": "get-streamer-data", "data": {} }
 ```
 
-**Response:** `result-get-streamer-data` with stream information
+**Response:** `result-get-stream-data` with stream information
 
 ### `get-next-streams-youtube`
 
@@ -490,16 +401,56 @@ Response to `connect-chat-youtube` request:
 }
 ```
 
-### `result-get-streamer-data`
+### `result-get-stream-data`
 
 Response to `get-streamer-data` request:
 
 ```json
 {
-  "type": "result-get-streamer-data",
-  "data": { ... },
+  "type": "result-get-stream-data",
+  "data": { "twitch": { ... }, "youtube": [ ... ] },
   "respond": 1
 }
+```
+
+### `twitch-connection`
+
+Sent when the Twitch user/session changes or stream details update:
+
+```json
+{ "type": "twitch-connection", "data": { ... TwitchUser ... } }
+```
+
+### `twitch-chat-connection`
+
+Sent when the bot's own login joins a Twitch chat channel (i.e. it just connected to that channel):
+
+```json
+{ "type": "twitch-chat-connection", "data": { "name": "channel", "id": "channel" } }
+```
+
+### `twitch-user-join` / `twitch-user-part`
+
+Sent when a user joins/parts a Twitch chat channel (IRC JOIN/PART):
+
+```json
+{ "type": "twitch-user-join", "data": { "user": "username", "channel": "channel", "metadata": { ... }, "color": "#RRGGBB" } }
+```
+
+### `clear-chat`
+
+Sent on a Twitch CLEARCHAT IRC event (chat cleared or a user's messages purged):
+
+```json
+{ "type": "clear-chat", "data": { "channel": "channel", "metadata": { ... } } }
+```
+
+### `self-message`
+
+Sent instead of `user-message` when the message originated from the bot itself (`MessageId == "self"`):
+
+```json
+{ "type": "self-message", "data": { ... MessageFromStream ... } }
 ```
 
 ### `kick-connection`

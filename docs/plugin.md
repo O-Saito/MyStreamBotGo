@@ -16,12 +16,10 @@ same lifecycle as a compile-time plugin.
 
 ## Package layout
 
-| Package | Purpose |
-|---|---|
-| `plugin/contract/` | Shared `Plugin` interface, `Context`, version constant |
-| `plugin/` | Public API: type aliases, `BasePlugin`, `Registry` |
-| `plugin/loader/` | CGo bridge: `openLibrary`, `call_wrappers`, `hostcallbacks`, `plugin_shim` |
-| `plugin/sdk/` | JSON-serializable types for native plugin authors |
+Compile-time Go plugins depend only on `MyStreamBot/plugin`, which exports
+the `Plugin` interface, `Context`, and `BasePlugin`. (`plugin/loader/` and
+`plugin/sdk/` are internal to the host and native-plugin ABI, not something
+a plugin author imports directly.)
 
 ## Plugin interface
 
@@ -170,30 +168,24 @@ The plugin manager calls lifecycle methods in order:
 5. **Runtime** — `OnChat`/`OnEvent` fire as events arrive
 6. **`StopProcessors()`** — signals processor goroutines to drain their
    channels before shutdown (prevents concurrent dispatch during unload)
-7. **`StopAll()`** — calls `Stop()`, sets `stopped = true`, then
-   `CloseLibrary()` on native plugins — the per-plugin `sync.RWMutex`
-   guarantees no in-flight `OnChat`/`OnEvent` is running when the library
-   is unloaded
+7. **`StopAll()`** — calls `Stop()`, then unloads native plugin libraries
+   (see Thread safety below for the in-flight-dispatch guarantee this relies on)
 
 ### Thread safety
 
-Each registered plugin is wrapped in an internal `entry` struct:
+The host guarantees no `OnChat`/`OnEvent`/action call is in flight for a
+plugin while `Stop()` and native library unload run for that same plugin —
+you don't need your own locking to protect against concurrent dispatch
+during shutdown.
 
-```go
-type entry struct {
-    p       Plugin
-    mu      sync.RWMutex
-    stopped bool
-}
-```
+### Panic recovery
 
-- `DispatchChat` / `DispatchEvent` / `RegisterLuaActions` take `entry.mu.RLock()`
-  for the duration of the call and skip the entry if `stopped`.
-- `StopAll()` takes `entry.mu.Lock()` per entry, calls `Stop()`, sets
-  `stopped = true`, calls `CloseLibrary()` (if applicable), then unlocks.
-
-This prevents use-after-free when `StopAll()` unloads a native DLL while
-processor goroutines are concurrently dispatching events.
+If a plugin's `Init`, `Start`, `Stop`, `OnChat`, or `OnEvent` panics, the
+host recovers it, logs the panic and stack trace, and (except during `Stop`)
+permanently stops dispatching to that plugin. A misbehaving plugin can't
+crash the host process, but a panic in `Init`/`Start`/`OnChat`/`OnEvent`
+disables the plugin for the rest of the run — don't rely on panics for
+control flow.
 
 ---
 
@@ -213,7 +205,7 @@ that provides host callbacks.
 | C export | Signature | Purpose |
 |---|---|---|
 | `plugin_name` | `const char* plugin_name(void)` | Returns malloc'd C string with plugin name; freed by host via `plugin_free` |
-| `plugin_api_version` | `uint32_t plugin_api_version(void)` | Must return `0x00010000`; mismatched versions are rejected |
+| `plugin_api_version` | `uint32_t plugin_api_version(void)` | Must return `0x00020000`; mismatched versions are rejected |
 | `plugin_set_host` | `void plugin_set_host(const bot_host_api_t* api)` | Stores the host API struct for use by `host_log`/`host_emit_event` helpers |
 | `plugin_free` | `void plugin_free(void* ptr)` | Frees memory allocated by the plugin (used by host for return values) |
 
@@ -230,14 +222,14 @@ All optional exports use **JSON strings** for input/output. The host calls
 | `plugin_on_chat` | `void plugin_on_chat(const char* msgJSON)` | Receives serialized `MessageFromStream` |
 | `plugin_on_event` | `void plugin_on_event(const char* evtJSON)` | Receives serialized `Event` |
 | `plugin_get_actions` | `const char* plugin_get_actions(void)` | Returns JSON array `[{"name":"..."}, ...]` |
-| `plugin_call_action` | `const char* plugin_call_action(const char* name, const char* argsJSON)` | Calls a named action with JSON args, returns JSON result |
+| `plugin_call_action` | `const char* plugin_call_action(const char* name, const char* argsJSON, const char* metaJSON)` | Calls a named action with JSON args, returns JSON result. `metaJSON` carries the calling Lua module's identity (from `__plugin_meta`) |
 
 ### Host API struct (`bot_host_api_t`)
 
 Defined in `plugin/loader/hostapi.h`:
 
 ```c
-#define MYSTREAM_BOT_API_VERSION 0x00010000
+#define MYSTREAM_BOT_API_VERSION 0x00020000
 
 typedef struct bot_host_api_s {
     uint32_t api_version;
@@ -269,56 +261,57 @@ func hostLog(level int, format string, args ...any) {
 All data crossing the C/Go boundary for optional exports is JSON-encoded.
 The schema for each function mirrors the Go types in `plugin/sdk/types.go`:
 
-- `plugin_on_chat`: serialized `globals.MessageFromStream`
+- `plugin_on_chat`: serialized `globals.MessageFromStream` — includes
+  `IsCommand` (true if the message starts with the bot's command prefix) and
+  `IsAtOwnerChannel` (true if the message originates from the bot owner's
+  own channel/session)
 - `plugin_on_event`: serialized `globals.Event`
 - `plugin_init`: receives `{"name":"<plugin name>"}`, returns error string or null
 - `plugin_get_actions`: returns `[{"name":"listen"},{"name":"stop_listen"}]`
-- `plugin_call_action`: receives action name + JSON args, returns JSON result
+- `plugin_call_action`: receives action name + JSON args + JSON meta (calling module identity), returns JSON result
 
 ### Null pointer safety
 
-Optional C exports are looked up by name via `GetProcAddress`/`dlsym`.
-If an optional export is not found, the function pointer is `0` (nil). All
-callsites in `plugin_shim.go` guard with `if fn == 0 { return }` before
-calling the C wrapper, so missing exports are silently skipped rather than
-crashing.
+Optional C exports are looked up by name at load time. If your plugin
+doesn't implement one, the host simply skips calling it — omitting an
+optional export is safe and never crashes the host.
 
 ### Building a native plugin
 
-Create a standalone Go module with `-buildmode=c-shared`:
+Create a standalone Go module with `-buildmode=c-shared`. The repo ships a
+minimal starting point at `plugins/template_go/`:
 
 ```
-plugins_projects/keylistener/
-├── go.mod     (module keylistener, requires golang.org/x/sys)
-├── export.go  (C exports: plugin_name, plugin_set_host, etc.)
-├── plugin.go  (subscriber core, onKeyEvent)
-├── hook.go    (Windows low-level keyboard hook)
-└── keys.go    (VK code maps)
+plugins/template_go/
+├── go.mod      (standalone module, no dependency on MyStreamBot)
+├── main.go     (all C exports + Lua action dispatch in one file)
+├── build.bat   (Windows build script)
+└── build.sh    (Unix build script)
 ```
 
-Build:
+Build (see `build.bat` / `build.sh`):
 
 ```
-cd plugins_projects/keylistener
-go build -buildmode=c-shared -o ../../plugins/keylistener.dll .
+cd plugins/template_go
+go build -buildmode=c-shared -o ../template_plugin.dll .
 ```
 
 The output `.dll`/`.so` goes into `./plugins/`, which is scanned at startup
 by `plugin.LoadPlugins("./plugins")` in `main.go`.
 
-### Reference plugin: keylistener
+### Reference plugin: template_go
 
-`plugins_projects/keylistener/` is a working example that hooks Windows
-low-level keyboard input and emits `keypress` events to subscribed Lua
-modules. It demonstrates:
+`plugins/template_go/main.go` is a minimal, single-file example plugin
+(`template_plugin`) that demonstrates:
 
-- All mandatory and most optional C exports
-- Host API helpers (`hostLog`, `hostEmitEvent`)
-- JSON action descriptor + dispatch
-- Thread-safe subscriber map
-- Clean goroutine teardown via `WM_QUIT` + join channel
-- Double-start guard on hook installation
-- `getHookCallback()` with `sync.Once` to avoid trampoline exhaustion
+- All mandatory C exports (`plugin_name`, `plugin_api_version`,
+  `plugin_set_host`, `plugin_free`)
+- Optional lifecycle exports (`plugin_init`, `plugin_start`, `plugin_stop`)
+- `plugin_on_chat` / `plugin_on_event` JSON unmarshaling
+- `plugin_get_actions` / `plugin_call_action` with the 3-argument
+  `(name, argsJSON, metaJSON)` signature, including reading the caller's
+  identity out of `metaJSON`
+- Two example actions: `hello` and `echo`
 
 ---
 

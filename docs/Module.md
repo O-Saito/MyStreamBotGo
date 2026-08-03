@@ -1,14 +1,12 @@
 # Module (Lua) and front-end CustomEvents
 
-This document explains how to write and install Lua modules for MyStreamBot and how to provide optional front-end (JS) CustomEvents wrappers. It references loader and bridge functions so examples use the exact runtime APIs.
+This document explains how to write and install Lua modules for MyStreamBot and how to provide optional front-end (JS) CustomEvents wrappers.
 
 ## Overview
 
 - Supported module types: commands, chat modules, event modules, dynamic custom events (CustomEvents).
 - Place modules under `modules/` for a new module and `modules/customevents/modules` for imports.
-- The Go loader (package `mlua`) initializes separate Lua states for commands, chat and dynamic events and hot-reloads modules when files change.
-
-Key loader functions to refer to: [mlua/mlua.go](./../mlua/mlua.go) (`Init`, `LoadAllModules`, `loadModule`, `StartWatcher`) and [mlua/dyevents.go](./../mlua/dyevents.go) (`LoadDyEvents`, `setFunctionOnTable`).
+- Commands, chat, and dynamic events each run in their own Lua state, and modules are hot-reloaded when their files change on disk.
 
 ## Where to put modules
 
@@ -138,14 +136,14 @@ if (example) {
 ```
 
 Notes:
-- `subscribe` expects the module filename that matches the server `Filter` (usually `vote.lua`).
+- `subscribe` expects the module filename that matches the server `Filter` (e.g. `customevent_example.lua`).
 - The frontend and CustomEvent communicate using messages of the shape `{ type: string, filter: string, data: any }`.
 
-See `web/wrapper.js` for the exact client API and `web/customevents/customevent_example.lua.js` for real examples.
+See `web/wrapper.js` for the exact client API and `web/customevents/customevent_example.lua.js` (also `test.lua.js`, `stream_log.lua.js`, `twitch.lua.js`) for real examples.
 
 ## Hot-reload behavior
 
-- The loader starts a filesystem watcher (`StartWatcher`) and will reload modified modules. The watcher uses a debounce; rapid file changes can race.
+- Modified module files are automatically reloaded (debounced; rapid successive edits can race).
 - CustomEvents preserve `ev.data` across reloads; other state is reinitialized.
 - When reloading, module `on_start` will be called again for CustomEvents.
 
@@ -153,11 +151,14 @@ See `web/wrapper.js` for the exact client API and `web/customevents/customevent_
 
 The repository includes a `definitions/` folder with Lua declaration (stub) files intended for editor tooling and IntelliSense. These files document the APIs the Go runtime exposes to Lua modules (names, parameters and return shapes) so your editor can provide accurate completions and hover signatures.
 
-Files present in `definitions/` (examples):
+Files present in `definitions/`:
 
 - `ev.d.lua` — declarations for the `ev` table used by CustomEvents (e.g. `ev.socket_send(type, table)`, `ev.set_interval(number)`, `ev.set_paused(bool)`, `ev.db_query(sql)` and `ev.data`).
 - `g.d.lua` — declarations for the `g` helpers/globals exposed to modules.
 - `twitch.d.lua` — declarations for `twitch.*` helpers (e.g. `twitch.get_channel_stream_data`, `twitch.get_user_data`).
+- `kick.d.lua` — declarations for `kick.*` helpers exposed to Lua.
+- `youtube.d.lua` — declarations for `youtube.*` helpers exposed to Lua.
+- `customevent.d.lua` — declarations for the CustomEvent module shape (`on_start`, `on_tick`, `on_event`, `on_message`, `on_command`, `on_request`).
 
 How to use them:
 
@@ -176,12 +177,9 @@ How to use them:
 
 Recommendation: consult the matching `.d.lua` before calling an API (especially `ev.*` and `twitch.*`) to avoid mismatches.
 
-## References (source files)
+## References
 
-- `mlua/mlua.go` — loader and module registration
-- `mlua/dyevents.go` — CustomEvent loader and `ev` helper bindings
-- `lua_functions.go` — functions exposed to Lua (`twitch` helpers, etc.)
-- `globals/globals.go` — `SocketMessage` and `WsBroadcast` channel
-- `web/wrapper.js` — client websocket wrapper and `subscribe` API
-- `web/customevents/vote.lua.js` — example UI wrappers
-- `modules/customevents/*.lua`, `modules/commands/*.lua`, `modules/chat/*.lua` — example modules
+- `definitions/` — `.d.lua` stub files documenting the full `ev.*`, `g.*`, `twitch.*`, `kick.*`, and `youtube.*` API surface.
+- `web/wrapper.js` — client websocket wrapper and `subscribe` API.
+- `modules/customevents/*.lua`, `modules/commands/*.lua`, `modules/chat/*.lua` — example modules.
+- `web/customevents/*.js` — example front-end CustomEvents wrappers.

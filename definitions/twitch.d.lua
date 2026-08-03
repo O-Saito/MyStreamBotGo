@@ -29,7 +29,7 @@
 ---@field BroadcasterType string
 ---@field Description string
 ---@field ProfileImageURL string
----@field ProfileOfflineImageURL string
+---@field OfflineImageURL string
 ---@field ViewCount number
 ---@field Email string
 ---@field CreatedAt string
@@ -41,7 +41,7 @@
 ---@field FollowedAt string
 
 ---@class StreamData
----@field BroadcasterId string
+---@field BroadcasterID string
 ---@field BroadcasterLogin string
 ---@field BroadcasterName string
 ---@field BroadcasterLanguage string
@@ -59,8 +59,11 @@
 ---@field Scopes string[]
 ---@field ExpiresAt string
 
+---@class TwitchUserAuthorizationList
+---@field Data TwitchUserAuthorization[]
+
 ---@class TwitchUserBlock
----@field UserId string
+---@field UserID string
 ---@field UserLogin string
 ---@field UserName string
 
@@ -72,11 +75,11 @@
 ---@field Type string[]
 
 ---@class TwitchActiveExtensions
----@field panel table
----@field overlay table
----@field component table
----@field video_overlay table
----@field chat table
+---@field Panel table
+---@field Overlay table
+---@field Component table
+---@field VideoOverlay table
+---@field Chat table
 
 ---@class TwitchClip
 ---@field ID string
@@ -137,9 +140,9 @@ function twitch.get_followers_data() end
 ---@return StreamData
 function twitch.get_channel_stream_data(userId) end
 
----Get user authorization by user ID
+---Get user authorization by user ID. Result is wrapped: access entries via `result.Data[1]`, etc.
 ---@param userId string
----@return TwitchUserAuthorization|nil
+---@return TwitchUserAuthorizationList|nil
 function twitch.get_authorization_by_user(userId) end
 
 ---Get user block list
@@ -162,10 +165,11 @@ function twitch.get_user_active_extensions() end
 ---@return TwitchClip[]
 function twitch.create_clip(broadcasterID, title, duration) end
 
----Get clips
+---Get clips. Trailing string args are treated as clip IDs to filter by
+---(date range and pagination filtering are not reachable from Lua).
 ---@param broadcasterID string
 ---@param gameID string
----@param ... string
+---@param ... string clip IDs
 ---@return TwitchClip[]
 function twitch.get_clips(broadcasterID, gameID, ...) end
 

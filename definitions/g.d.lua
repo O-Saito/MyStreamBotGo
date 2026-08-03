@@ -21,7 +21,7 @@ function g.socket_send(type, data) end
 ---@param source string twitch, kick, youtube
 ---@param channel string channel name
 ---@param message string
----@param reply string|nil message ID to reply to (optional)
+---@param reply string|nil message ID to reply to (optional; only honored when source is "twitch")
 function g.send_message(source, channel, message, reply) end
 
 ---Get a value from the bot state (in-memory, not persisted)

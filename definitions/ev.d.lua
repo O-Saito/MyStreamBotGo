@@ -29,6 +29,7 @@ function ev.set_paused(paused) end
 function ev.set_compute_twitch_shared_chat(enabled) end
 
 ---Tell the module to use the database connection
+---@return boolean created true if this call created the connection, false if it already existed
 function ev.use_db() end
 
 ---Execute a raw SQL query on the database connection, returning the number of affected rows

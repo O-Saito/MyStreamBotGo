@@ -41,10 +41,11 @@ local kick = {}
 ---@return kick.UserData
 function kick.get_user(userId) end
 
----Get channel data by user ID
+---Get channel data by user ID, optionally by slug instead
 ---@param userId number
+---@param slug string|nil
 ---@return kick.ChannelData
-function kick.get_channel(userId) end
+function kick.get_channel(userId, slug) end
 
 ---Get chatroom data by channel ID
 ---@param channelId string

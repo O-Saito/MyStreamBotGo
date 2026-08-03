@@ -58,6 +58,30 @@ func ResetChannels() {
 	Channels = []string{}
 }
 
+// resolveRoomId returns the broadcaster room ID a chat message actually
+// originated from. During a Twitch Shared Chat session, messages from
+// co-streamed channels still arrive tagged with the home channel, so
+// source-room-id (when present) is the only way to tell them apart from
+// room-id.
+func resolveRoomId(metadata map[string]any) any {
+	roomId := metadata["room-id"]
+	if metadata["source-room-id"] != nil {
+		roomId = metadata["source-room-id"]
+	}
+	return roomId
+}
+
+// IsOwnChannelMessage reports whether a chat message originated from the
+// bot's own channel rather than a co-streamed channel merged in via Twitch
+// Shared Chat. Messages with no resolvable room ID are treated as own-channel.
+func IsOwnChannelMessage(metadata map[string]any) bool {
+	roomId := resolveRoomId(metadata)
+	if roomId == nil {
+		return true
+	}
+	return globals.GetState().GetTwitchUser().UserID == roomId
+}
+
 func partseTags(tagsStr string) map[string]any {
 	metadata := map[string]any{}
 	tags := strings.SplitSeq(strings.TrimLeft(tagsStr, "@"), ";")
@@ -265,10 +289,7 @@ var ircHandlers = map[string]func(parts []string, afterMetadataIndex int, metada
 			state.SetData("twitch-badges-info", info)
 		}
 
-		roomId := messagedata.Metadata["room-id"]
-		if messagedata.Metadata["source-room-id"] != nil {
-			roomId = messagedata.Metadata["source-room-id"]
-		}
+		roomId := resolveRoomId(messagedata.Metadata)
 
 		if roomId != nil {
 			current := globals.GetState().GetTwitchUser()

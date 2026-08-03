@@ -132,7 +132,22 @@ export default (funcs) => {
         fs.addEventMessage(`<span><span class="user">${userName}</span> foi desbanido por ${moderator}!</span>`);
     });
     w.onTwitch("channel.moderate", (data) => {
-        const userName = data?.payload?.event?.warn?.user_name;
+        let userName = '';
+        if (data?.payload?.event && data.payload.event[data.payload.event.action]) {
+            userName = data.payload.event[data.payload.event.action].user_name;
+        }
+        if (userName == '') {
+            userName = data?.payload?.event?.warn?.user_name;
+            if (data?.payload?.event?.delete) {
+                userName = data?.payload?.event?.delete.user_name;
+            }
+            if (data?.payload?.event?.raid) {
+                userName = data?.payload?.event?.raid.user_name;
+            }
+            if (data?.payload?.event?.vip) {
+                userName = data?.payload?.event?.vip.user_name;
+            }
+        }
         const moderator = data?.payload?.event?.moderator_user_name || 'alguém';
         const action = data?.payload?.event?.action || 'alguma ação';
         fs.addEventMessage(`<span><span class="user">${userName}</span> foi moderado (${action}) por ${moderator}!</span>`);

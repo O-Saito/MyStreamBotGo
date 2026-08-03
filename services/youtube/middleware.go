@@ -36,6 +36,10 @@ func DoYouTubeRequest(req *http.Request) (*http.Response, error) {
 		// Refresh the token
 		if err != nil {
 			globals.GetState().SetYouTubeUser(globals.YouTubeUser{})
+			if delErr := globals.GetGlobalDB().DeleteToken("youtube"); delErr != nil {
+				helpers.Logf(helpers.ERROR, "[YT] Failed to delete stale youtube token: %s", delErr.Error())
+			}
+			helpers.Logf(helpers.WARN, "[YT] Refresh token invalid, YouTube session cleared, user must log in again")
 			return nil, err
 		}
 

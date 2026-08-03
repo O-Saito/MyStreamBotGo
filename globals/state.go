@@ -3,6 +3,7 @@ package globals
 import (
 	"MyStreamBot/helpers"
 	"MyStreamBot/sql"
+	"slices"
 	"sync"
 	"sync/atomic"
 )
@@ -237,6 +238,19 @@ func (s *State) SetYouTubeUser(user YouTubeUser) {
 	}
 }
 
+// SetYouTubeToken updates only the access token fields, leaving Channels/RefreshToken
+// untouched so a refresh can't clobber concurrent updates to the rest of YouTubeUser.
+func (s *State) SetYouTubeToken(token string, expiresIn int) {
+	s.Lock()
+	defer s.Unlock()
+	s.YouTubeUser.Token = token
+	s.YouTubeUser.TokenExpiresIn = expiresIn
+	WsBroadcast <- SocketMessage{
+		Type: "youtube-connection",
+		Data: s.YouTubeUser,
+	}
+}
+
 func (s *State) AddYouTubeChannel(channel YouTubeChannel) {
 	s.Lock()
 	defer s.Unlock()
@@ -255,6 +269,22 @@ func (s *State) AddYouTubeChat(channelId, chatId string) {
 		if c.ID == channelId {
 			helpers.Log(helpers.DEBUG, "FOUND!")
 			c.ChatIDs = append(c.ChatIDs, chatId)
+			break
+		}
+	}
+	WsBroadcast <- SocketMessage{
+		Type: "youtube-connection",
+		Data: s.YouTubeUser,
+	}
+}
+
+func (s *State) RemoveYouTubeChat(channelId, chatId string) {
+	s.Lock()
+	defer s.Unlock()
+	for i := range s.YouTubeUser.Channels {
+		c := &s.YouTubeUser.Channels[i]
+		if c.ID == channelId {
+			c.ChatIDs = slices.DeleteFunc(c.ChatIDs, func(id string) bool { return id == chatId })
 			break
 		}
 	}

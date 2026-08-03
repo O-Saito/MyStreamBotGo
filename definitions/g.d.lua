@@ -17,19 +17,19 @@ function g.print(text, data) end
 ---@param data table
 function g.socket_send(type, data) end
 
----Send a message to a channel
----@param source string
----@param channel string
+---Send a message to a stream channel
+---@param source string twitch, kick, youtube
+---@param channel string channel name
 ---@param message string
----@param reply string|nil
+---@param reply string|nil message ID to reply to (optional)
 function g.send_message(source, channel, message, reply) end
 
----Get a value from the bot state
+---Get a value from the bot state (in-memory, not persisted)
 ---@param key string
 ---@return any
 function g.get(key)end
 
----Set a value in the bot state
+---Set a value in the bot state (in-memory, not persisted)
 ---@param key string
 ---@param value any
 function g.set(key, value)end

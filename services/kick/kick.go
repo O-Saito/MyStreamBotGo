@@ -86,19 +86,19 @@ func MarkChannelConnected(id string) (slug string, ok bool) {
 
 var ircHandlers = map[string]func(km KickMessage, data map[string]any){
 	"pusher:connection_established": func(km KickMessage, data map[string]any) {
-		globals.WsBroadcast <- globals.SocketMessage{
+		globals.SafeSend(globals.WsBroadcast, globals.SocketMessage{
 			Type: "kick-connection",
 			Data: globals.GetState().GetKickUser().UserLogin,
-		}
+		}, "WsBroadcast", false)
 	},
 	"pusher_internal:subscription_succeeded": func(km KickMessage, data map[string]any) {
 		channel := strings.Trim(strings.Split(km.Channel, ".")[1], " ")
 		helpers.Logf(helpers.DEBUG, "[Kick IRC Handler] Subscribed to channel: %s", channel)
 		if slug, ok := MarkChannelConnected(channel); ok {
-			globals.WsBroadcast <- globals.SocketMessage{
+      globals.SafeSend(globals.WsBroadcast, globals.SocketMessage{
 				Type: "kick-chat-connection",
 				Data: map[string]any{"name": slug, "id": channel},
-			}
+			}, "WsBroadcast", false)
 		}
 	},
 	"App\\Events\\ChatMessageEvent": func(km KickMessage, data map[string]any) {
@@ -237,6 +237,13 @@ func SendMessageIfChannelExist(msg string, channel string) {
 		return
 	}
 	SendMessage(msg, *c)
+}
+
+func Disconnect() {
+	if Conn != nil {
+		Conn.Close()
+		Conn = nil
+	}
 }
 
 func SendMessage(msg string, channel IrcChannel) {

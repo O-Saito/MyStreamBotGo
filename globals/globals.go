@@ -63,6 +63,25 @@ var (
 	EventQueue   = make(chan Event, 100)
 	LuaRequest   = make(chan SocketMessage, 100)
 )
+
+func SafeSend[T any](ch chan T, msg T, name string, block ...bool) bool {
+	if len(block) == 0 {
+		block = append(block, true)
+	}
+	select {
+	case ch <- msg:
+		return true
+	default:
+		if block[0] {
+			helpers.Logf(helpers.WARN, "[%s] is full (%d/%d), blocking...", name, len(ch), cap(ch))
+			ch <- msg
+			return true
+		}
+		helpers.Logf(helpers.WARN, "[%s] is full (%d/%d), discarding", name, len(ch), cap(ch))
+		return false
+	}
+}
+
 var sectionMap = map[string]any{
 	"Config": GetConfig(),
 	"State":  GetState(),

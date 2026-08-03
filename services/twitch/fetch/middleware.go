@@ -65,6 +65,11 @@ func DoRequest(req *http.Request) (*http.Response, error) {
 
 		currentAccess, err := globals.GetGlobalDB().GetToken("twitch")
 
+		if err != nil {
+			helpers.Logf(helpers.ERROR, "[TWITCH] Failed to get token from database: %s", err.Error())
+			return nil, err
+		}
+
 		var retry = 0
 		_, err = RefreshToken(currentAccess.RefreshToken)
 		for err != nil && retry < 3 {
@@ -181,7 +186,7 @@ func ExecuteRequest[T any](method, url string, expectedStatus int) (*T, error) {
 	if resp.StatusCode != expectedStatus {
 		respBody, err := io.ReadAll(resp.Body)
 		if err != nil {
-		helpers.Logf(helpers.ERROR, "[TWITCH] executeRequest io.ReadAll failed: url=%s expectedStatus=%d err=%v", url, expectedStatus, err)
+			helpers.Logf(helpers.ERROR, "[TWITCH] executeRequest io.ReadAll failed: url=%s expectedStatus=%d err=%v", url, expectedStatus, err)
 			return nil, err
 		}
 		return nil, fmt.Errorf("executeRequest(%s %s): expected %d, got %d: %s", method, url, expectedStatus, resp.StatusCode, respBody)

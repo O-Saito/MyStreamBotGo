@@ -177,6 +177,17 @@ button {
     text-decoration: underline;
 }
 
+.logout-link {
+    color: #e74c3c;
+    text-decoration: none;
+    font-size: 0.8em;
+    margin-left: 8px;
+}
+
+.logout-link:hover {
+    text-decoration: underline;
+}
+
 /* Inline Lists */
 .inline-list {
     display: flex;
@@ -755,4 +766,30 @@ input[type="checkbox"] {
 
 .drag-over-below {
     border-bottom: 2px solid var(--twitch) !important;
+}
+
+@media (max-width: 480px) {
+    #dyevents-panel .body {
+        flex-direction: column;
+    }
+
+    #dyevents-sidebar {
+        width: 100%;
+        flex-shrink: unset;
+        border-right: none;
+        border-bottom: 1px solid var(--border-color);
+        margin-bottom: 8px;
+        padding-bottom: 8px;
+        padding-right: 0;
+    }
+
+    #dyevents-sidebar .sidebar-item {
+        min-height: 44px;
+        display: flex;
+        align-items: center;
+    }
+
+    #dyevents-list {
+        padding-left: 0;
+    }
 }

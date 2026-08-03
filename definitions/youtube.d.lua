@@ -27,19 +27,19 @@
 
 ---@meta
 ---@class youtube
-local g = {}
+local yt = {}
 
 ---Get cached YouTube channel list from state
 ---@return YouTubeChannel[]
-function g.get_state() end
+function yt.get_state() end
 
 ---Get current YouTube channel info
 ---@return youtube.YouTubeChannelListResponse
-function g.get_current_youtube_channel() end
+function yt.get_current_youtube_channel() end
 
 ---Get current live streams
 ---@return youtube.LiveBroadcastListResponse
-function g.get_current_streamings() end
+function yt.get_current_streamings() end
 
 -- declare global
-_G.youtube = g
+_G.youtube = yt

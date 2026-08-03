@@ -94,10 +94,10 @@ func RegisterLuaFunctions(L *lua.LState) {
 			t2 := L.CheckTable(2)
 			data := mlua.TableToMap(t2)
 			helpers.Printf(helpers.Lua, "[LUA g.socket_send] %s; %v", t, data)
-			globals.WsBroadcast <- globals.SocketMessage{
+			globals.SafeSend(globals.WsBroadcast, globals.SocketMessage{
 				Type: t,
 				Data: data,
-			}
+			}, "WsBroadcast", false)
 			return 0
 		},
 		"send_message": func(L *lua.LState) int {

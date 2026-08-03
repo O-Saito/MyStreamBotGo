@@ -5,6 +5,7 @@ import (
 	"MyStreamBot/goweb"
 	"MyStreamBot/helpers"
 	"MyStreamBot/mlua"
+	"MyStreamBot/plugin"
 	"MyStreamBot/processors"
 	"MyStreamBot/services/kick"
 	"MyStreamBot/services/twitch"
@@ -46,8 +47,11 @@ func main() {
 
 	RegisterSocketHandlers()
 
+	plugin.LoadPlugins("./plugins")
+	plugin.InitAll()
+
 	// Initialize mlua package
-	mlua.Init(RegisterLuaFunctions, RegisterServiceAPIs)
+	mlua.Init(RegisterLuaFunctions, RegisterServiceAPIs, plugin.RegisterLuaActions)
 
 	// Load all Lua modules and start hotreload
 	mlua.LoadAllModules()
@@ -59,6 +63,8 @@ func main() {
 	go processors.ProcessEventQueue()
 	go processors.ProcessDyEventQueue()
 	go processors.ProcessLuaRequest()
+
+	plugin.StartAll()
 
 	// start web server
 	goweb.StartHTTPServer()
@@ -78,6 +84,9 @@ func main() {
 
 	helpers.Logf(helpers.DEBUG, "Closing...")
 
+	processors.StopProcessors()
+	mlua.StopGlobalLoop()
+	plugin.StopAll()
 	db.Close()
 	mlua.SaveDynamicEvents()
 	twitch.Close()

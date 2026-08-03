@@ -3,9 +3,13 @@ modules/events/channel.follow/follow_example.lua
 modules/chat/first.lua
 modules/chat/uppercase.lua
 modules/commands/first.lua
+modules/commands/teste.lua
 modules/customevents/test.lua
 modules/customevents/stream_log.lua
 modules/customevents/customevent_example.lua
 web/customevents/test.lua.js
 web/customevents/stream_log.lua.js
 web/customevents/customevent_example.lua.js
+docs/project.md
+docs/twitch_fetch.md
+docs/main.md

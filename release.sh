@@ -33,6 +33,7 @@ cp  twitchsubtypes.json "$BUILD_DIR/"
 cp -r definitions       "$BUILD_DIR/"
 cp -r modules           "$BUILD_DIR/"
 cp -r web               "$BUILD_DIR/"
+cp -r docs              "$BUILD_DIR/"
 #cp -r db                "$BUILD_DIR/"
 #cp -r logs              "$BUILD_DIR/"
 

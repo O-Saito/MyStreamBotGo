@@ -30,6 +30,7 @@ copy twitchsubtypes.json "%BUILD_DIR%\" >nul
 xcopy /e /i /y definitions "%BUILD_DIR%\definitions\" >nul
 xcopy /e /i /y modules     "%BUILD_DIR%\modules\" >nul
 xcopy /e /i /y web         "%BUILD_DIR%\web\" >nul
+xcopy /e /i /y docs        "%BUILD_DIR%\docs\" >nul
 ::xcopy /e /i /y db          "%BUILD_DIR%\db\" >nul
 ::xcopy /e /i /y logs        "%BUILD_DIR%\logs\" >nul
 

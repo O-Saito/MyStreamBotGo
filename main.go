@@ -29,10 +29,10 @@ func main() {
 		}
 	}()
 
+	helpers.InitLog()
+
 	kick.ResetChannels()
 	twitch.ResetChannels()
-
-	helpers.InitLog()
 
 	globals.LoadInitFile()
 	globals.LoadTwitchSubTypes()

@@ -81,6 +81,9 @@ func RestoreSession() {
 			if err != nil {
 				helpers.Logf(helpers.ERROR, "[TWITCH HANDLELOGIN] Failed to fetch token: %s", err.Error())
 			}
+			if d == nil || d.AccessToken == "" {
+				return
+			}
 			initTwitchUser(d.AccessToken)
 		}
 	}

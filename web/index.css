@@ -793,3 +793,21 @@ input[type="checkbox"] {
         padding-left: 0;
     }
 }
+
+.access-section {
+    margin-top: 8px;
+}
+
+.access-section select {
+    margin: 4px 8px 4px 0;
+    max-width: 100%;
+}
+
+#access-qr {
+    margin: 6px 0;
+}
+
+.access-hint {
+    color: var(--text-muted);
+    font-size: 12px;
+}

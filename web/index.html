@@ -137,6 +137,15 @@
                 <div>Twitch Last Keepalive: <label id="twitch-last-eventsub"></label></div>
                 <div>Twitch GameID: <label id="twitch-game-id"></label></div>
             </div>
+            <div class="access-section">
+                <div><strong>Remote access:</strong></div>
+                <div>
+                    <select id="access-url-select"></select>
+                    <a id="access-url-link" href="#" target="_blank" rel="noopener">open</a>
+                </div>
+                <div id="access-qr"></div>
+                <div class="access-hint">Logins (OAuth) must be done via localhost.</div>
+            </div>
             <div class="dy-statistics-overview">
                 <div><strong>Dy Events:</strong></div>
                 <div id="dy-statistics-list"></div>
@@ -565,6 +574,29 @@
                     throw e;
                 }
             }
+        });
+
+        w.on('init', (data) => {
+            const items = data.access_urls?.items;
+            const section = document.querySelector('.access-section');
+            if (!section || !Array.isArray(items) || items.length === 0) { return; }
+            const select = document.getElementById('access-url-select');
+            items.forEach((it) => {
+                const opt = document.createElement('option');
+                opt.value = it.url;
+                opt.textContent = it.url;
+                select.appendChild(opt);
+            });
+            const renderAccessQR = () => {
+                const item = items.find((it) => it.url === select.value);
+                const qr = document.getElementById('access-qr');
+                const link = document.getElementById('access-url-link');
+                if (!item || !qr || !link) { return; }
+                qr.innerHTML = `<img src="${item.qr}" alt="QR code for ${item.url}" title="${item.url}" width="180" height="180" />`;
+                link.href = item.url;
+            };
+            select.addEventListener('change', renderAccessQR);
+            renderAccessQR();
         });
 
         w.on('twitch-connection', (data) => {

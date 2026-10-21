@@ -4,6 +4,7 @@ import (
 	"MyStreamBot/globals"
 	"MyStreamBot/helpers"
 	"MyStreamBot/mlua"
+	"MyStreamBot/qrcode"
 	"MyStreamBot/services/kick"
 	"MyStreamBot/services/twitch"
 	tf "MyStreamBot/services/twitch/fetch"
@@ -42,6 +43,13 @@ var lastTagIndex = 0
 var wsClients = make(map[*websocket.Conn]int)
 var wsClientsUpgraded = make(map[string][]*websocket.Conn)
 
+type AccessURLItem struct {
+	URL string `json:"url"`
+	Qr  string `json:"qr"`
+}
+
+var accessCache []AccessURLItem
+
 var SocketHandlers = map[string]func(*websocket.Conn, map[string]any, *SocketRequestMetadata){
 	"init": func(c *websocket.Conn, m map[string]any, md *SocketRequestMetadata) {
 		globals.SafeSend(globals.WsBroadcast, globals.SocketMessage{
@@ -59,6 +67,10 @@ var SocketHandlers = map[string]func(*websocket.Conn, map[string]any, *SocketReq
 				"custom_events_modules":  mlua.ListDynamicEvents(),
 				"twitch_eventsubs":       globals.GetState().GetData("TwitchSubEventsConnectedEvents"),
 				"interface_config":       globals.GetState().GetData("htmlinterface"),
+				"access_urls": map[string]any{
+					"port":  globals.GetConfig().HTTPPort,
+					"items": accessCache,
+				},
 			},
 			SocketTag: md.Tag,
 		}, "WsBroadcast", false)
@@ -278,22 +290,9 @@ func StartHTTPServer() {
 		}
 	}()
 
-	addrs, err := net.InterfaceAddrs()
-	if err != nil {
-		helpers.Logf(helpers.ERROR, "[WebSocket] Failed to get interface address: %s", err.Error())
-		helpers.Log(helpers.ERROR, "[WebSocket] Exiting due to unrecoverable error")
-		os.Exit(1)
-	}
-
 	port := globals.GetConfig().HTTPPort
 	helpers.Print(helpers.Green, "[MyStreamBot] Possible IPs (logins MUST be via localhost):")
-	for _, addr := range addrs {
-		if ipnet, ok := addr.(*net.IPNet); ok && !ipnet.IP.IsLoopback() {
-			if ipnet.IP.To4() != nil {
-				helpers.Printf(helpers.Reset, "http://%s:%s", ipnet.IP.String(), port)
-			}
-		}
-	}
+	buildAccessURLs()
 	helpers.Printf(helpers.Green, "[MyStreamBot] HTTP server started at http://localhost:%s", port)
 	helpers.Log(helpers.INFO, "Started listen and serve (http started)!")
 	go func() {
@@ -303,4 +302,34 @@ func StartHTTPServer() {
 			os.Exit(1)
 		}
 	}()
+}
+
+// buildAccessURLs collects the LAN URLs the dashboard can be reached at and
+// stores them (with a QR data URI for each) in accessCache, which is included
+// in the init payload. It exits on unresolvable interface addresses, matching
+// the previous startup behavior.
+func buildAccessURLs() {
+	addrs, err := net.InterfaceAddrs()
+	if err != nil {
+		helpers.Logf(helpers.ERROR, "[WebSocket] Failed to get interface address: %s", err.Error())
+		helpers.Log(helpers.ERROR, "[WebSocket] Exiting due to unrecoverable error")
+		os.Exit(1)
+	}
+
+	port := globals.GetConfig().HTTPPort
+	accessCache = accessCache[:0]
+	for _, addr := range addrs {
+		ipnet, ok := addr.(*net.IPNet)
+		if !ok || ipnet.IP.IsLoopback() || ipnet.IP.To4() == nil {
+			continue
+		}
+		url := fmt.Sprintf("http://%s:%s", ipnet.IP.String(), port)
+		qr, qrErr := qrcode.EncodeDataURI(url)
+		if qrErr != nil {
+			helpers.Logf(helpers.ERROR, "[WebSocket] QR generation for %s failed: %s", url, qrErr.Error())
+			continue
+		}
+		accessCache = append(accessCache, AccessURLItem{URL: url, Qr: qr})
+		helpers.Printf(helpers.Reset, "%s", url)
+	}
 }

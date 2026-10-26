@@ -207,7 +207,11 @@ func RegisterSocketHandlers() {
 	goweb.SocketHandlers["get-streamer-data"] = func(c *websocket.Conn, m map[string]any, md *goweb.SocketRequestMetadata) {
 		var twitchData *globals.TwitchStreamData
 		if twitchUser := globals.GetState().GetTwitchUser(); twitchUser.UserID != "" {
-			twitchData, _ = twitch.GetStreamData(twitchUser.UserID)
+			var err error
+			twitchData, err = twitch.GetStreamData(twitchUser.UserID)
+			if err == nil {
+				globals.GetState().SetTwitchStreamDetails(*twitchData)
+			}
 		}
 
 		ytData := []any{}

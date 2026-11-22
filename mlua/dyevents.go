@@ -289,6 +289,7 @@ func (dev *DynamicEvent) ProcessEvent(evm *globals.Event) {
 	dev.State.mu.RUnlock()
 
 	if !shouldComputeSharedChat {
+		// Do a better logic later, for now, only twitch has a payload.event, so Youtube is safe
 		if payload, ok := evm.Data["payload"].(map[string]any); ok {
 			if eventData, ok := payload["event"].(map[string]any); ok {
 				if broadcasterId, ok := eventData["broadcaster_user_id"].(string); ok {
@@ -345,7 +346,7 @@ func (dev *DynamicEvent) ProcessRequest(evm *globals.SocketMessage) {
 	socketTag := evm.SocketTag
 	responseMessageID := evm.ResponseMessageID
 	filter := evm.Filter
-	t := evm.Type
+	eventType := evm.Type
 	LState.SetField(tbl, "respond", LState.NewFunction(func(L *lua.LState) int {
 		if L.Get(1) == lua.LNil {
 			helpers.Printf(helpers.Lua, "[LUA] OnRequest no data passed!")
@@ -364,7 +365,7 @@ func (dev *DynamicEvent) ProcessRequest(evm *globals.SocketMessage) {
 			SocketTag:         socketTag,
 			ResponseMessageID: responseMessageID,
 			Filter:            filter,
-			Type:              fmt.Sprintf("return-%s", t),
+			Type:              fmt.Sprintf("return-%s", eventType),
 			Data:              data,
 		}, "WsBroadcast")
 
@@ -506,6 +507,7 @@ func LoadDyEventModule(folder, fileName string) {
 
 	eventTable := L.NewTable()
 	L.SetGlobal("ev", eventTable)
+	L.SetGlobal("manager", eventTable)
 
 	fn, err := L.LoadFile(fullPath)
 	if err != nil {
@@ -571,23 +573,6 @@ func setFunctionOnTable(ev *DynamicEvent, tbl *lua.LTable) {
 	if ev.Lua.LState == nil {
 		return
 	}
-
-	ev.Lua.LState.SetField(tbl, "socket_send", ev.Lua.LState.NewFunction(func(L *lua.LState) int {
-		if L.Get(1) == lua.LNil || L.Get(2) == lua.LNil {
-			return -1
-		}
-
-		t := L.CheckString(1)
-		d := L.CheckTable(2)
-
-		globals.SafeSend(globals.WsBroadcast, globals.SocketMessage{
-			Filter: ev.Name,
-			Type:   t,
-			Data:   TableToMap(d),
-		}, "WsBroadcast")
-
-		return 0
-	}))
 
 	ev.Lua.LState.SetField(tbl, "set_interval", ev.Lua.LState.NewFunction(func(L *lua.LState) int {
 		val := L.CheckNumber(1)
@@ -711,6 +696,23 @@ func setFunctionOnTable(ev *DynamicEvent, tbl *lua.LTable) {
 		}
 		L.Push(ToLValue(ev.Lua.LState, result))
 		return 1
+	}))
+
+	ev.Lua.LState.SetField(tbl, "socket_send", ev.Lua.LState.NewFunction(func(L *lua.LState) int {
+		if L.Get(1) == lua.LNil || L.Get(2) == lua.LNil {
+			return -1
+		}
+
+		t := L.CheckString(1)
+		d := L.CheckTable(2)
+
+		globals.SafeSend(globals.WsBroadcast, globals.SocketMessage{
+			Filter: ev.Name,
+			Type:   t,
+			Data:   TableToMap(d),
+		}, "WsBroadcast")
+
+		return 0
 	}))
 
 }

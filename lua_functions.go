@@ -54,7 +54,8 @@ var YouTubeFunctionList = []services.LuaFunction{
 }
 
 func RegisterLuaFunctions(L *lua.LState) {
-	mlua.ExposeServiceToLua(L, "g", map[string]func(*lua.LState) int{
+
+	var functions = map[string]func(*lua.LState) int{
 		"log": func(L *lua.LState) int {
 			if L.Get(2) == lua.LNil {
 				helpers.Logf(helpers.ERROR, "[LUA g.log] %s", L.CheckString(1))
@@ -157,7 +158,10 @@ func RegisterLuaFunctions(L *lua.LState) {
 			}
 			return 0
 		},
-	})
+	}
+
+	mlua.ExposeServiceToLua(L, "g", functions)
+	mlua.ExposeServiceToLua(L, "global", functions)
 
 }
 

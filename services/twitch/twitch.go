@@ -20,7 +20,6 @@ type Message struct {
 	MessageToReply string
 }
 
-// Global variables for the logged-in streamer
 var (
 	LoginDone = make(chan bool)
 	Conn      net.Conn
@@ -82,32 +81,7 @@ func IsOwnChannelMessage(metadata map[string]any) bool {
 	return globals.GetState().GetTwitchUser().UserID == roomId
 }
 
-func partseTags(tagsStr string) map[string]any {
-	metadata := map[string]any{}
-	tags := strings.SplitSeq(strings.TrimLeft(tagsStr, "@"), ";")
-	for tag := range tags {
-		kv := strings.SplitN(tag, "=", 2)
-		if len(kv) == 2 {
-			metadata[kv[0]] = kv[1]
-		}
-	}
-	return metadata
-}
-
-func defaultTwitchColor(username string) string {
-	colors := []string{
-		"#FF0000", "#0000FF", "#008000", "#B22222", "#FF7F50",
-		"#9ACD32", "#FF4500", "#2E8B57", "#DAA520", "#D2691E",
-		"#5F9EA0", "#1E90FF", "#FF69B4", "#8A2BE2", "#00FF7F",
-	}
-
-	h := fnv.New32a()
-	h.Write([]byte(strings.ToLower(username)))
-	index := int(h.Sum32()) % len(colors)
-
-	return colors[index]
-}
-
+// Get the cached color for user, if do not have a cached color, do a request for it and cache it
 func GetCacheUserChatColor(user string) string {
 	state := globals.GetState()
 	userColor := state.GetData("twitch-user-color")
@@ -407,7 +381,6 @@ func Disconnect() {
 	if Conn != nil {
 		Conn.Close()
 	}
-	//close(MsgQueue)
 }
 
 func JoinChannel(channel string) {
@@ -421,6 +394,53 @@ func JoinChannel(channel string) {
 
 	helpers.Printf(helpers.Twitch, "[TWITCH] Joining channel: %s", channel)
 	fmt.Fprintf(Conn, "JOIN #%s\r\n", channel)
+}
+
+func SendMessage(msg, channel string, messageToReply ...string) {
+	if HasChannel(channel) {
+		user := globals.GetState().GetTwitchUser()
+
+		metadata := map[string]any{
+			"user-id":     user.UserID,
+			"id":          "self",
+			"user-type":   "mod",
+			"room":        user,
+			"color":       GetCacheUserChatColor(user.UserLogin),
+			"badges":      "",
+			"badges-info": map[string]any{},
+		}
+
+		globals.ChatQueue <- globals.MessageFromStream{
+			Source:    "twitch",
+			Channel:   channel,
+			User:      user.UserLogin,
+			UserId:    user.UserID,
+			MessageId: "self",
+			Message:   msg,
+			Metadata:  metadata,
+		}
+		if messageToReply == nil {
+			messageToReply = []string{""}
+		}
+		MsgQueue <- Message{Channel: channel, Text: msg, MessageToReply: helpers.Ternary(len(messageToReply) > 0, messageToReply[0], "")}
+		return
+	}
+
+	helpers.Logf(helpers.ERROR, "[TWITCH ERROR] Channel not found! %s", channel)
+}
+
+func Close() {
+	readerMutex.Lock()
+	defer readerMutex.Unlock()
+	if readerCancel != nil {
+		readerCancel()
+	}
+	writerMutex.Lock()
+	defer writerMutex.Unlock()
+	if writerCancel != nil {
+		writerCancel()
+	}
+	Disconnect()
 }
 
 func reader(ctx context.Context) {
@@ -486,49 +506,28 @@ func writer(ctx context.Context) {
 	}
 }
 
-func SendMessage(msg, channel string, messageToReply ...string) {
-	if HasChannel(channel) {
-		user := globals.GetState().GetTwitchUser()
-
-		metadata := map[string]any{
-			"user-id":     user.UserID,
-			"id":          "self",
-			"user-type":   "mod",
-			"room":        user,
-			"color":       GetCacheUserChatColor(user.UserLogin),
-			"badges":      "",
-			"badges-info": map[string]any{},
+func partseTags(tagsStr string) map[string]any {
+	metadata := map[string]any{}
+	tags := strings.SplitSeq(strings.TrimLeft(tagsStr, "@"), ";")
+	for tag := range tags {
+		kv := strings.SplitN(tag, "=", 2)
+		if len(kv) == 2 {
+			metadata[kv[0]] = kv[1]
 		}
-
-		globals.ChatQueue <- globals.MessageFromStream{
-			Source:    "twitch",
-			Channel:   channel,
-			User:      user.UserLogin,
-			UserId:    user.UserID,
-			MessageId: "self",
-			Message:   msg,
-			Metadata:  metadata,
-		}
-		if messageToReply == nil {
-			messageToReply = []string{""}
-		}
-		MsgQueue <- Message{Channel: channel, Text: msg, MessageToReply: helpers.Ternary(len(messageToReply) > 0, messageToReply[0], "")}
-		return
 	}
-
-	helpers.Logf(helpers.ERROR, "[TWITCH ERROR] Channel not found! %s", channel)
+	return metadata
 }
 
-func Close() {
-	readerMutex.Lock()
-	defer readerMutex.Unlock()
-	if readerCancel != nil {
-		readerCancel()
+func defaultTwitchColor(username string) string {
+	colors := []string{
+		"#FF0000", "#0000FF", "#008000", "#B22222", "#FF7F50",
+		"#9ACD32", "#FF4500", "#2E8B57", "#DAA520", "#D2691E",
+		"#5F9EA0", "#1E90FF", "#FF69B4", "#8A2BE2", "#00FF7F",
 	}
-	writerMutex.Lock()
-	defer writerMutex.Unlock()
-	if writerCancel != nil {
-		writerCancel()
-	}
-	Disconnect()
+
+	h := fnv.New32a()
+	h.Write([]byte(strings.ToLower(username)))
+	index := int(h.Sum32()) % len(colors)
+
+	return colors[index]
 }
